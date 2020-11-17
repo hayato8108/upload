@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>BB アシスタントカンパニー</title>
+
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans+JP:400,700,900&display=swap&subset=japanese" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="img/bb.png" type="image/png">
+    <link rel="icon" href="img/bb.svg" type="image/svg+xml">
+  </head>
+
+  <body>
+  <p>
+Sub DdeIn()
+
+Dim chan As Variant
+Dim result As Variant
+Dim sAdrs As String
+Dim sTopic As String
+Dim sTag As String
+Dim sAlias As String
+Dim l As Long
+Dim v As Variant
+
+    For Each v In Selection
+        If Not v.Value = "" Then
+            sAlias = v.Value
+            sAdrs = GetFapPlc6notDBFol1(sAlias)
+            sTopic = fSplitedWithSplt(sAdrs, ".", 1) & "." & fSplitedWithSplt(sAdrs, ".", 2)
+            sTag = fSplitedWithSplt(sAdrs, ".", 3)
+            
+            chan = DDEInitiate("FASERVER", sTopic)
+            result = DDERequest(chan, sTag)
+            
+            If Not TypeName(result) = "Error" Then
+                v.Offset(0, 1).Value = result(1)
+            End If
+        End If
+    Next v
+
+    DDETerminate (chan)
+    
+End Sub
+
+Sub DdeOut()
+
+    Dim chan As Variant
+    Dim result As Variant
+    Dim sAdrs As String
+    Dim sTopic As String
+    Dim sTag As String
+    Dim sAlias As String
+    Dim v As Variant
+    Dim lCol As Long: lCol = CLng(Range("C1").Column)
+
+    For Each v In Selection
+        If Not v.Value = "" Then
+            If lCol = 0 Then lCol = v.Column
+            sAlias = Cells(v.Row, lCol).Value
+            sAdrs = GetFapPlc6notDBFol1(sAlias)
+            sTopic = fSplitedWithSplt(sAdrs, ".", 1) & "." & fSplitedWithSplt(sAdrs, ".", 2)
+            sTag = fSplitedWithSplt(sAdrs, ".", 3)
+
+            chan = DDEInitiate("FASERVER", sTopic)
+            DDEPoke chan, sTag, Cells(v.Row, v.Column)
+        
+        End If
+    Next v
+
+    DDETerminate (chan)
+
+End Sub
+
+
+
+Enum eDbgPrm
+    eDbgSrc1LHS
+    eDbgSrc1RHS
+    eDbgSrc2LHS
+    eXmlPath
+End Enum
+
+Function dbgPrm(ByVal inptKey As eDbgPrm) As String
+
+Dim vResult As String
+
+Select Case inptKey
+    Case eDbgSrc1LHS
+        vResult = ActiveSheet.Range("A1").Value
+        
+    Case eDbgSrc1RHS
+        vResult = ActiveSheet.Name
+    
+    Case eDbgSrc2LHS 'Column A
+        vResult = ActiveSheet.Range("A1").Value
+
+    Case eXmlPath
+        vResult = "C:\Users\Owner\Documents\workspace\MF_PAPANEL_OLD\client\client.xml"
+
+End Select
+
+dbgPrm = vResult
+
+End Function
+
+
+Function dbgDownAll()
+Application.ScreenUpdating = False
+
+Dim vPath As String: vPath = dbgPrm(eXmlPath)
+Dim vWs As Worksheet: Set vWs = ActiveSheet
+Dim vDoc As DOMDocument60: Set vDoc = cnvDocPath2DocElmWithOption(vPath): If vDoc Is Nothing Then Exit Function
+Dim vAddAtr As IXMLDOMAttribute
+
+Dim vFrms As IXMLDOMElement
+Dim vObjs As IXMLDOMNodeList
+Dim vFrm As IXMLDOMElement
+Dim vObj As IXMLDOMElement
+Dim vChild As IXMLDOMElement
+
+Dim vSrc1LHS As String:  vSrc1LHS = dbgPrm(eDbg1LHS) 'KeyFieldName
+Dim vSrc1RHS As String: vSrc1RHS = dbgPrm(eDbg1RHS) 'KeyValue
+Dim vSrc2LHS As String: vSrc2LHS = dbgPrm(eDbg2LHS) 'Column A
+
+Dim vTmpCol As Long: vTmpCol = 2
+
+Dim vCrrFormName As String 'crrFN
+Dim vTargetFormName As String
+Dim vTmp As String
+
+Dim vDmyAlias As String: vDmyAlias = 1
+Dim vEvent As String
+
+If fSplitedWithSplt(Range("B1").Value, ":", 2) = "" Or _
+    fSplitedWithSplt(Range("B1").Value, ":", 2) = Range("B1").Value Then
+    vTargetFormName = "NotSet"
+Else
+    vTargetFormName = fSplitedWithSplt(Range("B1").Value, ":", 2)
+End If
+
+'=> Set Forms
+Set vFrms = vDoc.DocumentElement.ChildNodes(0)
+'=> Set Ojbs
+Set vObjs = CnvElm2NodeList(vFrms, "OBJ")
+'=> Get SpecElems
+
+With vWs
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+    
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    .Activate
+    .Range("A2").Activate
+
+For Each vObj In vObjs
+    If vObj.Attributes.getNamedItem("clid").Text = "Form" Then
+        vCrrFormName = vObj.Attributes.getNamedItem("Name").Text
+    End If
+        
+      'Search 1
+        If CndAndEq(Array(Not IsNull(vObj.getAttribute(vSrc1LHS)), _
+                                        Not IsNull(vObj.getAttribute(vSrc2LHS))), True) Then
+            'Search 2
+                If Left(vObj.Attributes.getNamedItem(vSrc1LHS).Text, Len(vSrc1RHS)) = vSrc1RHS Then
+                    .Range("A1").Interior.Color = RGB(55, 155, 255)
+
+                        If vTargetFormName = "NotSet" Or vTargetFormName = vCrrFormName Then 'free or match
+                            ActiveCell.Value = vObj.Attributes.getNamedItem(vSrc2LHS).Text 'Column A
+                                Do While .Cells(1, vTmpCol).Value <> "" 'field Attrs
+                                
+                                    If Left(.Cells(1, vTmpCol).Value, 5) = "crrFN" Then 'Form Name
+                                        ActiveCell.Offset(0, vTmpCol - 1) = vCrrFormName
+                                    ElseIf Not IsNull(vObj.getAttribute(.Cells(1, vTmpCol).Value)) Then 'Attribute
+                                        ActiveCell.Offset(0, vTmpCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, vTmpCol).Value).Text
+                                    End If
+                                    vTmpCol = vTmpCol + 1
+                                
+                                Loop
+                        vTmpCol = 2
+                        ActiveCell.Offset(1, 0).Activate
+                        
+                    End If
+                    
+                End If 'Search 2
+        End If 'Search 1
+    Next vObj
+
+    .Columns.AutoFit
+    .Range("A1").Activate
+
+End With
+
+'Call SaveTextWithUtf8(vDoc.XML, "C:\WORK_FOLDER\WorkDir\overwrite\tmpOtpt1.xml")
+Set vDoc = Nothing
+
+Application.ScreenUpdating = True
+End Function
+
+
+
+</p>
+
+  </body>
+</html>
+ 
+
