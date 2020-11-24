@@ -6,13 +6,14 @@ Dim sLabel As String: sLabel = inptLabel
 Dim sKey As String: sKey = inptKey
 Dim sData As Variant
 Dim sResult As Variant
-
+Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("LinkData").Rows(1)
+Dim lIndex As Long
 sData = fGetRowData(ThisWorkbook.Name, "LinkData", sLabel, "A")
 
-Dim sWb As String: sWb = sData(2) 'Wb
-Dim sWs As String: sWs = sData(3) 'Ws
-Dim sKeyCol As String: sKeyCol = sData(4) 'KeyCol
-Dim sRtnCol As String: sRtnCol = sData(5) 'RtnCol
+Dim sWb As String: sWb = sData(Application.WorksheetFunction.Match("WorkBookName", rRng, 0))
+Dim sWs As String: sWs = sData(Application.WorksheetFunction.Match("WorkSheetName", rRng, 0))
+Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("KeyCol", rRng, 0))
+Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("RtnCol", rRng, 0))
 
 sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
 
