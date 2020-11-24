@@ -1,0 +1,96 @@
+
+Enum eXapField
+    eXap_Alias
+    eXap_type
+    eXap_Desc
+    eXap_Plc
+    eXap_Iosc
+    eXap_Unit
+    eXap_Ehi
+    eXap_Elo
+    eXap_hihi
+    eXap_lolo
+End Enum
+
+
+Function getXapWsCol(inptColName As String) As String
+Dim rRng As Range: Set rRng = ActiveSheet.Rows(1)
+Dim sResult As String
+
+Select Case inptColName
+    Case "SortIndex"
+        sResult = Application.WorksheetFunction.Match("SortIndex", rRng, 0)
+    
+    Case "Fol"
+        sResult = Application.WorksheetFunction.Match("Fol", rRng, 0)
+        
+    Case "Prj"
+        sResult = Application.WorksheetFunction.Match("Prj", rRng, 0)
+
+    Case "Alias"
+        sResult = Application.WorksheetFunction.Match("Alias", rRng, 0)
+        
+    Case "Csv1"
+        sResult = Application.WorksheetFunction.Match("Csv1", rRng, 0)
+
+    Case "Csv2"
+        sResult = Application.WorksheetFunction.Match("Csv2", rRng, 0)
+
+    Case "Csv3"
+        sResult = Application.WorksheetFunction.Match("Csv3", rRng, 0)
+
+    Case Else
+        Stop 'does not match
+    
+    End Select
+
+    getXapWsCol = sResult
+
+End Function
+
+Function GetPrjProps(inptPrj As String, inptProp As String) As Variant
+
+Dim sPrj As String: sPrj = inptPrj
+Dim sData As Variant
+Dim sResult As Variant
+Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("ProjectData").Rows(1)
+Dim lIndex As Long
+
+sData = fGetRowData(ThisWorkbook.Name, "ProjectData", sPrj, "A")
+
+If UBound(sData) = -1 Then
+Stop 'Project Name Not Match
+     'assume that ...  not empty prj Cell
+End If
+
+Select Case inptProp
+    Case "ewb"
+         lIndex = Application.WorksheetFunction.Match("WorkBookName", rRng, 0)
+        sResult = sData(lIndex)
+    Case "ews"
+         lIndex = Application.WorksheetFunction.Match("WorkSheetName", rRng, 0)
+        sResult = sData(lIndex)
+    Case "eunitwb"
+        lIndex = Application.WorksheetFunction.Match("UnitWorkbookName", rRng, 0)
+        sResult = sData(lIndex)
+    Case "eunitWs"
+        lIndex = Application.WorksheetFunction.Match("UnitWorkSheet", rRng, 0)
+        sResult = sData(lIndex)
+    Case "eFrom"
+        lIndex = Application.WorksheetFunction.Match("From", rRng, 0)
+        sResult = sData(lIndex)
+    Case "ePrefix"
+        lIndex = Application.WorksheetFunction.Match("PlcPrefix", rRng, 0)
+        sResult = sData(lIndex)
+    Case "eFillType"
+        lIndex = Application.WorksheetFunction.Match("FillType", rRng, 0)
+        sResult = sData(lIndex)
+    Case Else
+        Stop
+End Select
+
+GetPrjProps = sResult
+
+End Function
+
+Xap_CnvCmn.txt
