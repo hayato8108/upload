@@ -1,0 +1,398 @@
+
+
+Sub fillNewfSortIndex()
+Dim l As Long
+Dim lEnd As Long
+Dim lPrjCol As Long: lPrjCol = CLng(getXapWsCol("Prj"))
+Dim lAliasCol As Long: lAliasCol = CLng(getXapWsCol("Alias"))
+Dim sPlc As String
+Dim sAddress As String
+Dim sReslt As String
+Dim sStTime As String
+Dim sEdTime As String
+Application.ScreenUpdating = False
+
+Debug.Print Now()
+With ActiveSheet
+lEnd = .Cells(Rows.Count, lAliasCol).End(xlUp).Row
+
+For l = 2 To lEnd
+sPlc = GetNewfPlc(.Cells(l, lPrjCol).Value, .Cells(l, lAliasCol).Value)
+sAddress = GetNewfAddress(.Cells(l, lPrjCol).Value, .Cells(l, lAliasCol).Value)
+
+    If Not Left(sPlc, Len(GetPrjProps(.Cells(l, lPrjCol).Value, "ePrefix"))) = GetPrjProps(.Cells(l, lPrjCol).Value, "ePrefix") Then
+       sResult = "ZMEM"
+    Else
+
+        If UBound(Split(sAddress, "@")) > 0 Then
+            sResult = sPlc & fSplitEx(sAddress, 1, "@") & fDigitN(fSplitEx(sAddress, 2, "@"), 2)
+        Else
+            sResult = sPlc & sAddress
+        End If
+        
+    End If
+
+        .Cells(l, CLng(getXapWsCol("SortIndex"))).Value = sResult
+        
+Next l
+
+End With
+
+Debug.Print Now()
+
+Application.ScreenUpdating = True
+End Sub
+
+Sub fillNewf2XapCsv()
+Dim l As Long
+Dim lEnd As Long
+Dim vAlias As Variant
+Dim vWb As Variant
+Dim lFolCol As Long: lFolCol = CLng(getXapWsCol("Fol"))
+Dim lPrjCol As Long: lPrjCol = CLng(getXapWsCol("Prj"))
+Dim lAliasCol As Long: lAliasCol = CLng(getXapWsCol("Alias"))
+Dim lCsv1Col As Long: lCsv1Col = CLng(getXapWsCol("Csv1"))
+Dim lCsv2Col As Long: lCsv2Col = CLng(getXapWsCol("Csv2"))
+Dim lCsv3Col As Long: lCsv3Col = CLng(getXapWsCol("Csv3"))
+Dim sStTime As String
+Dim sEdTime As String
+Application.ScreenUpdating = False
+
+sStTime = Now()
+With ActiveSheet
+lEnd = .Cells(Rows.Count, lAliasCol).End(xlUp).Row
+
+For l = 2 To lEnd
+    .Cells(l, lCsv1Col).Value = cnvNewf2XapCsv1(.Cells(l, lPrjCol).Value, .Cells(l, lAliasCol))
+    .Cells(l, lCsv2Col).Value = cnvNewf2XapCsv2(.Cells(l, lPrjCol).Value, Cells(l, lAliasCol), .Cells(l, lFolCol))
+    .Cells(l, lCsv3Col).Value = cnvNewf2XapCsv3(.Cells(l, lPrjCol).Value, .Cells(l, lAliasCol).Value)
+
+Next l
+End With
+
+sEdTime = Now()
+
+Debug.Print sStTime, " ~ ", sEdTime
+Application.ScreenUpdating = True
+End Sub
+
+Function wrapcnvNewf2XapCsv3(inptPrj As String, inptAlias As String, inptPrefix As String) As String
+'one line
+'cnvNewf2XapCsv3(inptPrj As String, inptAlias As String, inptPrefix As String) As String
+End Function
+
+
+'CNV  ===================================================================
+Function cnvNewf2XapCsv1(inptPrj As String, inptAlias As Range) As String
+Dim lMatchRow As Long: lMatchRow = 0
+Dim lcrrCol As Long
+Dim sPrj As String: sPrj = inptPrj
+Dim sUnitWb As String: sUnitWb = GetPrjProps(inptPrj, "eunitwb")
+Dim sUnitWs As String: sUnitWs = GetPrjProps(inptPrj, "eunitWs")
+Dim r As Range
+Dim s As String
+Dim rAliasCell As Range: Set rAliasCell = inptAlias
+Dim sRslt As String: sRslt = ""
+
+If rAliasCell.Value = "" Then Exit Function
+If Workbooks(sUnitWb).Sheets(sUnitWs) Is Nothing Then Stop
+
+With Workbooks(sUnitWb).Sheets(sUnitWs)
+    For Each r In .Range("A:A")
+        If r.Value <> "" Then
+            If r.Value = GetNewfPlc(sPrj, rAliasCell.Value) Then lMatchRow = r.Row: Exit For
+        End If
+    Next r
+    
+    If lMatchRow <> 0 And Not .Cells(lMatchRow, 1).Value = "" Then
+        s = .Cells(lMatchRow, 1).Value ' PLC01~
+        'concat Properties
+           For lcrrCol = 2 To .Cells(lMatchRow, .Cells.Columns.Count).End(xlToLeft).Column - 1
+            'concat 1~end
+            s = s & .Cells(lMatchRow, lcrrCol).Value & ","
+        Next lcrrCol
+            s = Left(s, Len(s) - 1) 'delete last connma
+            sRslt = s
+    Else
+            Stop 'not match
+    End If
+    
+    If GetNewfPlc(sPrj, rAliasCell.Value) = GetNewfPlc(sPrj, rAliasCell.Offset(-1, 0).Value) Then
+        sRslt = "*"
+    End If
+
+End With
+
+cnvNewf2XapCsv1 = sRslt
+
+End Function
+
+
+Function cnvNewf2XapCsv2(inptPrj As String, inptAlias As Range, inptFol As Range) As String
+
+Dim lMatchCol As Long: lMatchCol = 0  ' match COl
+Dim lMatchRow As Long: lMatchRow = 0  ' match Row
+Dim lcrr As Long
+Dim rAliasCell As Range: Set rAliasCell = inptAlias
+Dim sPrj As String: sPrj = inptPrj
+Dim sUnitWb As String: sUnitWb = GetPrjProps(inptPrj, "eunitwb")
+Dim sUnitWs As String: sUnitWs = GetPrjProps(inptPrj, "eunitWs")
+Dim rFol As Range: Set rFol = inptFol
+Dim r As Range
+Dim s As String
+Dim sRslt As String: sRslt = ""
+
+
+With Workbooks(sUnitWb).Sheets(sUnitWs)
+    'find StEnd (Col)
+   For Each r In .Range(.Cells(1, 1), .Cells(1, .Cells(1, .Cells.Columns.Count).End(xlToLeft).Column))
+            If r.Value <> "" Then
+               If r.Value = "StEnd" Then lMatchCol = r.Column: Exit For
+           End If
+    Next r
+
+    'find Plc (Row)
+    For Each r In .Range(.Cells(1, 1), .Cells(.Cells(.Cells.Rows.Count, 1).End(xlUp).Row, 1))
+        If r.Value <> "" Then
+            If r.Value = GetNewfPlc(sPrj, rAliasCell.Value) Then lMatchRow = r.Row: Exit For
+        End If
+    Next r
+
+If lMatchCol <> 0 And lMatchRow <> 0 Then
+    sRslt = .Cells(lMatchRow, lMatchCol).Value
+    sRslt = rFol.Value & "#" & sRslt
+Else
+    sRslt = ""
+End If
+
+If GetNewfPlc(sPrj, rAliasCell.Value) = GetNewfPlc(sPrj, rAliasCell.Offset(-1, 0).Value) _
+        And _
+    rFol.Value = rFol.Offset(-1, 0).Value Then
+    sRslt = "*"
+End If
+
+End With
+
+cnvNewf2XapCsv2 = sRslt
+
+End Function
+
+
+Function cnvNewf2XapCsv3(inptPrj As String, inptAlias As String) As String
+Dim sAlias As String: sAlias = inptAlias
+Dim sPrj As String: sPrj = inptPrj
+Dim sPref As String: sPref = GetPrjProps(inptPrj, "ePrefix")
+Dim sPlc As String: sPlc = GetNewfPlc(sPrj, sAlias)
+Dim lPrjCol As Long: lPrjCol = CLng(getXapWsCol("Prj"))
+Dim sResult As String
+
+If Left(sPlc, Len(sPref)) = sPref Then
+    sResult = CnvNewfAlias2XapCSV3(sPrj, sAlias)
+
+Else ' MEM
+     sResult = CnvNewfMemAlias2XapCSV3(sPrj, sAlias)
+End If
+
+cnvNewf2XapCsv3 = sResult
+
+End Function
+
+
+Function CnvNewfAlias2XapCSV3(inptPrj As String, inptAlias As String) As String
+
+Dim sAlias As String: sAlias = inptAlias
+Dim sPrj As String: sPrj = inptPrj
+Dim sRhs As String
+Dim sLhs As String
+
+'LHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+If IsNumeric(Left(sAlias, 1)) Then Stop
+sLhs = GetNewfTagName(sPrj, sAlias) & "#" & GetNewfAddress(sPrj, sAlias) ' D000001, D000001@0 => D000001 , D000001@n
+
+'RHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Dim sOptBin As String
+Dim sOptFil As String
+Dim sOptRng As String
+Dim sOptRmn As String
+Dim sOptCmt As String
+sOptBin = "": sOptFil = "": sOptRng = "": sOptRmn = "": sOptCmt = ""
+sOptBin = constNewfBin(sPrj, sAlias)
+sOptFil = constNewfFil(sPrj, sAlias)
+sOptRmn = ""
+sOptCmt = constNewfCmt(sPrj, sAlias)
+
+sRhs = sOptBin & sOptFil & sOptRmn & sOptCmt
+
+CnvNewfAlias2XapCSV3 = sLhs & sRhs
+
+End Function
+
+
+Private Function CnvNewfMemAlias2XapCSV3(inptPrj As String, inptAlias As String) As String
+
+Dim sAlias As String: sAlias = inptAlias
+Dim sRhs As String
+Dim sLhs As String
+Dim sPrj As String: sPrj = inptPrj
+
+'Rhs
+Dim sOptMem As String
+Dim sOptFil As String
+Dim sOptCmt  As String
+Dim sOptRmn As String
+sOptMem = "": sOptFil = "": sOptCmt = "": sOptRmn = ""
+               
+'LHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+If IsNumeric(Left(sAlias, 1)) Then Stop
+sLhs = GetNewfTagName(sPrj, sAlias) & "#" & GetNewfAddress(sPrj, sAlias) ' D000001, D000001@0 => D000001 , D000001@n
+
+'RHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+sOptMem = constNewfMem(sPrj, sAlias)
+sOptRmn = ":N,1"
+sOptFil = constNewfFil(sPrj, sAlias)
+sOptCmt = constNewfCmt(sPrj, sAlias)
+
+sRhs = sOptMem & sOptRmn & sOptFil & sOptCmt
+ 
+CnvNewfMemAlias2XapCSV3 = sLhs & "#" & sRhs
+
+End Function
+
+
+'const OPT  ===================================================================
+Private Function constNewfBin(inptPrj As String, inptAlias As String) As String
+On Error Resume Next
+Dim sPrj As String: sPrj = inptPrj
+Dim sAlias As String: sAlias = inptAlias
+Dim sRslt As String
+
+        'BIN BIT 4BCD Float Long -> DType?
+If GetNewfDType(sPrj, sAlias) = "BIT" Then
+    sRslt = "." & GetNewfDType(sPrj, sAlias)
+
+ElseIf GetNewfDType(sPrj, sAlias) = "BIN" Then
+    sRslt = "." & GetNewfDType(sPrj, sAlias) & "-" & GetNewfSize(sPrj, sAlias)
+
+'If fSplitedWithSplt(sC3, "@", 2) <> sC3 Then '@
+'    sRslt = ".BIT"
+    
+'ElseIf GetFixIOSC(sPrj, inptAlias) = "4BCD" Then
+'    sRslt = ".BIN-16"
+'
+'ElseIf GetFixIOHT(sPrj, inptAlias) = "Float" Then
+'    sRslt = ".FLT"
+'
+'ElseIf GetFixIOHT(sPrj, inptAlias) = "Long" Then
+'    sRslt = ".BIN-32"
+'
+'ElseIf GetFixType(sPrj, inptAlias) = "AI" Or GetFixType(sPrj, inptAlias) = "AR" Or GetFixType(sPrj, inptAlias) = "AO" Then
+'    sRslt = ".BIN-16"
+
+Else
+    sRslt = ""
+End If
+
+constNewfBin = sRslt
+
+End Function
+
+
+Private Function constNewfFil(inptPrj As String, inptAlias As String) As String
+On Error Resume Next
+
+Dim sEhi As String
+Dim sElo As String
+Dim sPrj As String: sPrj = inptPrj
+Dim sResult As String: sResult = ""
+
+sEhi = GetNewfEHi(sPrj, inptAlias)
+sElo = GetNewfELo(sPrj, inptAlias)
+
+sEhi = Replace(sEhi, ",", "")
+sElo = Replace(sElo, ",", "")
+        
+        
+        'BIN BIT 4BCD Float Long -> DType?
+Select Case GetPrjProps(sPrj, "eFillType")
+    Case "MF"  ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+        'If GetFixIOSC(sPrj, inptAlias) = "4BCD" Then
+        '    sResult = "+FIL=LIN:0|9999|" & sElo & "|" & sEhi & "|N|N|N"
+        
+        'ElseIf GetFixIOHT(sPrj, inptAlias) = "Float" Then
+        '    sResult = ""
+        '
+        'ElseIf GetFixIOHT(sPrj, inptAlias) = "Long" Then
+        '    sResult = ""
+            
+        If sEhi <> "" Then
+        
+            sResult = "+FIL=LIN:-32768|32767|" & sElo & "|" & sEhi & "|N|N|N"
+            
+        End If
+        
+    Case "AFP" '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+        'If GetFixIOSC(sPrj, inptAlias) = "4BCD" Then
+        '    sResult = "+FIL=LIN:0|9999|" & sElo & "|" & sEhi & "|N|N|N"
+        
+        'ElseIf GetFixIOHT(sPrj, inptAlias) = "Float" Then
+        '    sResult = ""
+        '
+        'ElseIf GetFixIOHT(sPrj, inptAlias) = "Long" Then
+        '    sResult = ""
+            
+        If Replace(sEhi, ".", "") <> 32767 Then
+        
+            sResult = "+FIL=LIN:" & Replace(sEhi, ".", "") & "|" & Replace(sElo, ".", "") & "|" & sElo & "|" & sEhi & "|N|N|N"
+            
+        ElseIf sEhi <> "" Then
+                  
+            sResult = "+FIL=LIN:-32768|32767|" & sElo & "|" & sEhi & "|N|N|N"
+            
+        End If
+        
+        
+    Case "DEC"
+        
+End Select
+
+constNewfFil = sResult
+
+End Function
+
+
+Private Function constNewfCmt(inptPrj As String, inptAlias As String) As String
+Dim sPrj As String: sPrj = inptPrj
+Dim sRslt As String: sRslt = ""
+
+If GetNewfComment(sPrj, inptAlias) <> "" Then sRslt = "+C=" & GetNewfComment(sPrj, inptAlias)
+
+constNewfCmt = sRslt
+
+End Function
+
+
+Private Function constNewfMem(inptPrj As String, inptAlias As String) As String
+'=> "S" "N" "B"
+Dim sPrj As String: sPrj = inptPrj
+Dim sAlias As String: sAlias = inptAlias
+Dim sRslt As String: sRslt = ""
+Dim sType As String: sType = GetNewfMemType(sPrj, sAlias)
+
+Select Case sType
+    Case "N"
+        sRslt = "N"
+    
+    Case "B"
+        sRslt = "B"
+    
+    Case Else
+        Stop
+    
+End Select
+
+constNewfMem = sRslt
+
+End Function
+
