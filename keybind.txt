@@ -1,0 +1,77 @@
+
+
+'Private Sub Workbook_BeforeClose(Cancel As Boolean)
+'Sheets("cnf").range("B1").Value = "False"
+'Call ResetKey
+'End Sub
+'
+
+'Private Sub Workbook_Open()
+'Call SetKey
+'End Sub
+
+Sub SetKey()
+    Call ResetKey
+    Call SetKeyXml
+    'Call SetKey_EditCell
+    Call SetKeyDde
+    'Call Application.OnKey("^+c", "fCalc")
+    'Call Application.OnKey("^+%c", "copyPasteAsVal")
+    'Call Application.OnKey("^+v", "copyToUploadList")
+End Sub
+
+Sub SetKeyDde()
+    Call Application.OnKey("^%+{right}", "DdeIn")
+    Call Application.OnKey("^%+{left}", "DdeOut")
+End Sub
+
+Sub SetKeyXml()
+    Call Application.OnKey("^%+{down}", "dbgDownAll")
+    Call Application.OnKey("^%+{up}", "dbgUpAll")
+End Sub
+
+Sub SetKey_EditCell()
+    Call Application.OnKey("^%v", "copyPasteAsVal")
+    Call Application.OnKey("^%{right}", "fInsertV")
+    Call Application.OnKey("^%{left}", "fDeleteV")
+    Call Application.OnKey("^%{up}", "fDeleteH")
+    Call Application.OnKey("^%{down}", "fInsertH")
+End Sub
+
+Sub ResetKey()
+
+Call Application.OnKey("^%{down}", "")
+Call Application.OnKey("^%+{down}", "")
+
+Call Application.OnKey("^%{left}", "")
+Call Application.OnKey("^%{right}", "")
+
+Call Application.OnKey("^%{up}", "")
+Call Application.OnKey("^%+{up}", "")
+
+Call Application.OnKey("^%c", "")
+Call Application.OnKey("^%+c", "")
+
+Call Application.OnKey("^%d", "")
+Call Application.OnKey("^%e", "")
+Call Application.OnKey("^%f", "")
+Call Application.OnKey("^%g", "")
+Call Application.OnKey("^%i", "")
+Call Application.OnKey("^%m", "")
+
+Call Application.OnKey("^%p", "")
+Call Application.OnKey("^+p", "")
+Call Application.OnKey("+^%p", "")
+
+Call Application.OnKey("^%s", "")
+
+Call Application.OnKey("^%u", "")
+
+Call Application.OnKey("^+v", "")
+Call Application.OnKey("^%v", "")
+
+Call Application.OnKey("+^%i", "")
+
+
+End Sub
+
