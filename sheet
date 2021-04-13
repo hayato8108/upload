@@ -1,3 +1,5 @@
+[Params]
+
 Key*Val*FREE MEMO
 **
 [FIX PDBMAKE DATA SOURCE]**
@@ -26,7 +28,7 @@ ADI_Column*Q*A AE
 
 
 
-
+[LinkParams]
 KEY*WorkBookName*WorkSheetName*KeyCol*RtnCol*FREE COMMENT*
 ******
 FNC_DEMO*c20210410_dcs.xlsm*LinkParams*H*I**
