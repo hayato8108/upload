@@ -1,0 +1,36 @@
+Key*Val*FREE MEMO
+**
+[FIX PDBMAKE DATA SOURCE]**
+DS_WB*C:\WORK_FOLDER\WorkDir\MF\MF_PDBMAKE30_2.xls*
+DS_WBN*MF_PDBMAKE30_2.xls*
+DS_WS*MFFIX1*
+DS_RNG*A6:BZ8412* 検索範囲
+**
+PLC_UNIT_DATA*PLC_UNIT*PLC一覧シート名
+**
+[FIX DATA SHEET COLUMN]**
+NAME_Column*A*AI
+TAG_Column*B*F0901_PV
+DESC_Column*D*高圧ｽﾁｰﾑ流量
+IODV_Column*H*MIQ
+IOAD_Column*J*LC01:D:2000
+IOSC_Column*K*LIN 4BCD
+IOHT_Column*I*Long HardWearOption
+ELO_Column*L*-32,768
+EHI_Column*M*32,767
+ETAG_Column*N*kg/h
+LOLO_Column*R*Lolo
+HIHI_Column*U*Hihi
+IENAB_Column*P*ALARM AREA
+ADI_Column*Q*A AE
+
+
+
+
+KEY*WorkBookName*WorkSheetName*KeyCol*RtnCol*FREE COMMENT*
+******
+FNC_DEMO*c20210410_dcs.xlsm*LinkParams*H*I**
+PrmSht*c20210410_dcs.xlsm*Params*A*B**
+
+
+
