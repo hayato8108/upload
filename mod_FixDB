@@ -1,655 +1,281 @@
-'c20201110から更新20210410
+'20210410 パラメータは全てグローバルからシート取得に変更
 
-'PRJ PARAM===============================================================
-Function fGetDsWb() As String
-    fGetDsWb = fKey2Val("PrmSht", "DS_WB")
-End Function
+Enum eFixField
+    Fix_eTAG 'Alias
+    Fix_eNAME 'Type
+    Fix_eDESC
+    Fix_eIODV
+    Fix_eIOAD 'Plc
+    Fix_eIOSC 'Lin 4BCD
+    Fix_eIOHT 'Long HardWearOption
+    Fix_eETAG 'Unit
+    Fix_eELO
+    Fix_eEHI
+    Fix_eIENAB
+    Fix_eHIHI
+    Fix_eLOLO
+    Fix_eADI
+End Enum
 
-Function fGetDsWbn() As String
-    fGetDsWbn = fKey2Val("PrmSht", "DS_WBN")
-End Function
+Enum eFapField
+    Fap_eAlias
+    Fap_etype
+    Fap_eDesc
+    Fap_ePlc
+    Fap_eIosc
+    Fap_eUnit
+    Fap_eEhi
+    Fap_eElo
+    Fap_ehihi
+    Fap_elolo
+End Enum
 
-Function fGetDsWs() As String
-    fGetDsWs = fKey2Val("PrmSht", "DS_WS")
-End Function
+'Prefix対策===============================================
+Public Function checkNumSt(inpt As String) As String
 
-Function fGetDsRng() As String
-    fGetDsRng = fKey2Val("PrmSht", "DS_RNG")
-End Function
+Dim result As String
 
-Function fGetPlcUnitData()
-    fGetPlcUnitData = fKey2Val("PrmSht", "PLC_UNIT_DATA")
-End Function
+result = IsNumeric(CStr(Left(inpt, 1)))
 
-'LINK===============================================================
-Function fKey2Val(inptLabel As String, inptKey As String) As Variant
-
-Dim sLabel As String: sLabel = inptLabel
-Dim sKey As String: sKey = inptKey
-Dim sData As Variant
-Dim sResult As Variant
-Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("LinkParams").Rows(1)
-Dim lIndex As Long
-sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A")
-
-Dim sWb As String: sWb = sData(Application.WorksheetFunction.Match("WorkBookName", rRng, 0))
-Dim sWs As String: sWs = sData(Application.WorksheetFunction.Match("WorkSheetName", rRng, 0))
-Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("KeyCol", rRng, 0))
-Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("RtnCol", rRng, 0))
-
-sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
-
-fKey2Val = sResult
-
-End Function
-
-Private Function fGetCellData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String, inptTargetCol As String) As String
-
-Dim sWbName As String: sWbName = inptWb
-Dim sWsname As String: sWsname = inptWs
-Dim sKeyCol As String: sKeyCol = inptKeyCol
-Dim sKey As String: sKey = inptKey
-Dim sTargetCol As String: sTargetCol = inptTargetCol
-Dim sMatchRow As String
-Dim sRslt As String
-
-On Error Resume Next
-
-With Workbooks(sWbName).Worksheets(sWsname)
-
-    Dim rColKey As Range
-    Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
-    If rColKey Is Nothing Then Stop ' "Book or Sheet name is wrong"
+Select Case result
+    Case True
     
-    sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
+    result = "MF" & inpt
     
-    If sMatchRow = "" Then
-        sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
+    Case False
+    
+    result = inpt
+
+End Select
+
+checkNumSt = result
+
+End Function
+
+Function CnvAliasMFtoFap(inptStr As String) As String
+    
+    Dim sResult As String
+    Dim sStr As String: sStr = inptStr
+    
+    If Not fGetFixAlias(sStr & "_TRQ") = "" Then
+        sStr = sStr & "_TRQ"
+        Debug.Print sStr
     End If
-
-    If sMatchRow <> "" Then
-            sRslt = .Cells(CLng(sMatchRow), sTargetCol).Value
-        Else
-            sRslt = Array()
-    End If
-
-End With
-
-fGetCellData = sRslt
-
-End Function
-
-Private Function fGetRowData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String) As Variant
-
-Dim sWbName As String: sWbName = inptWb
-Dim sWsname As String: sWsname = inptWs
-Dim sKeyCol As String: sKeyCol = inptKeyCol
-Dim sKey As String: sKey = inptKey
-Dim sTargetCol As String: sTargetCol = inptTargetCol
-Dim sMatchRow As String
-Dim vRslt As Variant
-
-On Error Resume Next
-
-With Workbooks(sWbName).Worksheets(sWsname)
     
-    Dim rColKey As Range
-    Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
-    If rColKey Is Nothing Then Stop ' "Book or Sheet name is wrong"
     
-    sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
-    
-    If sMatchRow <> "" Then
-            vRslt = Application.Transpose(Application.Transpose(.Rows(CLng(sMatchRow)).Value))
-        Else
-            vRslt = Array()
-    End If
-
-End With
-
-fGetRowData = vRslt
-
-End Function
-
-'DEBUG OUT===============================================================
-Sub out(ByVal inptArr As Variant, Optional inptLimit As Long = 10)
-    Dim v As Variant
-    Dim cnt As Long: cnt = 0
-    
-    If CndOrEq(Array("IMatchCollection2", "Variant()", "ArrayList", "String()"), TypeName(inptArr)) Then
-        For Each v In inptArr
-            Debug.Print CStr(v)
-            cnt = cnt + 1
-            If cnt = inptLimit Then Exit Sub
-        Next v
+    If IsNumeric(Left(sStr, 1)) Then '数字始まりのタグはPrefixを使用する
+        sResult = "MF" & sStr
     Else
-        Debug.Print inptArr
-    End If
-End Sub
-
-Sub outTxt(ByVal inptStr As String, ByVal inptPath As String)
-Dim fst As Object
-Dim sPath As String: sPath = inptPath
-
-Set fst = CreateObject("ADODB.Stream")
-fst.Type = 2 'Specify stream type - we want To save text/string data.
-fst.Charset = "utf-8" 'Specify charset For the source text data.
-fst.Open 'Open the stream And write binary data To the objectg
-fst.WriteText inptStr
-fst.SaveToFile inptPath, 2
-fst.Close
-
-Set fst = Nothing
-
-End Sub
-
-
-'OPERATOR==================================================================
-
-Function CndOrEq(ByVal inptArray As Variant, ByVal inptCond As String) As Boolean
-    CndOrEq = CndOr(inptArray, "Eq", inptCond)
-End Function
-
-Function CndAndEq(ByVal inptArray As Variant, ByVal inptCond As String) As Boolean
-    CndAndEq = CndAnd(inptArray, "Eq", inptCond)
-End Function
-
-Function CndAndEqSeq(ByVal inptArray As Variant, ByVal inptCond As String) As Boolean
-    CndAndEqSeq = CndAnd(inptArray, "EqSeq", inptCond)
-End Function
-
-Private Function CndOr(ByVal inptArray As Variant, ByVal inptOperator As String, inptCond As String) As Boolean
-    Dim vArr As Variant: vArr = inptArray
-    Dim lCnt As Long
-    Dim sOpr As String: sOpr = inptOperator
-    Dim sCnd As String: sCnd = inptCond
-    Dim sResult As Boolean: sResult = False
-
-    For lCnt = 0 To UBound(vArr)
-        Select Case sOpr
-            Case "Eq"
-                If vArr(lCnt) = sCnd Then sResult = True
-        End Select
-         
-    Next lCnt
-    
-    CndOr = sResult
-    
-End Function
-
-Private Function CndAnd(ByVal inptArray As Variant, ByVal inptOperator As String, ByVal inptCond As String) As Boolean
-    Dim vArr As Variant: vArr = inptArray
-    Dim lCnt As Long
-    Dim sOpr As String: sOpr = inptOperator
-    Dim sCnd As String: sCnd = inptCond
-    Dim sResult As Boolean: sResult = True
-
-    For lCnt = 0 To UBound(vArr)
-        Select Case sOpr
-            Case "Eq"
-                If Not vArr(lCnt) = sCnd Then sResult = False
-            Case "EqSeq"
-                If vArr(lCnt) = False Then
-                    sResult = False
-                    Exit Function
-                End If
-                
-        End Select
-         
-    Next lCnt
-    
-    CndAnd = sResult
-End Function
-
-'TYPE CHECK==================================================================
-Function fIsSameType(ByVal inptArray As Variant, ByVal inptType As String) As Variant
-    Dim vArr As Variant: vArr = inptArray
-    Dim lCnt As Long
-    Dim sResult As String: sResult = True
-        
-    If Not CndOrEq(Array("Integer", "String", "Variant"), inptType) Then
-        Stop
+        sResult = sStr
     End If
     
-    For lCnt = 0 To UBound(vArr)
-        If Not TypeName(vArr(lCnt)) = inptType Then
-            sResult = False
-        End If
-    Next lCnt
-    
-    fIsSameType = sResult
+    CnvAliasMFtoFap = sResult
 
 End Function
 
-'STRING MANIPULATION=================================================
-'Delimiter is not optional
-Function fSplitByDelimiter(ByVal inptStr As String, ByVal inptSplt As String, ByVal inptCol As Integer) As String
+Function fFixAdr2FapAdr(inptFix As String, inptFol As String) As String
+'PLC01:D:0001 => PLC01.F01.D000001
+'PLC01:D:0001:1 => PLC01.F01.D000001@1
+'PLC01:D:0001 => PLC01.F01.D000001
+'PLC01:Y:A0 => PLC01.F01.Y0000A0
+'0:0 => 0:0
 
-fSplitByDelimiter = fSplit(inptStr, inptCol, inptSplt)
-
-End Function
-
-Function fSplit(ByVal inptStr As String, ByVal inptCol As Integer, Optional ByVal inptSplt As String = ",") As String
-
-Dim sStr As String: sStr = inptStr
-Dim lCol As Integer: lCol = inptCol
-Dim sSplt As String: sSplt = inptSplt
-Dim aStr() As String
-
-aStr = Split(sStr, sSplt)
-
-If UBound(aStr) = -1 Or UBound(aStr) = 0 Or lCol = 0 Then
-    sRslt = sStr
-ElseIf lCol < 0 Then
-    sRslt = aStr(UBound(aStr) + 1 + lCol)
-Else
-    sRslt = aStr(lCol - 1)
-End If
-
-fSplit = sRslt
-
-End Function
-
-
-Function fLenOfSplited(inptStr As String, inptSplt As String, inptCol As Long) As String
-'for Decimal
-
-Dim sStr As String: sStr = inptStr
-Dim lCol As Long: lCol = inptCol
-Dim sSplt As String: sSplt = inptSplt
+Dim sFix As String: sFix = inptFix
+Dim sFol As String: sFol = inptFol
 Dim aStr() As String
 Dim sRslt As String
 
-aStr = Split(sStr, sSplt)
-
-If UBound(aStr) = 0 Or lCol = 0 Then
-    sRslt = 0
-Else
-    sRslt = Len(aStr(lCol - 1))
+If sFix = fGetFixAlias(sFix) Then
+    sFix = fGetFixPlc(sFix)
 End If
 
-fLenOfSplited = sRslt
+aStr = Split(sFix, ":")
 
-End Function
+If UBound(aStr) >= 3 Then ' @0 or @n
 
+    sRslt = aStr(0) & ".F01." & aStr(1) & fDigit6(aStr(2)) '@0
 
-'ARRAY ==================================================================
-Function fAddToArray(ByVal inptArray As Variant, ByVal inptItem As Variant) As Variant
-    Dim vArr As Variant: vArr = inptArray
-        
-        If UBound(vArr) = -1 Then
-            vArr = Array(inptItem)
-        Else
-            ReDim Preserve vArr(UBound(vArr) + 1)
-            vArr(UBound(vArr)) = inptItem
+        If aStr(3) > 0 Then ' @n
+            sRslt = sRslt & "@" & aStr(3)
         End If
-
-        fAddToArray = vArr
-End Function
-
-Function fcnvRng2Array(inptRng As Range, Optional inptIsBlank As Boolean = True) As Variant
-
-Dim vResult As Variant
-
-vResult = Application.Transpose(Application.Transpose(inptRng)) 'same WorksheetFunction.Transpose(inptRng.Value)
-If inptIsBlank = True Then vResult = fFilterNeq(vResult, "")
-
-fcnvRng2Array = vResult
-
-End Function
-
-
-Function cnvArray2ArrayList(ByVal inptArr As Variant) As Object
-
-Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
-Dim aArr As Variant: aArr = inptArr
-Dim v As Variant
-
-For Each v In aArr
-    oArr.Add v
-Next v
-
-Set cnvArray2ArrayList = oArr
-
-
-End Function
-
-Function fUniqueArray(ByVal inptArr As Variant) As Variant
-'out fUniqueArray(range("E2:E17").Value2)
-
-Dim vArr As Variant: vArr = inptArr
-Dim oArr As Object
-Dim oResult As Object: Set oResult = CreateObject("System.Collections.ArrayList")
-
-Dim l As Long
-Dim lSft As Long: lSft = 0
-Dim sPrev As String: sPrev = ""
-Dim vResult As Variant
-
-Set oArr = cnvArray2ArrayList(vArr)
-oArr.Sort
-
-If (Not LBound(vArr) = 0) Then ' oArr is 0 base
-    lSft = 1
-End If
-
-For l = LBound(vArr) To UBound(vArr)
-    If sPrev = oArr(l - lSft) Then
-        oResult.Add oArr(l - lSft)
-    End If
-        sPrev = oArr(l - lSft)
-Next l
-
-fUniqueArray = oResult.toarray
-
-End Function
-'
-'Function fDuplicateList(ByVal inptArr As Variant) As Variant
-'
-'Dim vArr As Variant: vArr = inptArr
-'Dim vResult As Variant
-'Dim l As Long
-'
-'For l = LBound(vArr) To UBound(vArr)
-'
-'
-''''''''''''''''''''''''''''''''''''''
-'
-'
-'Next l
-'
-'
-'End Function
-
-'ALLAY FILTER=======================================================
-Function fFilterEq(ByVal inptArray As Variant, inptCond As String) As Variant
-
-    fFilterEq = fFilter(inptArray, "Eq", inptCond)
-
-End Function
-
-Function fFilterNeq(ByVal inptArray As Variant, inptCond As String) As Variant
-
-fFilterNeq = fFilter(inptArray, "Neq", inptCond)
-
-End Function
-
-Function fFilterRgx(ByVal inptArray As Variant, inptCond As String) As Variant
-
-fFilterRgx = fFilter(inptArray, "Rgx", inptCond)
-
-End Function
-
-Private Function fFilter(ByVal inptArray As Variant, ByVal inptOperator As String, inptCond As String) As Variant
-    Dim vArr As Variant: vArr = inptArray
-    Dim lCnt As Long
-    Dim sOpr As String: sOpr = inptOperator
-    Dim sCnd As String: sCnd = inptCond
-    Dim sResult() As Variant: sResult = Array()
-    
-    For lCnt = LBound(vArr) To UBound(vArr)
-        Select Case sOpr
-            Case "Eq"
-                If vArr(lCnt) = sCnd Then
-                    sResult = fAddToArray(sResult, vArr(lCnt))
-                End If
-                
-             Case "Neq"
-                If Not vArr(lCnt) = sCnd Then
-                    sResult = fAddToArray(sResult, vArr(lCnt))
-                End If
-                
-            Case "Rgx"
-                If fRegx2Bool(vArr(lCnt), sCnd) Then
-                    sResult = fAddToArray(sResult, vArr(lCnt))
-                End If
-
-        End Select
-         
-    Next lCnt
-    
-    fFilter = sResult
-    
-End Function
-
-'NUM FORMAT ===================================================================================
-Function fDigitN(inptStr As String, inptDigit As String) As String
-    fDigitN = Application.WorksheetFunction.Rept("0", inptDigit - Len(inptStr)) & inptStr
-End Function
-
-Function fNum2DP(ByVal inptMax As String) As String
-    
-    Dim sMax As String: sMax = inptMax
-    Dim sRslt As String
-    
-    If sMax = fSplitByDelimiter(sMax, ".", 2) Then
-        sRslt = 0
-    Else
-         sRslt = Len(fSplitByDelimiter(sMax, ".", 2))
-    End If
-    
-    fNum2DP = sRslt
-    
-End Function
-
-Function fDigit6(inptStr As String) As String
-
-'1 => 000006
-
-Dim sStr As String: sStr = inptStr
-
-fDigit6 = Application.WorksheetFunction.Rept("0", 6 - Len(sStr)) & sStr
-
-End Function
-
-Function fFullDP(inptNum As String, inptDec As String) As String
-'(100,2) -> 100.00
-'(3.5, 2)->3.50
-Dim sNum As String: sNum = inptNum
-Dim sDec As String: sDec = inptDec
-Dim sResult As String
-
-sResult = sNum
-If Not sNum = fSplitByDelimiter(sNum, ".", 1) Then  '(3.5, 2)->3.50
-    sResult = sNum & WorksheetFunction.Rept("0", sDec - fLenOfSplited(sNum, ".", 2))
-    
-ElseIf sNum = fSplitByDelimiter(sNum, ".", 1) And sDec > 0 Then '(100,2) -> 100.00
-    sResult = sNum & "." & WorksheetFunction.Rept("0", sDec)
-
-Else
-    Stop
-End If
-
-fFullDP = sResult
-
-End Function
-
-Function fTrimDP(inptNum As String) As String
-Dim sNum As String: sNum = inptNum
-Dim sDec As String
-Dim sResult As String
-
-sResult = sNum
-If Not sNum = fSplitByDelimiter(sNum, ".", 1) Then
-    sDec = Replace(fSplitByDelimiter(sNum, ".", 2), "0", "")
-    'T (3.50)->3.5
-    'F (1.00)->1
-    sResult = IIf(Len(sDec) > 0, _
-        fSplitByDelimiter(sNum, ".", 1) & "." & sDec, _
-        fSplitByDelimiter(sNum, ".", 1))
-
-End If
-
-    fTrimDP = sResult
-
-End Function
-
-Function fLenOfDecimal(ByVal inptNum As String) As String
-'12 -> 0
-'123.456 -> 3
-
-    Dim sNum As String: sNum = inptNum
-    Dim sRslt As String
-    
-    If sNum = fSplitByDelimiter(sNum, ".", 2) Then
-        sRslt = 0
-    Else
-         sRslt = Len(fSplitByDelimiter(sNum, ".", 2))
-    End If
-    
-    fLenOfDecimal = sRslt
-    
-End Function
-
-
-'STRING FORMAT ===================================================================================
-Function fWidenStr(ByVal inptStr As String) As String
-    fWidenStr = Strings.StrConv(inptStr, vbWide)
-End Function
-
-
-'REGX ========================================================================================
-'return match ...
-Function fReplace(ByVal inptStr As String, ByVal inptSearch As String, ByVal inptReplace As String) As String
-    fReplace = Replace(inptStr, inptSearch, inptReplace)
-End Function
-
-
-Function fReplaceRegx(ByVal inptStr As String, ByVal inptPattern As String, ByVal inptReplace As String, Optional inptGlobal As Boolean = False) As String
-
-'(group) => $n~
-
-Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
-    With regx
-        .Global = inptGlobal 'isMultiple
-        .MultiLine = False
-        .ignorecase = False
-        .Pattern = inptPattern
-    End With
-
-If regx.test(inptStr) Then
-    fReplaceRegx = regx.Replace(inptStr, inptReplace)
-End If
-
-End Function
-
-
-Function fRegx(ByVal inptStr As String, ByVal inptPattern As String, Optional inptGlobal As Boolean = False) As Object
-
-Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
-Dim oMatch As Object
-
-    With regx
-        .Global = inptGlobal 'isMultiple
-        .MultiLine = False
-        .ignorecase = False
-        .Pattern = inptPattern
-    End With
-
-If regx.test(inptStr) Then
-    Set oMatch = regx.Execute(inptStr)
-End If
-
-Set fRegx = oMatch
-
-End Function
-
-Function fRegxTest(ByVal inptStr As String, ByVal inptPattern As String) As Boolean
-
-Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
-Dim bResult As Boolean
-
-    With regx
-        .Global = True
-        .MultiLine = False
-        .ignorecase = False
-        .Pattern = inptPattern
-    End With
-
-If regx.test(inptStr) Then
-    bResult = True
-Else
-    bResult = False
-End If
-
-fRegxTest = bResult
-
-End Function
-'WS ========================================================================================
-
-Sub CopyWithFormat()
-
-    With Selection.Interior
-        .Pattern = xlSolid
-        .PatternColorIndex = xlAutomatic
-        .ThemeColor = xlThemeColorAccent2
-        .TintAndShade = 0.799981688894314
-        .PatternTintAndShade = 0
-    End With
-    
-    Selection.NumberFormatLocal = "@"
-    Selection.Copy
-    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
-        :=False, Transpose:=False
         
-End Sub
+ElseIf UBound(aStr) <= 1 Then 'sim,
 
+    sRslt = sFix
 
-Public Function fIIf(inptExp As Boolean, inptT As String, inptF As String)
-    If inptExp = True Then
-        fIIf = inptT
-    Else
-        fIIf = inptF
-    End If
+Else ' PLC01.F01.D000001
+
+    sRslt = aStr(0) & "." & sFol & "." & aStr(1) & fDigit6(aStr(2))
+   
+End If
+
+fFixAdr2FapAdr = sRslt
+
 End Function
 
 
+'GET FIX DATA
+Function CnvFixAlias(inptType As eFixField, inptAlias As String) As String 'e.g cnvFixAlias(Fix_ePlc,"W0001_PV")
 
-Private Sub fMerge()
-    With Selection
-    .Merge
-    .HorizontalAlignment = xlCenter
-    .VerticalAlignment = xlCenter
-    End With
-End Sub
+Dim sMatchRow As String
+Dim sAlias As String: sAlias = inptAlias
+Dim sCol As String
+Dim sRslt As String
+
+'eFapField
+Select Case inptType
+    Case Fix_eTAG
+        sCol = fKey2Val("PrmSht", "TAG_Column") 'W0001_PV
+    
+    Case Fix_eNAME
+        sCol = fKey2Val("PrmSht", "NAME_Column") 'AI
+    
+    Case Fix_eDESC
+        sCol = fKey2Val("PrmSht", "DESC_Column") '高圧ｽﾁｰﾑ流量
+        
+    Case Fix_eIODV
+        sCol = fKey2Val("PrmSht", "IODV_Column") 'MIQ
+        
+    Case Fix_eIOAD
+        sCol = fKey2Val("PrmSht", "IOAD_Column") 'LC01:D:2000
+        
+    Case Fix_eIOSC
+        sCol = fKey2Val("PrmSht", "IOSC_Column") 'LIN 4BCD
+
+    Case Fix_eIOHT
+        sCol = fKey2Val("PrmSht", "IOHT_Column") 'Long HardWearOption
+        
+    Case Fix_eETAG
+        sCol = fKey2Val("PrmSht", "ETAG_Column") 'kg/h
+        
+    Case Fix_eEHI
+        sCol = fKey2Val("PrmSht", "EHI_Column") '32,767
+    
+    Case Fix_eELO
+        sCol = fKey2Val("PrmSht", "ELO_Column") '-32,768
+
+    Case Fix_eHIHI
+        sCol = fKey2Val("PrmSht", "HIHI_Column") 'Hihi
+    
+    Case Fix_eLOLO
+        sCol = fKey2Val("PrmSht", "LOLO_Column") 'Lolo
+
+    Case Fix_eIENAB
+        sCol = fKey2Val("PrmSht", "IENAB_Column") 'Alarm Enabled
+        
+    Case Fix_eADI
+        sCol = fKey2Val("PrmSht", "ADI_Column") 'Alarm Area A AE
+        
+End Select
+
+On Error Resume Next
+
+Dim rColAlias As Range
+Set rColAlias = Workbooks(fGetDsWbn()).Worksheets(fGetDsWs()).Columns(Columns(fKey2Val("PrmSht", "TAG_Column")).Column)
+
+sMatchRow = Application.WorksheetFunction.Match(sAlias, rColAlias, 0)
+
+If sMatchRow <> "" Then
+        sRslt = Workbooks(fGetDsWbn()).Worksheets(fGetDsWs()).Cells(CLng(sMatchRow), sCol).Value
+    Else
+        sRslt = ""
+End If
+
+CnvFixAlias = sRslt
 
 
-Private Sub fUMerge()
-    With Selection
-        .UnMerge
-        With .Interior
-            .Pattern = xlNone
-            .TintAndShade = 0
-            .PatternTintAndShade = 0
-        End With
-    End With
-End Sub
+End Function
 
 
-Private Sub fInsertV()
-    Selection.Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
-End Sub
+'Alias===============================================================
+Function fGetFixAlias(ByVal inptAlias As String) As String
+
+fGetFixAlias = CnvFixAlias(Fix_eTAG, inptAlias)
+
+End Function
 
 
-Private Sub fDeleteV()
-    Selection.Delete Shift:=xlToLeft
-End Sub
+Function fGetFixType(ByVal inptAlias As String) As String
 
-Private Sub fInsertH()
-    Selection.Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
-End Sub
+fGetFixType = CnvFixAlias(Fix_eNAME, inptAlias)
+
+End Function
 
 
-Private Sub fDeleteH()
-    Selection.Delete Shift:=xlUp
-End Sub
+Function fGetFixEhi(ByVal inptAlias As String) As String
 
-Private Sub fCalc()
-    ActiveSheet.Calculate
-End Sub
+fGetFixEhi = CnvFixAlias(Fix_eEHI, inptAlias)
 
-Sub copyPasteAsVal()
-Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
-'Selection.NumberFormatLocal = "@"
-End Sub
+End Function
+
+
+Function fGetFixElo(ByVal inptAlias As String) As String
+
+fGetFixElo = CnvFixAlias(Fix_eELO, inptAlias)
+
+End Function
+
+
+Function fGetFixHiHi(ByVal inptAlias As String) As String ' HIHI ep HI
+
+fGetFixHiHi = CnvFixAlias(Fix_eHIHI, inptAlias)
+
+End Function
+
+Function fGetFixLoLo(ByVal inptAlias As String) As String ' LOLO eq LO
+
+fGetFixLoLo = CnvFixAlias(Fix_eLOLO, inptAlias)
+
+End Function
+
+Function fGetFixIENAB(ByVal inptAlias As String) As String ' ALARM AREA
+
+fGetFixIENAB = CnvFixAlias(Fix_eIENAB, inptAlias)
+
+End Function
+
+
+Function fGetFixADI(ByVal inptAlias As String) As String ' A AE
+
+fGetFixADI = CnvFixAlias(Fix_eADI, inptAlias)
+
+End Function
+
+Function fGetFixUnit(ByVal inptAlias As String) As String
+
+fGetFixUnit = CnvFixAlias(Fix_eETAG, inptAlias)
+
+End Function
+
+
+Function fGetFixDesc(ByVal inptAlias As String) As String
+
+fGetFixDesc = CnvFixAlias(Fix_eDESC, inptAlias)
+
+End Function
+
+
+Function fGetFixIODV(ByVal inptAlias As String) As String
+
+fGetFixIODV = CnvFixAlias(Fix_eIODV, inptAlias)
+
+End Function
+
+Function fGetFixIOSC(ByVal inptAlias As String) As String
+
+fGetFixIOSC = CnvFixAlias(Fix_eIOSC, inptAlias)
+
+End Function
+
+Function fGetFixIOHT(ByVal inptAlias As String) As String
+
+fGetFixIOHT = CnvFixAlias(Fix_eIOHT, inptAlias)
+
+End Function
+
+Function fGetFixPlc(ByVal inptAlias As String) As String
+
+fGetFixPlc = CnvFixAlias(Fix_eIOAD, inptAlias)
+
+End Function
 
