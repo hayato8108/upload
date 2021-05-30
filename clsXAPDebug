@@ -1,0 +1,125 @@
+
+Private Base_ As clsXapDomDoc
+Private path_ As String
+Private dom_ As DOMDocument60
+
+Public Property Let path(inpt As String)
+path_ = inpt
+Set dom_ = Base_.loadClientFile(path_)
+End Property
+
+Property Get dom() As DOMDocument60
+    Set dom = dom_
+End Property
+
+'Property Get folderName() As String
+'    folderName = folderName_
+'End Property
+'
+'Public Property Let folderName(inpt As String)
+'    folderName_ = inpt
+'End Property
+'
+Function getFolder(inptName As String) As IXMLDOMNodeList
+
+Dim vRslt As IXMLDOMNodeList
+Set vRslt = dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
+Set getFolder = vRslt
+Set vRslt = Nothing
+
+End Function
+
+Function selectNodesEX(inpt As String) As IXMLDOMNodeList
+'[@clid='Folder'][@Name='Folder01']
+
+Dim vRslt As IXMLDOMNodeList
+Set vRslt = dom_.SelectNodes("//FORMROOT/OBJ" & inpt)
+Set selectNodesEX = vRslt
+Set vRslt = Nothing
+
+End Function
+
+Sub printInfo()
+    Debug.Print "------------------------------------------------------------------"
+    Debug.Print " path: " & path_
+    Debug.Print "------------------------------------------------------------------"
+End Sub
+
+Sub Download(inptList As IXMLDOMSelection)
+'Set d = New XapDebug: _
+'d.path = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
+'Set f = d.getFolder("Folder01"): _
+'d.Download (f)
+Application.ScreenUpdating = False
+
+Dim vWs As Worksheet: Set vWs = ActiveSheet
+Dim vFolders As IXMLDOMNodeList: Set vFolders = inptList
+Dim vFolder As IXMLDOMElement
+Dim vForms As IXMLDOMElement
+Dim vObj As IXMLDOMElement
+Dim sFolderName As String: sFolderName = ""
+Dim sFormName As String: sFormName = ""
+Dim lCol As Long: lCol = 2
+Dim lCnt As Long: lCnt = 1
+Dim l As Long: l = 0
+
+With vWs
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    .Range("A2").Activate
+
+    If vFolders Is Nothing Then Exit Sub
+    
+    For l = 0 To vFolders.Length - 1
+        Set vFolder = vFolders.Item(l)
+        sFolderName = vFolder.Attributes.getNamedItem("Name").Text
+
+            For Each vForms In vFolder.ChildNodes
+                If vForms.Attributes.getNamedItem("clid").Text = "Form" Then sFormName = vForms.Attributes.getNamedItem("Name").Text
+                    For Each vObj In vForms.ChildNodes
+
+                    .Range("A1").Interior.Color = RGB(55, 155, 255)
+                    ActiveCell.Value = " " & lCnt & " " 'Column A
+    
+                        Do While .Cells(1, lCol).Value <> "" 'field Attrs
+                            If .Cells(1, lCol).Value = "Folder" Then
+                              ActiveCell.Offset(0, lCol - 1) = sFolderName
+                            ElseIf .Cells(1, lCol).Value = "Form" Then
+                               ActiveCell.Offset(0, lCol - 1) = sFormName
+                            ElseIf Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then 'Attribute
+                                ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
+                            End If
+                            
+                            lCol = lCol + 1
+                        Loop
+    
+                    lCnt = lCnt + 1 'display number
+                    lCol = 2 ' reset
+                    ActiveCell.Offset(1, 0).Activate
+                
+                    Next vObj
+            Next vForms
+        Next l
+
+    .Columns.AutoFit
+    .Range("A1").Activate
+
+End With
+
+Set vDoc = Nothing
+Set vFolder = Nothing
+Set vobh = Nothing
+Application.ScreenUpdating = True
+End Sub
+
+Private Sub Class_Initialize()
+    Dim obj As clsXapDomDoc
+    Set obj = New clsXapDomDoc
+    Set Base_ = obj
+'
+'    path_ = fKey2Val("PrmSht", "XML_LOAD_PATH")
+
+End Sub
+
+
