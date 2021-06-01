@@ -1,0 +1,39 @@
+Function Dev2Cmt(inpt As String) As String
+'PLC03.M.M00800
+
+Dim sFind As String
+Dim sDev As String
+Dim sKey As String
+
+sFind = fSplit(inpt, 3, ".")
+sFind = fReplaceRegx(sFind, "[A-Z]+", "")
+sFind = fSplit(sFind, 1, "@")
+sFind = CInt(sFind)
+sDev = sFind
+
+'1600
+'701 => 700
+'10
+
+If sFind > 999 Then
+    sFind = Left(sFind, Len(sFind) - 2) & Application.WorksheetFunction.Rept(0, 2)
+ElseIf sFind < 1000 And sFind > 99 Then
+    sFind = Left(sFind, 1) & Application.WorksheetFunction.Rept(0, Len(sFind) - 1)
+Else
+    sFind = 100
+End If
+
+If fSplit(inpt, 1, ".") = "PLC03" Then
+    sKey = "3KEI_" & fSplit(inpt, 2, ".") & sFind
+ElseIf fSplit(inpt, 1, ".") = "PLC00" Then
+    sKey = "KYOTU_" & fSplit(inpt, 2, ".") & sFind
+End If
+
+Debug.Print sKey
+Debug.Print fKey2Val(sKey, fSplit(inpt, 2, ".") & fDigitN(sDev, 4))
+
+End Function
+
+
+
+
