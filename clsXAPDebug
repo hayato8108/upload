@@ -1,15 +1,20 @@
 
 Private Base_ As clsXapDomDoc
-Private path_ As String
-Private dom_ As DOMDocument60
+Private InPath_ As String
+Private OutPath_ As String
+Private Dom_ As DOMDocument60
 
-Public Property Let path(inpt As String)
-path_ = inpt
-Set dom_ = Base_.loadClientFile(path_)
+Public Property Let inPath(inpt As String)
+InPath_ = inpt
+Set Dom_ = Base_.loadClientFile(InPath_)
+End Property
+
+Public Property Let outPath(inpt As String)
+OutPath_ = inpt
 End Property
 
 Property Get dom() As DOMDocument60
-    Set dom = dom_
+    Set dom = Dom_
 End Property
 
 'Property Get folderName() As String
@@ -20,11 +25,20 @@ End Property
 '    folderName_ = inpt
 'End Property
 '
-Function getFolder(inptName As String) As IXMLDOMNodeList
+Function getFolder(inptName As String) As IXMLDOMNodeList 'as Alias
 
 Dim vRslt As IXMLDOMNodeList
-Set vRslt = dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
+Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
 Set getFolder = vRslt
+Set vRslt = Nothing
+
+End Function
+
+Function getForm(inptFol As String, inptFrm As String) As IXMLDOMNodeList 'as Alias
+
+Dim vRslt As IXMLDOMNodeList
+Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
+Set getForm = vRslt
 Set vRslt = Nothing
 
 End Function
@@ -33,7 +47,7 @@ Function selectNodesEX(inpt As String) As IXMLDOMNodeList
 '[@clid='Folder'][@Name='Folder01']
 
 Dim vRslt As IXMLDOMNodeList
-Set vRslt = dom_.SelectNodes("//FORMROOT/OBJ" & inpt)
+Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ" & inpt)
 Set selectNodesEX = vRslt
 Set vRslt = Nothing
 
@@ -41,11 +55,11 @@ End Function
 
 Sub printInfo()
     Debug.Print "------------------------------------------------------------------"
-    Debug.Print " path: " & path_
+    Debug.Print " path: " & InPath_
     Debug.Print "------------------------------------------------------------------"
 End Sub
 
-Sub Download(inptList As IXMLDOMSelection)
+Sub downloadXml(inptList As IXMLDOMSelection)
 'Set d = New XapDebug: _
 'd.path = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
 'Set f = d.getFolder("Folder01"): _
@@ -113,12 +127,81 @@ Set vobh = Nothing
 Application.ScreenUpdating = True
 End Sub
 
+
+Sub createFixFilter()
+'Set d = New clsXapDebug: _
+'d.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
+'d.outPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER_OUT.xml": _
+'Set fm = d.getForm("Folder01", "Form02"): _
+'d.createFixFilter (fm)
+
+Application.ScreenUpdating = False
+
+Dim vWs As Worksheet: Set vWs = ActiveSheet
+Dim vDom As clsXapDomDoc: Set vDom = Base_
+Dim vForm As IXMLDOMSelection: Set vForm = inptFrm
+Dim vFilter As IXMLDOMElement
+Dim lCol As Long: lCol = 2
+
+With vWs
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    .Activate
+    .Range("A2").Activate
+
+    Do While ActiveCell.Value <> "" ' row direction
+    
+    Set vFilter = vDom.createRedFilter(0, 0, 0, 0) 'single elem
+    Set vFilter = vDom.setAttributesEx(vFilter, "LibraryComment", "p_Fix")
+    Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
+     "[Property]" & vbLf & _
+    "_TagIn1=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
+    "_TagIn2=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
+    "_TagIn3=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
+    "_Comment1=[string]" & vbLf & _
+    "_Comment2=[string]" & vbLf & _
+    "_Comment3=[string]" & vbLf)
+    
+    Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
+
+                Select Case .Cells(1, lCol).Value
+                    Case "Top"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
+
+                    Case "Left"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        
+                    Case "Width"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                                            
+                    Case "Height"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                End Select
+
+             lCol = lCol + 1
+      Loop ' field Attrs
+
+    vForm.Item(0).appendChild vFilter
+    lCol = 2
+
+    ActiveCell.Offset(1, 0).Activate 'row direction
+    Loop
+
+    .Range("A1").Activate 'iterate end
+End With
+Stop
+Call SaveTextWithUtf8(vDoc.XML, OutPath_)
+Set vDoc = Nothing
+
+Application.ScreenUpdating = True
+End Sub
+
+
 Private Sub Class_Initialize()
     Dim obj As clsXapDomDoc
     Set obj = New clsXapDomDoc
     Set Base_ = obj
 '
-'    path_ = fKey2Val("PrmSht", "XML_LOAD_PATH")
+'    InPath_ = fKey2Val("PrmSht", "XML_LOAD_PATH")
 
 End Sub
 
