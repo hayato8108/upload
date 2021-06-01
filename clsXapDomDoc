@@ -1,5 +1,4 @@
 
-
 Private Base_ As DOMDocument60
 
 Function loadClientFile(ByVal inptPathDoc As String) As DOMDocument60
@@ -260,10 +259,8 @@ Set createRectElm = vElm
 End Function
 
 
-Function createRedFilter(ByVal inptParent As IXMLDOMElement) As IXMLDOMElement
+Function createRedFilter(inptT As String, inptL As String, inptH As String, inptW As String) As IXMLDOMElement
 '<OBJ clid="Rectangle" Border="F" FillColor="#800000" Alpha="0.7" RotateX="630" RotateY="390" Top="290" Left="540" Height="190" Width="180">
-
-Dim vP As IXMLDOMElement: Set vP = inptParent
 Dim vC As IXMLDOMElement: Set vC = createElementEx("OBJ")
 
 Dim sT As Long
@@ -271,10 +268,10 @@ Dim sL As Long
 Dim sH As Long
 Dim sW As Long
 
-sT = CLng(vP.Attributes.getNamedItem("Top").Text)
-sL = CLng(vP.Attributes.getNamedItem("Left").Text)
-sH = CLng(vP.Attributes.getNamedItem("Height").Text)
-sW = CLng(vP.Attributes.getNamedItem("Width").Text)
+sT = CLng(inptT)
+sL = CLng(inptL)
+sH = CLng(inptH)
+sW = CLng(inptW)
 
 Set vC = createRectElm(sT, sL, sH, sW)
 
