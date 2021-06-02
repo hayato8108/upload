@@ -78,19 +78,15 @@ With ActiveSheet
         
             vCol = vCol + 1
             Loop ' field Attrs
-                  
-              
               
         End If
         
-
         Loop 'next line
     Close #1
 
 End With
 
-
-out fUniqueArray(oArr.toarray)
+'out fUniqueArray(oArr.toarray)
 
 cnvFixReport = sTxt
 
