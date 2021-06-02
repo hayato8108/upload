@@ -1,3 +1,4 @@
+'210503
 
 Private Base_ As clsXapDomDoc
 Private InPath_ As String
@@ -53,17 +54,12 @@ Set vRslt = Nothing
 
 End Function
 
-Sub printInfo()
-    Debug.Print "------------------------------------------------------------------"
-    Debug.Print " path: " & InPath_
-    Debug.Print "------------------------------------------------------------------"
-End Sub
 
 Sub downloadXml(inptList As IXMLDOMSelection)
-'Set d = New XapDebug: _
-'d.path = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
-'Set f = d.getFolder("Folder01"): _
-'d.Download (f)
+'Set d = New clsXapDebug: _
+'d.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\MF_TESTER.xml": _
+'Set f = d.getFolder("Menu1"): _
+'d.downloadXml (f)
 Application.ScreenUpdating = False
 
 Dim vWs As Worksheet: Set vWs = ActiveSheet
@@ -101,6 +97,9 @@ With vWs
                               ActiveCell.Offset(0, lCol - 1) = sFolderName
                             ElseIf .Cells(1, lCol).Value = "Form" Then
                                ActiveCell.Offset(0, lCol - 1) = sFormName
+                            ElseIf .Cells(1, lCol).Value = "Event" Then
+                                If vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text <> "" Then
+                                   ActiveCell.Offset(0, lCol - 1) = eventRegx(vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text): End If
                             ElseIf Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then 'Attribute
                                 ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
                             End If
@@ -128,16 +127,46 @@ Application.ScreenUpdating = True
 End Sub
 
 
-Sub createFixFilter()
+Function eventRegx(inpt As String) As String
+Stop
+Dim str As String
+Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+Dim oMatch As Object
+
+    With regx
+        .Global = inptGlobal 'isMultiple
+        .MultiLine = False
+        .ignorecase = False
+    End With
+
+        .Pattern = inptPattern
+If regx.test(inptStr) Then
+    Set oMatch = regx.Execute(inptStr)
+End If
+
+
+eventRegx = ""
+
+
+End Function
+
+Function multiCndRegx() As Variant
+
+End Function
+
+
+Sub createFixFilterXml(inptFrm As IXMLDOMSelection)
 'Set d = New clsXapDebug: _
 'd.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
 'd.outPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER_OUT.xml": _
 'Set fm = d.getForm("Folder01", "Form02"): _
-'d.createFixFilter (fm)
+'d.createFixFilterXml (fm)
 
 Application.ScreenUpdating = False
 
-Dim vWs As Worksheet: Set vWs = ActiveSheet
+Dim vWs As Worksheet: Set vWs = Sheets(fKey2Val("PrmSht", "FixFilter"))
+Dim vDoc As DOMDocument60
 Dim vDom As clsXapDomDoc: Set vDom = Base_
 Dim vForm As IXMLDOMSelection: Set vForm = inptFrm
 Dim vFilter As IXMLDOMElement
@@ -149,58 +178,65 @@ With vWs
     .Range("A2").Activate
 
     Do While ActiveCell.Value <> "" ' row direction
-    
-    Set vFilter = vDom.createRedFilter(0, 0, 0, 0) 'single elem
-    Set vFilter = vDom.setAttributesEx(vFilter, "LibraryComment", "p_Fix")
-    Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-     "[Property]" & vbLf & _
-    "_TagIn1=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
-    "_TagIn2=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
-    "_TagIn3=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
-    "_Comment1=[string]" & vbLf & _
-    "_Comment2=[string]" & vbLf & _
-    "_Comment3=[string]" & vbLf)
-    
-    Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
+        
+        Set vFilter = vDom.createRedFilter(0, 0, 0, 0) 'single elem
+        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
+        Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
+         "[Property]" & vbLf & _
+        "_TagIn1=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
+        "_Comment1=[string]" & vbLf)
 
-                Select Case .Cells(1, lCol).Value
-                    Case "Top"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
+        Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
 
-                    Case "Left"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Select Case .Cells(1, lCol).Value
+                        Case "Top"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Case "Left"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Case "Width"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Case "Height"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Case "_TagIn"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn1", CStr(.Cells(ActiveCell.Row, lCol).Value))
                         
-                    Case "Width"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                                            
-                    Case "Height"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                End Select
+                    End Select
+    
+                 lCol = lCol + 1
+          Loop ' field Attrs
+    
+        vForm.Item(0).appendChild vFilter
+        lCol = 2
 
-             lCol = lCol + 1
-      Loop ' field Attrs
-
-    vForm.Item(0).appendChild vFilter
-    lCol = 2
-
-    ActiveCell.Offset(1, 0).Activate 'row direction
+        ActiveCell.Offset(1, 0).Activate 'row direction
     Loop
 
     .Range("A1").Activate 'iterate end
 End With
-Stop
-Call SaveTextWithUtf8(vDoc.XML, OutPath_)
+
+Dim sDoc As String
+
+sdom = "<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""><OBJ clid=""Folder"" Name=""Add"">REPLACE</OBJ></FORMROOT></ROOT>"
+sdom = Replace(sdom, "REPLACE", vForm.Item(0).XML)
+
+Call SaveTextWithUtf8(sdom, OutPath_)
 Set vDoc = Nothing
 
 Application.ScreenUpdating = True
 End Sub
 
+Sub printInfo()
+    Debug.Print "------------------------------------------------------------------"
+    Debug.Print " path in: " & InPath_
+    Debug.Print " path out: " & OutPath_
+    Debug.Print "------------------------------------------------------------------"
+End Sub
 
-Private Sub Class_Initialize()
+Private Sub class_initialize()
     Dim obj As clsXapDomDoc
     Set obj = New clsXapDomDoc
     Set Base_ = obj
-'
+
 '    InPath_ = fKey2Val("PrmSht", "XML_LOAD_PATH")
 
 End Sub
