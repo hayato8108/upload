@@ -1,3 +1,4 @@
+'210603
 
 Private Base_ As DOMDocument60
 
@@ -28,14 +29,12 @@ With vDoc
     .async = False
     .validateonparse = False
 '   .preservewhitespace = True
-    .LoadXML ("<OBJ></OBJ>")
-'    .LoadXML ("<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""></FORMROOT></ROOT>")
+    .LoadXML ("<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""></FORMROOT></ROOT>")
 
 End With
 
-createNewXapDoc = vDoc
-
-vDoc = Nothing
+Set createNewXapDoc = vDoc
+Set vDoc = Nothing
 
 End Function
 
@@ -106,7 +105,6 @@ Set vElm = setAttributesEx(vElm, "LocaleLanguage", "DEFAULT")
 Set createFormElm = vElm
 
 End Function
-
 
 
 Function createGroupElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
@@ -316,7 +314,7 @@ End Function
 
 
 
-Private Sub Class_Initialize()
+Private Sub class_initialize()
     Dim obj As Object
     Set obj = New DOMDocument60
     Set Base_ = obj
