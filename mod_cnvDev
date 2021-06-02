@@ -11,10 +11,6 @@ sFind = fSplit(sFind, 1, "@")
 sFind = CInt(sFind)
 sDev = sFind
 
-'1600
-'701 => 700
-'10
-
 If sFind > 999 Then
     sFind = Left(sFind, Len(sFind) - 2) & Application.WorksheetFunction.Rept(0, 2)
 ElseIf sFind < 1000 And sFind > 99 Then
@@ -29,10 +25,31 @@ ElseIf fSplit(inpt, 1, ".") = "PLC00" Then
     sKey = "KYOTU_" & fSplit(inpt, 2, ".") & sFind
 End If
 
-Debug.Print sKey
-Debug.Print fKey2Val(sKey, fSplit(inpt, 2, ".") & fDigitN(sDev, 4))
+Dev2Cmt = fKey2Val(sKey, fSplit(inpt, 2, ".") & fDigitN(sDev, 4))
 
 End Function
+
+
+Function keiki2Cmt(inpt As String) As String
+
+Dim sWbName As String
+Dim sWsname As String
+Dim sRslt As String
+
+On Error Resume Next
+    
+    If key2val("keiki3Kei", inpt) <> "" Then
+        sRslt = key2val("keiki3Kei", inpt)
+    ElseIf key2val("keikiKyotu", inpt) <> "" Then
+        sRslt = key2val("keikiKyotu", inpt)
+    Else
+        sRslt = "#N/A#"
+    End If
+
+keiki2Cmt = sRslt
+
+End Function
+
 
 
 
