@@ -1,0 +1,342 @@
+'cDoc クラス化
+'imprement insertPict 210602
+
+Private Base_ As String
+
+Private Sub class_initialize()
+'    Dim obj As Workbook
+'    Set obj = ThisWorkbook
+'    Set Base_ = obj
+End Sub
+
+
+Sub showAllName()
+
+Dim wName As Object
+Dim wCnt As Long
+
+For Each wName In Names
+
+    If wName.Visible = False Then
+    wName.Visible = True
+    wCnt = wCnt + 1
+    End If
+
+Next
+
+End Sub
+
+
+Sub saveAsXlsx()
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+Dim wbCrr As Workbook: Set wbCrr = ThisWorkbook
+Dim ws As Worksheet ' iterate
+
+With Workbooks.add
+    For Each ws In wbCrr.Worksheets
+        If ws.Tab.ColorIndex = -4142 Then
+            ws.Copy after:=.Sheets(.Sheets.Count)
+            .Sheets(.Sheets.Count).Cells.Activate
+            Selection.Copy
+            Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+        End If
+    Next ws
+    .Sheets(1).Delete
+End With
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+End Sub
+
+
+'Shapes ============================================================
+'?activesheet.shapes(1).top
+'Print ActiveSheet.shapes("Picture 39").Select
+
+'For Each shp In ActiveSheet.shapes: _
+'shp.Left = 10: _
+'Next shp
+
+'Set doc = New clsDoc: _
+'Call doc.ShpsTop(0, 100)
+'Call doc.insertPict
+'Call doc.clearShps
+
+
+ Sub clearShps()
+Dim shp As Shape
+For Each shp In ActiveSheet.shapes
+    shp.Delete
+Next shp
+
+With ActiveSheet.pageSetup
+    .PrintArea = ""
+    .PrintArea = fKey2Val("prmSht", "doc_print_area")
+End With
+
+'ActiveSheet.Rows(Range(getDocProperty(eCellPageEnd)).Row + 1 & ":" & Rows.Count).Delete
+
+Range("A1").Select
+End Sub
+
+Sub resizeShps(inpt As Double)
+Dim shp As Shape
+    For Each shp In ActiveSheet.shapes
+        shp.Width = shp.Width * inpt
+        shp.Height = shp.Height * inpt
+    Next shp
+End Sub
+
+Sub ShpsTop(inptStart As Double, inptSpan As Double)
+Dim shp As Shape
+Dim dPos As Double: dPos = inptStart
+Dim dSpn As Double: dSpn = inptSpan
+
+For Each shp In ActiveSheet.shapes
+    shp.Top = dPos
+    dPos = dPos + dSpn
+Next shp
+End Sub
+
+Sub aDel()
+If Not ActiveSheet.Tab.ColorIndex = xlAutomatic Then Stop
+ActiveSheet.Delete
+End Sub
+
+Sub nIns()
+Sheets.add after:=ActiveSheet
+End Sub
+
+Sub insertPict()
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+Dim vPctName As String
+Dim vPctPath As String
+Dim vPathPict As String
+Dim vCnt As Long
+
+'Dim vCrrTop As Double
+'Dim vCrrLeft As Double
+
+Dim vPictFiles As FileDialog: Set vPictFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectedPict As FileDialogSelectedItems
+With vPictFiles
+    .Filters.Clear
+    .Filters.add "pictureFile", "*.*", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = fKey2Val("prmSht", "doc_pict_dir")
+    .show
+End With
+
+On Error Resume Next
+
+If Not vPictFiles.SelectedItems.Count = 1 Then
+    Call clearShps
+'    Call pageSetup(vPictFiles.SelectedItems.Count)
+End If
+
+For vCnt = 1 To vPictFiles.SelectedItems.Count ' 1 base array
+
+With ActiveSheet
+'     .Range(getDocProperty(eRangePct)).Merge
+'     ActiveWorkbook.Names.Add Name:="Picture", RefersTo:=ActiveSheet.Range(getDocProperty(eRangePct))
+
+'     vCrrTop = CDbl(.Range("Picture").Top) + (vCnt - 1) * CDbl(getDocProperty(ePageHeight))
+'     vCrrLeft = CDbl(.Range("Picture").Left) 'always fix
+
+     .shapes.AddPicture(Filename:=vPictFiles.SelectedItems(vCnt), linktofile:=msfalse, savewithdocument:=msoCTrue, Top:=0, Left:=0, Width:=-1, Height:=-1).Select
+ End With
+
+ With Selection.ShapeRange.Item(1)
+   .LockAspectRatio = msoTrue
+   .Width = ActiveSheet.Range("Picture").Width
+   If .Height > ActiveSheet.Range("Picture").Height Then
+     .Height = ActiveSheet.Range("Picture").Height
+   End If
+ End With
+
+Next vCnt
+
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+
+End Sub
+
+
+Sub getFilesList()
+If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+
+Dim path As String: path = fKey2Val("PrmSht", "doc_frm_dir")
+Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectFiles As FileDialogSelectedItems
+Dim vCnt As Long
+With vFiles
+    .Filters.Clear
+'    .Filters.Add "pictureFile", "*.*", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = fKey2Val("PrmSht", "doc_frm_dir")
+    .show
+End With
+
+On Error Resume Next
+
+For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
+    ActiveSheet.Cells(vCnt, 1).Value = Dir(vFiles.SelectedItems(vCnt))
+Next vCnt
+
+
+End Sub
+
+
+Sub renFilesName()
+
+
+End Sub
+
+
+'
+'
+'Sub pageSetup(Optional ByVal inptPage As Long = 0)
+'
+'Dim vPaperSize As String: vPaperSize = fKey2Val("prtsht", "doc_paper_size")
+'Dim vPaperOrientation As String: vPaperOrientation = fKey2Val("prtsht", "doc_paper_orientation")
+'Dim vWs As Worksheet: Set vWs = ActiveSheet
+'Set vWs = ActiveSheet
+'Dim vRowEnd As Long ' STRING => LONG
+'Dim vPage As Long: vPage = inptPage
+'If vPage = 0 Then vPage = InputBox("Total Page Num"): If vPage = 0 Then Exit Sub
+'Dim vTmp As Long
+'
+'On Error Resume Next
+'Application.ScreenUpdating = False
+'Application.PrintCommunication = False
+'
+'With vWs
+'
+'    .Cells.RowHeight = 14.1
+'    .Cells.ColumnWidth = 1.6
+'    .Columns("A:A").ColumnWidth = CLng(getDocProperty(eColA))
+'
+'For vTmp = 1 To vPage
+'    Set .HPageBreaks(vTmp).Location = Range(getDocProperty(eCellPageEnd)).Offset(((vTmp - 1) * Range(getDocProperty(eCellPageEnd)).Row) + 1, 0)
+'Next vTmp
+'
+'End With
+'
+'With vWs.pageSetup
+'    .PaperSize = vPaperSize
+'    .Orientation = vPaperOrientation
+'    .ResetAllPageBreaks
+'    .PrintArea = ""
+'    .PrintArea = "$A$1:" & Range(getDocProperty(eCellPageEnd)).Offset((vPage - 1) * CLng(Range(getDocProperty(eCellPageEnd)).Row), 0).Address
+'    .CenterFooter = "&A& - &P "
+'    .RightFooter = getDocInformation("hdrProojectName") & " " & getDocInformation("hdrRevision") & " " & Format(Date, "YYYY/MM/DD") & "          "
+'    .LeftMargin = Application.InchesToPoints(0)
+'    .RightMargin = Application.InchesToPoints(0)
+'    .TopMargin = Application.InchesToPoints(0)
+'    .BottomMargin = Application.InchesToPoints(0)
+'    .HeaderMargin = Application.InchesToPoints(0)
+'    .FooterMargin = Application.InchesToPoints(0)
+'    .Zoom = 100
+'End With
+'
+'Application.PrintCommunication = True
+'Application.ScreenUpdating = True
+'
+'End Sub
+
+
+
+'Sub insertPictWithIndex()
+'Application.ScreenUpdating = False
+'Application.DisplayAlerts = False
+'
+''
+''Dim vPictFiles As FileDialog: Set vPictFiles = Application.FileDialog(msoFileDialogFilePicker)
+''Dim vSelectedPict As FileDialogSelectedItems
+''With vPictFiles
+''    .Filters.Clear
+''    .Filters.Add "pictureFile", "*.*", 1
+''    '.Title = "FILE SELECT"
+''    .AllowMultiSelect = True
+''    .InitialFileName = getDocProperty(ePathPictDir")
+''    .Show
+''End With
+'
+'
+'Dim vPathFol As String
+'With Application.FileDialog(msoFileDialogFolderPicker)
+'    .InitialFileName = getDocProperty(epathpictdir)
+'    .Show
+'    vPathFol = .SelectedItems(1) & "\"
+'End With
+'
+'
+'Dim vShtFpList As String: vShtFpList = "Data"
+'Dim vDataCol As Long: vDataCol = InputBox("input Pict Column number")
+'
+'Dim vCnt As Long: vCnt = 1 'For Loop
+'Dim vEndRow As Long: vEndRow = Sheets(vShtFpList).Cells(Rows.Count, vDataCol).End(xlUp).Row 'For Loop
+'
+'Dim vPctName As String
+'Dim vPctPath As String
+'Dim vPathPict As String
+'
+'Dim vCrrTop As Double
+'Dim vCrrLeft As Double
+'
+'On Error Resume Next
+'
+'Call clearAllShp
+'ActiveWorkbook.Names("Picture").Delete
+'
+'Call PageSetup(vEndRow)
+'
+'For vCnt = 1 To vEndRow
+'
+'    vPctName = Sheets(vShtFpList).Cells(vCnt, vDataCol).Value
+'    vPctPath = vPathFol & vPctName & ".bmp"
+'
+' '   ActiveSheet.Shapes.AddPicture Filename:=vPctPath, linktofile:=msfalse, savewithdocument:=msoCTrue, Left:=vPctPosition.Left, Top:=vPctPosition.Top, Width:=vPctWidth, Height:=vPctHeight
+' '   Set vPctPosition = Cells(vPctPosition.Offset(vPerPage, 0).Row, vPctPosition.Offset(vPerPage, 0).Column)
+'
+'With ActiveSheet
+'     .Range(getDocProperty(eRangePct)).Merge
+'     ActiveWorkbook.Names.Add Name:="Picture", RefersTo:=ActiveSheet.Range(getDocProperty(eRangePct))
+'
+'     vCrrTop = CDbl(.Range("Picture").Top) + (vCnt - 1) * CDbl(getDocProperty(ePageHeight))
+'     vCrrLeft = CDbl(.Range("Picture").Left) 'always fix
+'
+'     .Shapes.AddPicture(Filename:=vPctPath, linktofile:=msfalse, savewithdocument:=msoCTrue, Top:=vCrrTop, Left:=vCrrLeft, Width:=-1, Height:=-1).Select
+' End With
+'
+' With Selection.ShapeRange.Item(1)
+'   .LockAspectRatio = msoTrue
+'   .Width = ActiveSheet.Range("Picture").Width
+'   If .Height > ActiveSheet.Range("Picture").Height Then
+'     .Height = ActiveSheet.Range("Picture").Height
+'   End If
+' End With
+'
+'Next vCnt
+'
+'Application.ScreenUpdating = True
+'Application.DisplayAlerts = True
+'
+'End Sub
+'
+'
+
+
+
+
+
+
+
+
