@@ -1,136 +1,602 @@
-'210503
+'c20201110から更新20210410
 
-Private Base_ As clsXapDomDoc
-Private InPath_ As String
-Private OutPath_ As String
-Private Dom_ As DOMDocument60
+'PRJ PARAM===============================================================
+Sub LoadKeyBind()
 
-Public Property Let inPath(inpt As String)
-InPath_ = inpt
-Set Dom_ = Base_.loadClientFile(InPath_)
-End Property
+Dim r As Range
 
-Public Property Let outPath(inpt As String)
-OutPath_ = inpt
-End Property
+Worksheets("KEY_BIND").Select
 
-Property Get dom() As DOMDocument60
-    Set dom = Dom_
-End Property
+For Each r In Range("A:A")
 
-'Property Get folderName() As String
-'    folderName = folderName_
-'End Property
-'
-'Public Property Let folderName(inpt As String)
-'    folderName_ = inpt
-'End Property
-'
-Function getFolder(inptName As String) As IXMLDOMNodeList 'as Alias
+    If r.Value = "s" Then
 
-Dim vRslt As IXMLDOMNodeList
-Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
-Set getFolder = vRslt
-Set vRslt = Nothing
+        Call Application.OnKey(r.Offset(0, 1).Value, r.Offset(0, 2).Value)
+
+    ElseIf r.Value = "d" Then
+
+        Call Application.OnKey(r.Offset(0, 1).Value, "")
+
+    End If
+
+Next r
+
+End Sub
+
+'PRJ PARAM===============================================================
+Function fGetDsWb() As String
+    fGetDsWb = fKey2Val("PrmSht", "DS_WB")
+End Function
+
+Function fGetDsWbn() As String
+    fGetDsWbn = fKey2Val("PrmSht", "DS_WBN")
+End Function
+
+Function fGetDsWs() As String
+    fGetDsWs = fKey2Val("PrmSht", "DS_WS")
+End Function
+
+Function fGetDsRng() As String
+    fGetDsRng = fKey2Val("PrmSht", "DS_RNG")
+End Function
+
+Function fGetPlcUnitData()
+    fGetPlcUnitData = fKey2Val("PrmSht", "PLC_UNIT_DATA")
+End Function
+
+'Linker===============================================================
+Function fKey2Val(inptLabel As String, inptKey As String) As String
+
+Dim sLabel As String: sLabel = inptLabel
+Dim sKey As String: sKey = inptKey
+Dim sData As Variant
+Dim sResult As Variant
+Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("LinkData").Rows(1)
+Dim lIndex As Long
+sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A") 'single row, get link parameters
+
+If UBound(sData) = -1 Then fKey2Val = "#N/A#": Exit Function
+
+Dim sWb As String: sWb = sData(Application.WorksheetFunction.Match("WorkBookName", rRng, 0))
+Dim sWs As String: sWs = sData(Application.WorksheetFunction.Match("WorkSheetName", rRng, 0))
+Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("KeyCol", rRng, 0))
+Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("RtnCol", rRng, 0))
+
+sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
+
+fKey2Val = sResult
 
 End Function
 
-Function getForm(inptFol As String, inptFrm As String) As IXMLDOMNodeList 'as Alias
+'on Target Sheet
+Private Function fGetCellData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String, inptTargetCol As String) As String
 
-Dim vRslt As IXMLDOMNodeList
-Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
-Set getForm = vRslt
-Set vRslt = Nothing
+Dim sWbName As String: sWbName = inptWb
+Dim sWsname As String: sWsname = inptWs
+Dim sKeyCol As String: sKeyCol = inptKeyCol
+Dim sKey As String: sKey = inptKey
+Dim sTargetCol As String: sTargetCol = inptTargetCol
+Dim sMatchRow As String
+Dim sRslt As String
 
-End Function
+On Error Resume Next
 
-Function selectNodesEX(inpt As String) As IXMLDOMNodeList
-'[@clid='Folder'][@Name='Folder01']
+With Workbooks(sWbName).Worksheets(sWsname)
 
-Dim vRslt As IXMLDOMNodeList
-Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ" & inpt)
-Set selectNodesEX = vRslt
-Set vRslt = Nothing
+    Dim rColKey As Range
+    Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
+    If rColKey Is Nothing Then Stop ' "Book or Sheet name is wrong"
 
-End Function
+    sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
 
+    If sMatchRow = "" Then
+        sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
+    End If
 
-Sub downloadXml(inptList As IXMLDOMSelection)
-'Set d = New clsXapDebug: _
-'d.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\MF_TESTER.xml": _
-'Set f = d.getFolder("Menu1"): _
-'d.downloadXml (f)
-Application.ScreenUpdating = False
-
-Dim vWs As Worksheet: Set vWs = ActiveSheet
-Dim vFolders As IXMLDOMNodeList: Set vFolders = inptList
-Dim vFolder As IXMLDOMElement
-Dim vForms As IXMLDOMElement
-Dim vObj As IXMLDOMElement
-Dim sFolderName As String: sFolderName = ""
-Dim sFormName As String: sFormName = ""
-Dim lCol As Long: lCol = 2
-Dim lCnt As Long: lCnt = 1
-Dim l As Long: l = 0
-
-With vWs
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    .Range("A2").Activate
-
-    If vFolders Is Nothing Then Exit Sub
-    
-    For l = 0 To vFolders.Length - 1
-        Set vFolder = vFolders.Item(l)
-        sFolderName = vFolder.Attributes.getNamedItem("Name").Text
-
-            For Each vForms In vFolder.ChildNodes
-                If vForms.Attributes.getNamedItem("clid").Text = "Form" Then sFormName = vForms.Attributes.getNamedItem("Name").Text
-                    For Each vObj In vForms.ChildNodes
-
-                    .Range("A1").Interior.Color = RGB(55, 155, 255)
-                    ActiveCell.Value = " " & lCnt & " " 'Column A
-    
-                        Do While .Cells(1, lCol).Value <> "" 'field Attrs
-                            If .Cells(1, lCol).Value = "Folder" Then
-                              ActiveCell.Offset(0, lCol - 1) = sFolderName
-                            ElseIf .Cells(1, lCol).Value = "Form" Then
-                               ActiveCell.Offset(0, lCol - 1) = sFormName
-                            ElseIf .Cells(1, lCol).Value = "Event" Then
-                                If vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text <> "" Then
-                                   ActiveCell.Offset(0, lCol - 1) = eventRegx(vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text): End If
-                            ElseIf Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then 'Attribute
-                                ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
-                            End If
-                            
-                            lCol = lCol + 1
-                        Loop
-    
-                    lCnt = lCnt + 1 'display number
-                    lCol = 2 ' reset
-                    ActiveCell.Offset(1, 0).Activate
-                
-                    Next vObj
-            Next vForms
-        Next l
-
-    .Columns.AutoFit
-    .Range("A1").Activate
+    If sMatchRow <> "" Then
+            sRslt = .Cells(CLng(sMatchRow), sTargetCol).Value
+        Else
+            sRslt = Array()
+    End If
 
 End With
 
-Set vDoc = Nothing
-Set vFolder = Nothing
-Set vobh = Nothing
-Application.ScreenUpdating = True
+fGetCellData = sRslt
+
+End Function
+
+'on Params sheet
+Private Function fGetRowData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String) As Variant
+
+Dim sWbName As String: sWbName = inptWb
+Dim sWsname As String: sWsname = inptWs
+Dim sKeyCol As String: sKeyCol = inptKeyCol
+Dim sKey As String: sKey = inptKey
+Dim sTargetCol As String: sTargetCol = inptTargetCol
+Dim sMatchRow As String
+Dim vRslt As Variant
+
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsname)
+
+    Dim rColKey As Range
+    Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
+    If rColKey Is Nothing Then Stop ' "Book or Sheet name is wrong"
+
+    sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
+
+    If sMatchRow <> "" Then
+            vRslt = Application.Transpose(Application.Transpose(.Rows(CLng(sMatchRow)).Value))
+        Else
+            vRslt = Array()
+    End If
+
+End With
+
+fGetRowData = vRslt
+
+End Function
+
+'DEBUG OUT===============================================================
+Sub out(ByVal inptArr As Variant, Optional inptLimit As Long = 10)
+    Dim v As Variant
+    Dim cnt As Long: cnt = 0
+
+    If CndOrEq(Array("IMatchCollection2", "Variant()", "ArrayList", "String()"), TypeName(inptArr)) Then
+        For Each v In inptArr
+            Debug.Print CStr(v)
+            cnt = cnt + 1
+            If cnt = inptLimit Then Exit Sub
+        Next v
+    Else
+        Debug.Print inptArr
+    End If
 End Sub
 
 
-Function eventRegx(inpt As String) As String
-Stop
-Dim str As String
+Sub outTxt(ByVal inptStr As String, ByVal inptPath As String)
+Dim fst As Object
+Dim sPath As String: sPath = inptPath
+
+Set fst = CreateObject("ADODB.Stream")
+fst.Type = 2 'Specify stream type - we want To save text/string data.
+fst.Charset = "utf-8" 'Specify charset For the source text data.
+fst.Open 'Open the stream And write binary data To the objectg
+fst.WriteText inptStr
+fst.SaveToFile inptPath, 2
+fst.Close
+
+Set fst = Nothing
+
+End Sub
+
+
+'OPERATOR==================================================================
+
+Function CndOrEq(ByVal inptArray As Variant, ByVal inptCond As String) As Boolean
+    CndOrEq = CndOr(inptArray, "Eq", inptCond)
+End Function
+
+Function CndAndEq(ByVal inptArray As Variant, ByVal inptCond As String) As Boolean
+    CndAndEq = CndAnd(inptArray, "Eq", inptCond)
+End Function
+
+Function CndAndEqSeq(ByVal inptArray As Variant, ByVal inptCond As String) As Boolean
+    CndAndEqSeq = CndAnd(inptArray, "EqSeq", inptCond)
+End Function
+
+Private Function CndOr(ByVal inptArray As Variant, ByVal inptOperator As String, inptCond As String) As Boolean
+    Dim vArr As Variant: vArr = inptArray
+    Dim lCnt As Long
+    Dim sOpr As String: sOpr = inptOperator
+    Dim sCnd As String: sCnd = inptCond
+    Dim sResult As Boolean: sResult = False
+
+    For lCnt = 0 To UBound(vArr)
+        Select Case sOpr
+            Case "Eq"
+                If vArr(lCnt) = sCnd Then sResult = True
+        End Select
+
+    Next lCnt
+
+    CndOr = sResult
+
+End Function
+
+Private Function CndAnd(ByVal inptArray As Variant, ByVal inptOperator As String, ByVal inptCond As String) As Boolean
+    Dim vArr As Variant: vArr = inptArray
+    Dim lCnt As Long
+    Dim sOpr As String: sOpr = inptOperator
+    Dim sCnd As String: sCnd = inptCond
+    Dim sResult As Boolean: sResult = True
+
+    For lCnt = 0 To UBound(vArr)
+        Select Case sOpr
+            Case "Eq"
+                If Not vArr(lCnt) = sCnd Then sResult = False
+            Case "EqSeq"
+                If vArr(lCnt) = False Then
+                    sResult = False
+                    Exit Function
+                End If
+
+        End Select
+
+    Next lCnt
+
+    CndAnd = sResult
+End Function
+
+'TYPE CHECK==================================================================
+Function fIsSameType(ByVal inptArray As Variant, ByVal inptType As String) As Variant
+    Dim vArr As Variant: vArr = inptArray
+    Dim lCnt As Long
+    Dim sResult As String: sResult = True
+
+    If Not CndOrEq(Array("Integer", "String", "Variant"), inptType) Then
+        Stop
+    End If
+
+    For lCnt = 0 To UBound(vArr)
+        If Not TypeName(vArr(lCnt)) = inptType Then
+            sResult = False
+        End If
+    Next lCnt
+
+    fIsSameType = sResult
+
+End Function
+
+'STRING MANIPULATION=================================================
+'Delimiter is not optional
+Function fSplitByDelimiter(ByVal inptStr As String, ByVal inptSplt As String, ByVal inptCol As Integer) As String
+
+fSplitByDelimiter = fSplit(inptStr, inptCol, inptSplt)
+
+End Function
+
+Function fSplit(ByVal inptStr As String, ByVal inptCol As Integer, Optional ByVal inptSplt As String = ",") As String
+
+Dim sStr As String: sStr = inptStr
+Dim lCol As Integer: lCol = inptCol
+Dim sSplt As String: sSplt = inptSplt
+Dim aStr() As String
+
+aStr = Split(sStr, sSplt)
+
+If UBound(aStr) = -1 Or UBound(aStr) = 0 Or lCol = 0 Then
+    sRslt = sStr
+ElseIf lCol < 0 Then
+    sRslt = aStr(UBound(aStr) + 1 + lCol)
+Else
+    sRslt = aStr(lCol - 1)
+End If
+
+fSplit = sRslt
+
+End Function
+
+
+Function fLenOfSplited(inptStr As String, inptSplt As String, inptCol As Long) As String
+'for Decimal
+
+Dim sStr As String: sStr = inptStr
+Dim lCol As Long: lCol = inptCol
+Dim sSplt As String: sSplt = inptSplt
+Dim aStr() As String
+Dim sRslt As String
+
+aStr = Split(sStr, sSplt)
+
+If UBound(aStr) = 0 Or lCol = 0 Then
+    sRslt = 0
+Else
+    sRslt = Len(aStr(lCol - 1))
+End If
+
+fLenOfSplited = sRslt
+
+End Function
+
+
+'ARRAY ==================================================================
+Function fAddToArray(ByVal inptArray As Variant, ByVal inptItem As Variant) As Variant
+    Dim vArr As Variant: vArr = inptArray
+
+        If UBound(vArr) = -1 Then
+            vArr = Array(inptItem)
+        Else
+            ReDim Preserve vArr(UBound(vArr) + 1)
+            vArr(UBound(vArr)) = inptItem
+        End If
+
+        fAddToArray = vArr
+End Function
+
+
+Function fcnvRng2Array(inptRng As Range, Optional inptDelBlank As Boolean = True) As Variant
+
+Dim vResult As Variant
+
+vResult = Application.Transpose(Application.Transpose(inptRng)) 'same WorksheetFunction.Transpose(inptRng.Value)
+If inptDelBlank = True Then vResult = fFilterNeq(vResult, "")
+
+fcnvRng2Array = vResult
+
+End Function
+
+
+Function cnvArray2ArrayList(ByVal inptArr As Variant) As Object
+
 Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim vArr As Variant: vArr = inptArr
+Dim v As Variant
+
+For Each v In vArr
+    oArr.add v
+Next v
+
+Set cnvArray2ArrayList = oArr
+
+End Function
+
+
+Function fDuplicateArray(ByVal inptArr As Variant) As Variant
+'out fDuplicate(range("E2:E17").Value2)
+
+Dim vArr As Variant: vArr = inptArr
+Dim oArr As Object
+Dim oResult As Object: Set oResult = CreateObject("System.Collections.ArrayList")
+
+Dim l As Long
+Dim lSft As Long: lSft = 0
+Dim sPrev As String: sPrev = ""
+Dim vResult As Variant
+
+Set oArr = cnvArray2ArrayList(vArr)
+oArr.Sort
+
+If (Not LBound(vArr) = 0) Then ' oArr is 0 base
+    lSft = 1
+End If
+
+For l = LBound(vArr) To UBound(vArr)
+    If sPrev = oArr(l - lSft) Then
+        oResult.add oArr(l - lSft)
+    End If
+        sPrev = oArr(l - lSft)
+Next l
+
+fDuplicateArray = oResult.toarray
+
+End Function
+
+
+Function fUniqueArray(ByVal inptArr As Variant) As Variant
+'out fDuplicate(range("E2:E17").Value2)
+
+Dim vArr As Variant: vArr = inptArr
+Dim oArr As Object
+Dim oResult As Object: Set oResult = CreateObject("System.Collections.ArrayList")
+
+Dim l As Long
+Dim lSft As Long: lSft = 0
+Dim sPrev As String: sPrev = ""
+Dim vResult As Variant
+
+Set oArr = cnvArray2ArrayList(vArr)
+oArr.Sort
+
+If (Not LBound(vArr) = 0) Then ' oArr is 0 base
+    lSft = 1
+End If
+
+For l = LBound(vArr) To UBound(vArr)
+    If Not sPrev = oArr(l - lSft) Then
+        oResult.add oArr(l - lSft)
+    End If
+        sPrev = oArr(l - lSft)
+Next l
+
+fUniqueArray = oResult.toarray
+
+End Function
+
+'
+'Function fDuplicateList(ByVal inptArr As Variant) As Variant
+'
+'Dim vArr As Variant: vArr = inptArr
+'Dim vResult As Variant
+'Dim l As Long
+'
+'For l = LBound(vArr) To UBound(vArr)
+'
+'
+''''''''''''''''''''''''''''''''''''''
+'
+'
+'Next l
+'
+'
+'End Function
+
+'ALLAY FILTER=======================================================
+Function fFilterEq(ByVal inptArray As Variant, inptCond As String) As Variant
+
+    fFilterEq = fFilter(inptArray, "Eq", inptCond)
+
+End Function
+
+Function fFilterNeq(ByVal inptArray As Variant, inptCond As String) As Variant
+
+fFilterNeq = fFilter(inptArray, "Neq", inptCond)
+
+End Function
+
+Function fFilterRgx(ByVal inptArray As Variant, inptCond As String) As Variant
+
+fFilterRgx = fFilter(inptArray, "Rgx", inptCond)
+
+End Function
+
+Private Function fFilter(ByVal inptArray As Variant, ByVal inptOperator As String, inptCond As String) As Variant
+    Dim vArr As Variant: vArr = inptArray
+    Dim lCnt As Long
+    Dim sOpr As String: sOpr = inptOperator
+    Dim sCnd As String: sCnd = inptCond
+    Dim sResult() As Variant: sResult = Array()
+
+    For lCnt = LBound(vArr) To UBound(vArr)
+        Select Case sOpr
+            Case "Eq"
+                If vArr(lCnt) = sCnd Then
+                    sResult = fAddToArray(sResult, vArr(lCnt))
+                End If
+
+             Case "Neq"
+                If Not vArr(lCnt) = sCnd Then
+                    sResult = fAddToArray(sResult, vArr(lCnt))
+                End If
+
+            Case "Rgx"
+                If fRegx2Bool(vArr(lCnt), sCnd) Then
+                    sResult = fAddToArray(sResult, vArr(lCnt))
+                End If
+
+        End Select
+
+    Next lCnt
+
+    fFilter = sResult
+
+End Function
+
+'NUM FORMAT ===================================================================================
+Function fDigitN(inptStr As String, inptDigit As String) As String
+    fDigitN = Application.WorksheetFunction.Rept("0", inptDigit - Len(inptStr)) & inptStr
+End Function
+
+Function fNum2DP(ByVal inptMax As String) As String
+
+    Dim sMax As String: sMax = inptMax
+    Dim sRslt As String
+
+    If sMax = fSplitByDelimiter(sMax, ".", 2) Then
+        sRslt = 0
+    Else
+         sRslt = Len(fSplitByDelimiter(sMax, ".", 2))
+    End If
+
+    fNum2DP = sRslt
+
+End Function
+
+Function fDigit6(inptStr As String) As String
+
+'1 => 000006
+
+Dim sStr As String: sStr = inptStr
+
+fDigit6 = Application.WorksheetFunction.Rept("0", 6 - Len(sStr)) & sStr
+
+End Function
+
+Function fFullDP(inptNum As String, inptDec As String) As String
+'(100,2) -> 100.00
+'(3.5, 2)->3.50
+Dim sNum As String: sNum = inptNum
+Dim sDec As String: sDec = inptDec
+Dim sResult As String
+
+sResult = sNum
+If Not sNum = fSplitByDelimiter(sNum, ".", 1) Then  '(3.5, 2)->3.50
+    sResult = sNum & WorksheetFunction.Rept("0", sDec - fLenOfSplited(sNum, ".", 2))
+
+ElseIf sNum = fSplitByDelimiter(sNum, ".", 1) And sDec > 0 Then '(100,2) -> 100.00
+    sResult = sNum & "." & WorksheetFunction.Rept("0", sDec)
+
+Else
+    Stop
+End If
+
+fFullDP = sResult
+
+End Function
+
+Function fTrimDPZero(inptNum As String) As String
+Dim sNum As String: sNum = inptNum
+Dim sDec As String
+Dim sResult As String
+
+sResult = sNum
+If Not sNum = fSplitByDelimiter(sNum, ".", 1) Then
+    sDec = Replace(fSplitByDelimiter(sNum, ".", 2), "0", "")
+    'T (3.50)->3.5
+    'F (1.00)->1
+    sResult = IIf(Len(sDec) > 0, _
+        fSplitByDelimiter(sNum, ".", 1) & "." & sDec, _
+        fSplitByDelimiter(sNum, ".", 1))
+
+End If
+
+    fTrimDPZero = sResult
+
+End Function
+
+Function fLenOfDecimal(ByVal inptNum As String) As String
+'12 -> 0
+'123.456 -> 3
+
+    Dim sNum As String: sNum = inptNum
+    Dim sRslt As String
+
+    If sNum = fSplitByDelimiter(sNum, ".", 2) Then
+        sRslt = 0
+    Else
+         sRslt = Len(fSplitByDelimiter(sNum, ".", 2))
+    End If
+
+    fLenOfDecimal = sRslt
+
+End Function
+
+
+'STRING FORMAT ===================================================================================
+Function fWidenStr(ByVal inptStr As String) As String
+    fWidenStr = Strings.StrConv(inptStr, vbWide)
+End Function
+
+
+'REGX ========================================================================================
+'return match ...
+Function fReplace(ByVal inptStr As String, ByVal inptSearch As String, ByVal inptReplace As String) As String
+    fReplace = Replace(inptStr, inptSearch, inptReplace)
+End Function
+
+
+Function fReplaceRegx(ByVal inptStr As String, ByVal inptPattern As String, ByVal inptReplace As String, Optional inptGlobal As Boolean = False) As String
+
+'(group) => $n~
+
+Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+    With regx
+        .Global = inptGlobal 'isMultiple
+        .MultiLine = False
+        .ignorecase = False
+        .Pattern = inptPattern
+    End With
+
+If regx.test(inptStr) Then
+    fReplaceRegx = regx.Replace(inptStr, inptReplace)
+End If
+
+End Function
+
+
+Function fRegx(ByVal inptStr As String, ByVal inptPattern As String, Optional inptGlobal As Boolean = False) As Object
+
 Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
 Dim oMatch As Object
 
@@ -138,107 +604,138 @@ Dim oMatch As Object
         .Global = inptGlobal 'isMultiple
         .MultiLine = False
         .ignorecase = False
+        .Pattern = inptPattern
     End With
 
-        .Pattern = inptPattern
 If regx.test(inptStr) Then
     Set oMatch = regx.Execute(inptStr)
 End If
 
-
-eventRegx = ""
-
+Set fRegx = oMatch
 
 End Function
 
-Function multiCndRegx() As Variant
+Function fRegxTest(ByVal inptStr As String, ByVal inptPattern As String) As Boolean
 
+Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+Dim bResult As Boolean
+
+    With regx
+        .Global = True
+        .MultiLine = False
+        .ignorecase = False
+        .Pattern = inptPattern
+    End With
+
+If regx.test(inptStr) Then
+    bResult = True
+Else
+    bResult = False
+End If
+
+fRegxTest = bResult
+
+End Function
+'WS ========================================================================================
+
+Sub CopyWithFormat()
+
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorAccent2
+        .TintAndShade = 0.799981688894314
+        .PatternTintAndShade = 0
+    End With
+
+    Selection.NumberFormatLocal = "@"
+    Selection.Copy
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+End Sub
+
+
+Public Function fIIf(inptExp As Boolean, inptT As String, inptF As String)
+    If inptExp = True Then
+        fIIf = inptT
+    Else
+        fIIf = inptF
+    End If
 End Function
 
 
-Sub createFixFilterXml(inptFrm As IXMLDOMSelection)
-'Set d = New clsXapDebug: _
-'d.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
-'d.outPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER_OUT.xml": _
-'Set fm = d.getForm("Folder01", "Form02"): _
-'d.createFixFilterXml (fm)
 
-Application.ScreenUpdating = False
-
-Dim vWs As Worksheet: Set vWs = Sheets(fKey2Val("PrmSht", "FixFilter"))
-Dim vDoc As DOMDocument60
-Dim vDom As clsXapDomDoc: Set vDom = Base_
-Dim vForm As IXMLDOMSelection: Set vForm = inptFrm
-Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 2
-
-With vWs
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    .Activate
-    .Range("A2").Activate
-
-    Do While ActiveCell.Value <> "" ' row direction
-        
-        Set vFilter = vDom.createRedFilter(0, 0, 0, 0) 'single elem
-        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
-        Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-         "[Property]" & vbLf & _
-        "_TagIn1=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
-        "_Comment1=[string]" & vbLf)
-
-        Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
-
-                    Select Case .Cells(1, lCol).Value
-                        Case "Top"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Left"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Width"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Height"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "_TagIn"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn1", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        
-                    End Select
-    
-                 lCol = lCol + 1
-          Loop ' field Attrs
-    
-        vForm.Item(0).appendChild vFilter
-        lCol = 2
-
-        ActiveCell.Offset(1, 0).Activate 'row direction
-    Loop
-
-    .Range("A1").Activate 'iterate end
-End With
-
-Dim sDoc As String
-
-sdom = "<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""><OBJ clid=""Folder"" Name=""Add"">REPLACE</OBJ></FORMROOT></ROOT>"
-sdom = Replace(sdom, "REPLACE", vForm.Item(0).XML)
-
-Call SaveTextWithUtf8(sdom, OutPath_)
-Set vDoc = Nothing
-
-Application.ScreenUpdating = True
+Private Sub fMerge()
+    With Selection
+    .Merge
+    .HorizontalAlignment = xlCenter
+    .VerticalAlignment = xlCenter
+    End With
 End Sub
 
-Sub printInfo()
-    Debug.Print "------------------------------------------------------------------"
-    Debug.Print " path in: " & InPath_
-    Debug.Print " path out: " & OutPath_
-    Debug.Print "------------------------------------------------------------------"
+
+Private Sub fUMerge()
+    With Selection
+        .UnMerge
+        With .Interior
+            .Pattern = xlNone
+            .TintAndShade = 0
+            .PatternTintAndShade = 0
+        End With
+    End With
 End Sub
 
-Private Sub class_initialize()
-    Dim obj As clsXapDomDoc
-    Set obj = New clsXapDomDoc
-    Set Base_ = obj
 
-'    InPath_ = fKey2Val("PrmSht", "XML_LOAD_PATH")
-
+Private Sub fInsertV()
+    Selection.Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
 End Sub
 
+
+Private Sub fDeleteV()
+    Selection.Delete Shift:=xlToLeft
+End Sub
+
+Private Sub fInsertH()
+    Selection.Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+End Sub
+
+
+Private Sub fDeleteH()
+    Selection.Delete Shift:=xlUp
+End Sub
+
+Private Sub fCalc()
+    ActiveSheet.Calculate
+End Sub
+
+Sub copyPasteAsVal()
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+'Selection.NumberFormatLocal = "@"
+End Sub
+
+Function Clipboard(Optional StoreText As String) As String
+'PURPOSE: Read/Write to Clipboard
+'Source: ExcelHero.com (Daniel Ferry)
+
+Dim x As Variant
+
+'Store as variant for 64-bit VBA support
+  x = StoreText
+
+'Create HTMLFile Object
+  With CreateObject("htmlfile")
+    With .parentWindow.clipboardData
+      Select Case True
+        Case Len(StoreText)
+          'Write to the clipboard
+            .setData "text", x
+        Case Else
+          'Read from the clipboard (no variable passed through)
+            Clipboard = .GetData("text")
+      End Select
+    End With
+  End With
+
+End Function
 
