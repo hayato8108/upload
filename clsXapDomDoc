@@ -1,35 +1,32 @@
 '210603
 
 Private Base_ As DOMDocument60
+Private Path_ As String
 
-Function loadClientFile(ByVal inptPathDoc As String) As DOMDocument60
 
-Dim vPath As String: vPath = inptPathDoc
+Function loadClientFile(inpt As String)
 Dim vDoc As DOMDocument60: Set vDoc = New DOMDocument60
 
 With vDoc
     .async = False
     .validateonparse = False
-'   .preservewhitespace = True
-
-    If Not .Load(vPath) Then Stop ' load error
+'   .preserveWhiteSpace = True
+    If Not .Load(inpt) Then Stop ' load error
 End With
 
-Set loadClientFile = vDoc
-Set vDoc = Nothing
+Set Base_ = vDoc
 
 End Function
 
 
 Function createNewXapDoc() As DOMDocument60
-
 Dim vDoc As DOMDocument60: Set vDoc = New DOMDocument60
  
 With vDoc
     .async = False
     .validateonparse = False
 '   .preservewhitespace = True
-    .LoadXML ("<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""></FORMROOT></ROOT>")
+    .loadXml ("<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""></FORMROOT></ROOT>")
 
 End With
 
@@ -284,7 +281,6 @@ Set createRedFilter = vC
 End Function
 
 
-
 Function createPartsElm(inptClid As String, Optional inptValue As String = "Folder01") As IXMLDOMElement
 
 
@@ -313,11 +309,14 @@ Set vSelection = Nothing
 End Function
 
 
+Function selectNodesEX(inpt As String) As IXMLDOMSelection
+    Set selectNodesEX = Base_.SelectNodes(inpt)
+End Function
+
+
 
 Private Sub class_initialize()
-    Dim obj As Object
-    Set obj = New DOMDocument60
-    Set Base_ = obj
+    Set Base_ = New DOMDocument60
 End Sub
 
 
