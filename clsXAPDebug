@@ -1,17 +1,25 @@
 '210503
 
 Private Base_ As clsXapDomDoc
+Private Dom_ As DOMDocument60
 Private InPath_ As String
 Private OutPath_ As String
-Private Dom_ As DOMDocument60
+Private FixRepoPath_ As String
+
+Sub loadXml()
+Call Base_.loadClientFile(InPath_)
+End Sub
 
 Public Property Let inPath(inpt As String)
 InPath_ = inpt
-Set Dom_ = Base_.loadClientFile(InPath_)
 End Property
 
 Public Property Let outPath(inpt As String)
 OutPath_ = inpt
+End Property
+
+Public Property Let repoPath(inpt As String)
+FixRepoPath_ = inpt
 End Property
 
 Property Get dom() As DOMDocument60
@@ -26,28 +34,29 @@ End Property
 '    folderName_ = inpt
 'End Property
 '
-Function getFolder(inptName As String) As IXMLDOMNodeList 'as Alias
 
-Dim vRslt As IXMLDOMNodeList
-Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
+Function getFolder(inptName As String) As IXMLDOMSelection 'as Alias
+
+Dim vRslt As IXMLDOMSelection
+Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
 Set getFolder = vRslt
 Set vRslt = Nothing
 
 End Function
 
-Function getForm(inptFol As String, inptFrm As String) As IXMLDOMNodeList 'as Alias
+Function getForm(inptFol As String, inptFrm As String) As IXMLDOMSelection 'as Alias
 
-Dim vRslt As IXMLDOMNodeList
-Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
+Dim vRslt As IXMLDOMSelection
+Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
 Set getForm = vRslt
 Set vRslt = Nothing
 
 End Function
 
-Function selectNodesEX(inpt As String) As IXMLDOMNodeList
+Function selectNodesEX(inpt As String) As IXMLDOMSelection
 '[@clid='Folder'][@Name='Folder01']
 
-Dim vRslt As IXMLDOMNodeList
+Dim vRslt As IXMLDOMSelection
 Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ" & inpt)
 Set selectNodesEX = vRslt
 Set vRslt = Nothing
@@ -57,7 +66,6 @@ End Function
 
 Sub downloadXml(inptList As IXMLDOMSelection)
 'Set d = New clsXapDebug: _
-'d.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\MF_TESTER.xml": _
 'Set f = d.getFolder("Menu1"): _
 'd.downloadXml (f)
 Application.ScreenUpdating = False
@@ -148,8 +156,8 @@ End If
 
 eventRegx = ""
 
-
 End Function
+
 
 Function multiCndRegx() As Variant
 
@@ -158,8 +166,6 @@ End Function
 
 Sub createFixFilterXml(inptFrm As IXMLDOMSelection)
 'Set d = New clsXapDebug: _
-'d.inPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER.xml": _
-'d.outPath = "C:\Users\Owner\Documents\workspace\XAP_CNV\TESTER_OUT.xml": _
 'Set fm = d.getForm("Folder01", "Form02"): _
 'd.createFixFilterXml (fm)
 
@@ -225,20 +231,112 @@ Set vDoc = Nothing
 Application.ScreenUpdating = True
 End Sub
 
-Sub printInfo()
+
+Function cnvFixReport() As String ' => Excel Sheet
+'Application.ScreenUpdating = False
+Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
+Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim sLine As String
+Dim vCol As Long: vCol = 2
+Dim vRplAttr As String
+
+With ActiveSheet
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+    .Range("A2").Activate 'start position
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    
+    Open sPath For Input As #1
+        Do Until EOF(1)
+        Line Input #1, sLine
+        
+        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
+            .Range("A1").Interior.Color = RGB(55, 155, 255)
+            ActiveCell.Offset(1, 0).Activate
+            
+            vCol = 2
+            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+                    vRplAttr = .Cells(1, vCol).Value 'each field
+                    ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
+                    
+                    Select Case vRplAttr
+                        Case "Top"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
+                        Case "Left"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
+                        Case "Width"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
+                        Case "Height"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
+                    End Select
+        
+            vCol = vCol + 1
+            Loop ' field Attrs
+        
+        vCol = 2
+        Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+                vRplAttr = .Cells(1, vCol).Value 'each field
+                ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
+                
+                Select Case vRplAttr
+                    Case "Top"
+                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
+                    Case "Left"
+                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
+                    Case "Width"
+                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
+                    Case "Height"
+                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
+                End Select
+    
+        vCol = vCol + 1
+        Loop ' field Attrs
+          
+        ElseIf fSplit(sLine, 1, ":") = "ﾀｸﾞ名" Then
+        
+            vCol = 2
+            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+                    vRplAttr = .Cells(1, vCol).Value 'each field
+    
+                    Select Case vRplAttr
+                        Case "_TagIn"
+                            sLine = fSplit(sLine, 3, ":")
+                            sLine = WorksheetFunction.Substitute(sLine, ".F_CV", "")
+                            sLine = Trim(sLine)
+                            .Cells(ActiveCell.Row, vCol).Value = .Cells(ActiveCell.Row, vCol).Value & IIf(.Cells(ActiveCell.Row, vCol).Value = "", "", ",") & sLine
+                    End Select
+        
+            vCol = vCol + 1
+            Loop ' field Attrs
+              
+        End If
+        
+        Loop 'next line
+    Close #1
+
+End With
+
+'out fUniqueArray(oArr.toarray)
+
+cnvFixReport = sTxt
+
+End Function
+
+
+Function printInfo()
     Debug.Print "------------------------------------------------------------------"
     Debug.Print " path in: " & InPath_
     Debug.Print " path out: " & OutPath_
+    Debug.Print " path fixRepo: " & FixRepoPath_
     Debug.Print "------------------------------------------------------------------"
-End Sub
+End Function
+
 
 Private Sub class_initialize()
-    Dim obj As clsXapDomDoc
-    Set obj = New clsXapDomDoc
-    Set Base_ = obj
-
-'    InPath_ = fKey2Val("PrmSht", "XML_LOAD_PATH")
-
+    Set Base_ = New clsXapDomDoc
+    InPath_ = fKey2Val("PrmSht", "xml_in_path")
+    OutPath_ = fKey2Val("PrmSht", "xml_out_path")
+    FixRepoPath_ = fKey2Val("prmsht", "fix_repo_path")
 End Sub
 
 
