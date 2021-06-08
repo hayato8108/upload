@@ -1,5 +1,12 @@
 'c20201110から更新20210410
 
+
+Sub reload()
+    Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
+        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+End Sub
+
+
 'PRJ PARAM===============================================================
 Sub LoadKeyBind()
 
