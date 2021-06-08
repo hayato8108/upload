@@ -36,43 +36,11 @@ Set vDoc = Nothing
 End Function
 
 
-Function createElementEx(inptElm As String) As IXMLDOMElement
-
-Dim vDoc As DOMDocument60: Set vDoc = Base_
-Dim vElm As IXMLDOMElement
-Dim sElm As String: sElm = inptElm
-
-Set vElm = vDoc.createElement(sElm)
-vElm.Text = "" '=> <sElm></sElm>
-
-Set createElementEx = vElm
-
-End Function
-
-
-Function setAttributesEx(inptElm As IXMLDOMElement, inptAttrName As String, inptAttrVal As String) As IXMLDOMElement
-'Set d = New DomEx
-'Set e = d.createElementEx("OBJ")
-'Set e2 = d.setAttributesEx(e, "new", "newVal")
-
-Dim vDoc As DOMDocument60: Set vDoc = Base_
-Dim vElm As IXMLDOMElement: Set vElm = inptElm
-Dim sAttrName As String: sAttrName = inptAttrName
-Dim sAttrVal As String: sAttrVal = inptAttrVal
-Dim vAtr As IXMLDOMAttribute: Set vAtr = vDoc.createAttribute(sAttrName)
-
-vElm.Attributes.setNamedItem(vAtr).Text = sAttrVal
-
-Set setAttributesEx = vElm
-
-End Function
-
-
-Function createFolderElm(Optional inptValue As String = "") As IXMLDOMElement
+Function createFolderElm(Optional inptValue As String = "Folder01") As IXMLDOMElement
 '<OBJ clid="Folder" Name="Folder01"></OBJ>
 
 Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
-Dim sValue As String: If inptValue = "" Then sValue = "Folder01" Else sValue = inptValue
+Dim sValue As String: sValue = inptValue
 
 Set vElm = setAttributesEx(vElm, "clid", "Folder")
 Set vElm = setAttributesEx(vElm, "Name", sValue)
@@ -82,11 +50,11 @@ Set createFolderElm = vElm
 End Function
 
 
-Function createFormElm(inptH As Long, inptW As Long, Optional inptValue As String = "") As IXMLDOMElement
+Function createFormElm(inptH As Long, inptW As Long, Optional inptValue As String = "Form01") As IXMLDOMElement
 '<OBJ clid="Form" Name="Form01" Height="600" Width="800" VisualTheme="DEFAULT" LocaleLanguage="DEFAULT"></OBJ>
 
 Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
-Dim sValue As String: If inptValue = "" Then sValue = "Form01" Else sValue = inptValue
+Dim sValue As String: sValue = inptValue
 Dim sH As String: sH = CStr(inptH)
 Dim sW As String: sW = CStr(inptW)
 
@@ -122,6 +90,41 @@ Set vElm = setAttributesEx(vElm, "Height", sH)
 Set vElm = setAttributesEx(vElm, "Width", sW)
 
 Set createGroupElm = vElm
+
+End Function
+
+Sub appendChildEx(inpt As IXMLDOMElement)
+    Base_.appendChild inpt
+End Sub
+
+Function createElementEx(inptElm As String) As IXMLDOMElement
+
+Dim vDoc As DOMDocument60: Set vDoc = Base_
+Dim vElm As IXMLDOMElement
+Dim sElm As String: sElm = inptElm
+
+Set vElm = vDoc.createElement(sElm)
+vElm.Text = "" '=> <sElm></sElm>
+
+Set createElementEx = vElm
+
+End Function
+
+
+Function setAttributesEx(inptElm As IXMLDOMElement, inptAttrName As String, inptAttrVal As String) As IXMLDOMElement
+'Set d = New DomEx
+'Set e = d.createElementEx("OBJ")
+'Set e2 = d.setAttributesEx(e, "new", "newVal")
+
+Dim vDoc As DOMDocument60: Set vDoc = Base_
+Dim vElm As IXMLDOMElement: Set vElm = inptElm
+Dim sAttrName As String: sAttrName = inptAttrName
+Dim sAttrVal As String: sAttrVal = inptAttrVal
+Dim vAtr As IXMLDOMAttribute: Set vAtr = vDoc.createAttribute(sAttrName)
+
+vElm.Attributes.setNamedItem(vAtr).Text = sAttrVal
+
+Set setAttributesEx = vElm
 
 End Function
 
@@ -288,7 +291,7 @@ End Function
 
 'Converter ======================================================================================
 
-Function CnvElm2Objs(inptElm As IXMLDOMElement) As IXMLDOMNodeList
+Function cnvElm2Objs(inptElm As IXMLDOMElement) As IXMLDOMNodeList
 'Set vObjs = d.CnvElm2Objs(vFrms, "OBJ")
 
 Dim vElm As IXMLDOMElement: Set vElm = inptElm
@@ -301,7 +304,7 @@ Set vSelection = vElm.getElementsByTagName("OBJ")
 'vSelection(0).Attributes.getNamedItem("clid").Text => Folder
 'vSelection(0).Attributes(0).XML => " clid = "Folder" " <= attribute's .xml
 
-Set CnvElm2Objs = vSelection
+Set cnvElm2Objs = vSelection
 
 Set vElm = Nothing
 Set vSelection = Nothing
@@ -312,7 +315,6 @@ End Function
 Function selectNodesEX(inpt As String) As IXMLDOMSelection
     Set selectNodesEX = Base_.SelectNodes(inpt)
 End Function
-
 
 
 Private Sub class_initialize()
