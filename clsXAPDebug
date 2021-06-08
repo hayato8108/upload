@@ -1,13 +1,12 @@
-'210503
+'210503 clsXapDebug
 
 Private Base_ As clsXapDomDoc
-Private Dom_ As DOMDocument60
 Private InPath_ As String
 Private OutPath_ As String
 Private FixRepoPath_ As String
 
 Sub loadXml()
-Call Base_.loadClientFile(InPath_)
+    Call Base_.loadClientFile(InPath_)
 End Sub
 
 Public Property Let inPath(inpt As String)
@@ -22,10 +21,6 @@ Public Property Let repoPath(inpt As String)
 FixRepoPath_ = inpt
 End Property
 
-Property Get dom() As DOMDocument60
-    Set dom = Dom_
-End Property
-
 'Property Get folderName() As String
 '    folderName = folderName_
 'End Property
@@ -33,41 +28,30 @@ End Property
 'Public Property Let folderName(inpt As String)
 '    folderName_ = inpt
 'End Property
-'
 
 Function getFolder(inptName As String) As IXMLDOMSelection 'as Alias
-
 Dim vRslt As IXMLDOMSelection
 Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
 Set getFolder = vRslt
 Set vRslt = Nothing
-
 End Function
 
-Function getForm(inptFol As String, inptFrm As String) As IXMLDOMSelection 'as Alias
+'Function getForm(inptFol As String, inptFrm As String) As IXMLDOMSelection 'as Alias
+'Dim vRslt As IXMLDOMSelection
+'Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
+'Set getForm = vRslt
+'Set vRslt = Nothing
+'End Function
 
-Dim vRslt As IXMLDOMSelection
-Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
-Set getForm = vRslt
-Set vRslt = Nothing
-
-End Function
-
-Function selectNodesEX(inpt As String) As IXMLDOMSelection
-'[@clid='Folder'][@Name='Folder01']
-
-Dim vRslt As IXMLDOMSelection
-Set vRslt = Dom_.SelectNodes("//FORMROOT/OBJ" & inpt)
-Set selectNodesEX = vRslt
-Set vRslt = Nothing
-
-End Function
-
+'Function selectNodesEX(inpt As String) As IXMLDOMSelection
+''[@clid='Folder'][@Name='Folder01']
+'Dim vRslt As IXMLDOMSelection
+'Set vRslt = Base_.selectNodesEX(inpt)
+'Set selectNodesEX = vRslt
+'Set vRslt = Nothing
+'End Function
 
 Sub downloadXml(inptList As IXMLDOMSelection)
-'Set d = New clsXapDebug: _
-'Set f = d.getFolder("Menu1"): _
-'d.downloadXml (f)
 Application.ScreenUpdating = False
 
 Dim vWs As Worksheet: Set vWs = ActiveSheet
@@ -95,8 +79,8 @@ With vWs
 
             For Each vForms In vFolder.ChildNodes
                 If vForms.Attributes.getNamedItem("clid").Text = "Form" Then sFormName = vForms.Attributes.getNamedItem("Name").Text
-                    For Each vObj In vForms.ChildNodes
-
+                    
+                    For Each vObj In vForms.ChildNodes ' Objs
                     .Range("A1").Interior.Color = RGB(55, 155, 255)
                     ActiveCell.Value = " " & lCnt & " " 'Column A
     
@@ -106,8 +90,7 @@ With vWs
                             ElseIf .Cells(1, lCol).Value = "Form" Then
                                ActiveCell.Offset(0, lCol - 1) = sFormName
                             ElseIf .Cells(1, lCol).Value = "Event" Then
-                                If vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text <> "" Then
-                                   ActiveCell.Offset(0, lCol - 1) = eventRegx(vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text): End If
+                              If Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then ActiveCell.Offset(0, lCol - 1) = eventRegx(vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text)
                             ElseIf Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then 'Attribute
                                 ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
                             End If
@@ -135,48 +118,64 @@ Application.ScreenUpdating = True
 End Sub
 
 
-Function eventRegx(inpt As String) As String
-Stop
-Dim str As String
+Function eventRegx(inptStr As String) As String
+Dim sEventRegx As String: sEventRegx = "AddTag\(""?[,-_A-z0-9]+""?\)"
+Dim sRslt As String: sRslt = ""
+Dim i As Long
 Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
 Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+Dim regxR As Object: Set regxR = CreateObject("vbscript.regexp")
 Dim oMatch As Object
+Dim oMatchR As Object
 
-    With regx
-        .Global = inptGlobal 'isMultiple
-        .MultiLine = False
-        .ignorecase = False
-    End With
+With regx
+    .Global = True 'isMultiple
+    .MultiLine = False
+    .ignorecase = False
+    .Pattern = sEventRegx
+End With
 
-        .Pattern = inptPattern
-If regx.test(inptStr) Then
-    Set oMatch = regx.Execute(inptStr)
+With regxR
+    .Global = True 'isMultiple
+    .MultiLine = False
+    .ignorecase = False
+End With
+    
+If regx.test(inptStr) Then Set oMatch = regx.Execute(inptStr)
+
+If oMatch Is Nothing Then
+    eventRegx = ""
+Else
+    For i = 0 To oMatch.Count - 1
+        sRslt = sRslt & IIf(sRslt = "", "", vbLf) & oMatch.Item(i)
+        
+       ' right hand side
+       Dim s As String
+       s = fReplace(oMatch.Item(i), "AddTag(", "")
+       s = fReplace(s, ")", "")
+       s = fReplace(s, """", "")
+        regxR.Pattern = s & "\s?=.*"
+
+        If regxR.test(inptStr) Then Set oMatchR = regxR.Execute(inptStr)
+        If Not oMatchR Is Nothing Then sRslt = sRslt & "," & oMatchR.Item(0)
+        
+    Next i
 End If
 
-
-eventRegx = ""
-
-End Function
-
-
-Function multiCndRegx() As Variant
+eventRegx = sRslt
 
 End Function
 
 
-Sub createFixFilterXml(inptFrm As IXMLDOMSelection)
-'Set d = New clsXapDebug: _
-'Set fm = d.getForm("Folder01", "Form02"): _
-'d.createFixFilterXml (fm)
-
+Function createFixFilterXml() As IXMLDOMElement
 Application.ScreenUpdating = False
 
-Dim vWs As Worksheet: Set vWs = Sheets(fKey2Val("PrmSht", "FixFilter"))
-Dim vDoc As DOMDocument60
+Dim vWs As Worksheet: Set vWs = ActiveSheet
 Dim vDom As clsXapDomDoc: Set vDom = Base_
-Dim vForm As IXMLDOMSelection: Set vForm = inptFrm
+Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(1000, 1000)
 Dim vFilter As IXMLDOMElement
 Dim lCol As Long: lCol = 2
+Dim s As String
 
 With vWs
     .Range("A1").Interior.Color = RGB(255, 155, 155)
@@ -184,9 +183,9 @@ With vWs
     .Range("A2").Activate
 
     Do While ActiveCell.Value <> "" ' row direction
-        
-        Set vFilter = vDom.createRedFilter(0, 0, 0, 0) 'single elem
-        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
+        Set vFilter = vDom.createRedFilter(0, 0, 0, 0)
+        Set vFilter = vDom.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-21,0,700,0,0,0,0,0")
+        Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#F2F2F2")
         Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
          "[Property]" & vbLf & _
         "_TagIn1=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
@@ -195,6 +194,8 @@ With vWs
         Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
 
                     Select Case .Cells(1, lCol).Value
+                        Case "Note"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                         Case "Top"
                             Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
                         Case "Left"
@@ -203,6 +204,8 @@ With vWs
                             Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
                         Case "Height"
                             Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Case "LibraryClass"
+                            Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil_" & CStr(.Cells(ActiveCell.Row, lCol).Value))
                         Case "_TagIn"
                             Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn1", CStr(.Cells(ActiveCell.Row, lCol).Value))
                         
@@ -210,8 +213,8 @@ With vWs
     
                  lCol = lCol + 1
           Loop ' field Attrs
-    
-        vForm.Item(0).appendChild vFilter
+
+        vForm.appendChild vFilter
         lCol = 2
 
         ActiveCell.Offset(1, 0).Activate 'row direction
@@ -220,107 +223,116 @@ With vWs
     .Range("A1").Activate 'iterate end
 End With
 
-Dim sDoc As String
+Set createFixFilterXml = vForm
 
-sdom = "<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""><OBJ clid=""Folder"" Name=""Add"">REPLACE</OBJ></FORMROOT></ROOT>"
-sdom = Replace(sdom, "REPLACE", vForm.Item(0).XML)
+s = "<?xml version=""1.0""?>" & _
+"<ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
+"<OBJ clid=""Folder"" Name=""Folder01"">" & _
+"PLACEHOLDER" & _
+"</OBJ>" & _
+"</FORMROOT></ROOT>"
 
-Call SaveTextWithUtf8(sdom, OutPath_)
+s = Replace(s, "PLACEHOLDER", vForm.XML)
+Call SaveTextWithUtf8(s, OutPath_)
+
+Set vDom = Nothing
 Set vDoc = Nothing
+Set vForm = Nothing
+Set vFilter = Nothing
 
 Application.ScreenUpdating = True
-End Sub
-
-
-Function cnvFixReport() As String ' => Excel Sheet
-'Application.ScreenUpdating = False
-Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
-Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
-Dim sLine As String
-Dim vCol As Long: vCol = 2
-Dim vRplAttr As String
-
-With ActiveSheet
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-    .Range("A2").Activate 'start position
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    
-    Open sPath For Input As #1
-        Do Until EOF(1)
-        Line Input #1, sLine
-        
-        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
-            .Range("A1").Interior.Color = RGB(55, 155, 255)
-            ActiveCell.Offset(1, 0).Activate
-            
-            vCol = 2
-            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-                    vRplAttr = .Cells(1, vCol).Value 'each field
-                    ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
-                    
-                    Select Case vRplAttr
-                        Case "Top"
-                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
-                        Case "Left"
-                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
-                        Case "Width"
-                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
-                        Case "Height"
-                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
-                    End Select
-        
-            vCol = vCol + 1
-            Loop ' field Attrs
-        
-        vCol = 2
-        Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-                vRplAttr = .Cells(1, vCol).Value 'each field
-                ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
-                
-                Select Case vRplAttr
-                    Case "Top"
-                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
-                    Case "Left"
-                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
-                    Case "Width"
-                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
-                    Case "Height"
-                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
-                End Select
-    
-        vCol = vCol + 1
-        Loop ' field Attrs
-          
-        ElseIf fSplit(sLine, 1, ":") = "ﾀｸﾞ名" Then
-        
-            vCol = 2
-            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-                    vRplAttr = .Cells(1, vCol).Value 'each field
-    
-                    Select Case vRplAttr
-                        Case "_TagIn"
-                            sLine = fSplit(sLine, 3, ":")
-                            sLine = WorksheetFunction.Substitute(sLine, ".F_CV", "")
-                            sLine = Trim(sLine)
-                            .Cells(ActiveCell.Row, vCol).Value = .Cells(ActiveCell.Row, vCol).Value & IIf(.Cells(ActiveCell.Row, vCol).Value = "", "", ",") & sLine
-                    End Select
-        
-            vCol = vCol + 1
-            Loop ' field Attrs
-              
-        End If
-        
-        Loop 'next line
-    Close #1
-
-End With
-
-'out fUniqueArray(oArr.toarray)
-
-cnvFixReport = sTxt
-
 End Function
+
+'
+'Function cnvFixReport() As String ' => Excel Sheet
+''Application.ScreenUpdating = False
+'Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
+'Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+'Dim sLine As String
+'Dim vCol As Long: vCol = 2
+'Dim vRplAttr As String
+'
+'With ActiveSheet
+'    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
+'    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+'    .Range("A2").Activate 'start position
+'    .Range("A1").Interior.Color = RGB(255, 155, 155)
+'
+'    Open sPath For Input As #1
+'        Do Until EOF(1)
+'        Line Input #1, sLine
+'
+'        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
+'            .Range("A1").Interior.Color = RGB(55, 155, 255)
+'            ActiveCell.Offset(1, 0).Activate
+'
+'            vCol = 2
+'            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+'                    vRplAttr = .Cells(1, vCol).Value 'each field
+'                    ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
+'
+'                    Select Case vRplAttr
+'                        Case "Top"
+'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
+'                        Case "Left"
+'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
+'                        Case "Width"
+'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
+'                        Case "Height"
+'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
+'                    End Select
+'
+'            vCol = vCol + 1
+'            Loop ' field Attrs
+'
+'        vCol = 2
+'        Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+'                vRplAttr = .Cells(1, vCol).Value 'each field
+'                ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
+'
+'                Select Case vRplAttr
+'                    Case "Top"
+'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
+'                    Case "Left"
+'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
+'                    Case "Width"
+'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
+'                    Case "Height"
+'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
+'                End Select
+'
+'        vCol = vCol + 1
+'        Loop ' field Attrs
+'
+'        ElseIf fSplit(sLine, 1, ":") = "ﾀｸﾞ名" Then
+'
+'            vCol = 2
+'            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+'                    vRplAttr = .Cells(1, vCol).Value 'each field
+'
+'                    Select Case vRplAttr
+'                        Case "_TagIn"
+'                            sLine = fSplit(sLine, 3, ":")
+'                            sLine = WorksheetFunction.Substitute(sLine, ".F_CV", "")
+'                            sLine = Trim(sLine)
+'                            .Cells(ActiveCell.Row, vCol).Value = .Cells(ActiveCell.Row, vCol).Value & IIf(.Cells(ActiveCell.Row, vCol).Value = "", "", ",") & sLine
+'                    End Select
+'
+'            vCol = vCol + 1
+'            Loop ' field Attrs
+'
+'        End If
+'
+'        Loop 'next line
+'    Close #1
+'
+'End With
+'
+''out fUniqueArray(oArr.toarray)
+'
+'cnvFixReport = sTxt
+'
+'End Function
 
 
 Function printInfo()
@@ -337,6 +349,7 @@ Private Sub class_initialize()
     InPath_ = fKey2Val("PrmSht", "xml_in_path")
     OutPath_ = fKey2Val("PrmSht", "xml_out_path")
     FixRepoPath_ = fKey2Val("prmsht", "fix_repo_path")
+    Call Base_.loadClientFile(InPath_)
 End Sub
 
 
