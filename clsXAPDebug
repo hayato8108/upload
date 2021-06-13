@@ -167,55 +167,104 @@ eventRegx = sRslt
 End Function
 
 
-Function createFixFilterXml() As IXMLDOMElement
+Function createFixFilterXml()
 Application.ScreenUpdating = False
 
 Dim vWs As Worksheet: Set vWs = ActiveSheet
 Dim vDom As clsXapDomDoc: Set vDom = Base_
-Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(1000, 1000)
+Dim lOdfH As Long: lOdfH = 10000
+Dim lOdfW As Long: lOdfW = 10000
+Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
 Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 2
+Dim lCol As Long: lCol = 1
 Dim s As String
+Dim sKey As String
+Dim lMatchCol As Long
 
 With vWs
     .Range("A1").Interior.Color = RGB(255, 155, 155)
     .Activate
-    .Range("A2").Activate
+    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
 
     Do While ActiveCell.Value <> "" ' row direction
+        .Range("A1").Interior.Color = RGB(55, 155, 255)
+        'red filter elem
         Set vFilter = vDom.createRedFilter(0, 0, 0, 0)
-        Set vFilter = vDom.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-21,0,700,0,0,0,0,0")
+        Set vFilter = vDom.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-64,0,700,0,0,0,0,0")
         Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#F2F2F2")
         Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-         "[Property]" & vbLf & _
-        "_TagIn1=[tag_in];NotDefined:#NOTDEF#" & vbLf & _
-        "_Comment1=[string]" & vbLf)
-
+        "[Property]" & vbLf & _
+        "_TagInColor=[string]" & vbLf & _
+        "_TagInVisible=[string]" & vbLf & _
+        "_TagIn=[string]" & vbLf & _
+        "_OpenPic=[string]" & vbLf & _
+        "_Run=[string]" & vbLf & _
+        "_Text=[string]" & vbLf & _
+        "_Mes1=[string]" & vbLf & _
+        "_Mes2=[string]" & vbLf & _
+        "_Comment1=[string]")
+        
         Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
+            'img elem
+            sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey)
+            If lMatchCol <> 0 And .Cells(ActiveCell.Row, lMatchCol).Value = "ODF" Then
+                Set vFilter = vDom.createImgElm(0, 0, lOdfH, lOdfW, "")
+                Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
+                     "[Property]" & vbLf & _
+                     "_TagInColor=[string]" & vbLf & _
+                     "_TagInVisible=[string]" & vbLf & _
+                     "_TagIn=[string]" & vbLf & _
+                     "_OpenPic=[string]" & vbLf & _
+                     "_Run=[string]" & vbLf & _
+                     "_Text=[string]" & vbLf & _
+                     "_Mes1=[string]" & vbLf & _
+                     "_Mes2=[string]" & vbLf & _
+                     "_Comment1=[string]")
+                sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey)
+                Set vFilter = vDom.setAttributesEx(vFilter, "FileNormal", .Cells(ActiveCell.Row, lMatchCol).Value)
+            End If
 
-                    Select Case .Cells(1, lCol).Value
-                        Case "Note"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Top"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Left"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Width"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "Height"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "LibraryClass"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil_" & CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        Case "_TagIn"
-                            Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn1", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        
-                    End Select
+            Select Case .Cells(1, lCol).Value
+                Case "Note"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Top"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Left"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Width"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Height"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "LibraryClass"
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
+                        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
+                    Else
+                        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    End If
+                Case "_TagInColor"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagInColor", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_TagInVisible"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagInVisible", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_TagIn"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_OpenPic"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_OpenPic", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Run"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_Run", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Text"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes1"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_Mes1", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes2"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_Mes2", CStr(.Cells(ActiveCell.Row, lCol).Value))
+            End Select
+            
     
-                 lCol = lCol + 1
+                lCol = lCol + 1
           Loop ' field Attrs
 
         vForm.appendChild vFilter
-        lCol = 2
+        lCol = 1
 
         ActiveCell.Offset(1, 0).Activate 'row direction
     Loop
@@ -226,7 +275,7 @@ End With
 Set createFixFilterXml = vForm
 
 s = "<?xml version=""1.0""?>" & _
-"<ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
+"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
 "<OBJ clid=""Folder"" Name=""Folder01"">" & _
 "PLACEHOLDER" & _
 "</OBJ>" & _
@@ -243,96 +292,206 @@ Set vFilter = Nothing
 Application.ScreenUpdating = True
 End Function
 
-'
-'Function cnvFixReport() As String ' => Excel Sheet
-''Application.ScreenUpdating = False
-'Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
-'Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
-'Dim sLine As String
-'Dim vCol As Long: vCol = 2
-'Dim vRplAttr As String
-'
-'With ActiveSheet
-'    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
-'    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-'    .Range("A2").Activate 'start position
-'    .Range("A1").Interior.Color = RGB(255, 155, 155)
-'
-'    Open sPath For Input As #1
-'        Do Until EOF(1)
-'        Line Input #1, sLine
-'
-'        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
-'            .Range("A1").Interior.Color = RGB(55, 155, 255)
-'            ActiveCell.Offset(1, 0).Activate
-'
-'            vCol = 2
-'            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-'                    vRplAttr = .Cells(1, vCol).Value 'each field
-'                    ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
-'
-'                    Select Case vRplAttr
-'                        Case "Top"
-'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
-'                        Case "Left"
-'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
-'                        Case "Width"
-'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
-'                        Case "Height"
-'                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
-'                    End Select
-'
-'            vCol = vCol + 1
-'            Loop ' field Attrs
-'
-'        vCol = 2
-'        Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-'                vRplAttr = .Cells(1, vCol).Value 'each field
-'                ActiveCell.Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
-'
-'                Select Case vRplAttr
-'                    Case "Top"
-'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 4, " "), ",", "")
-'                    Case "Left"
-'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 5, " "), ",", "")
-'                    Case "Width"
-'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 6, " "), ",", "")
-'                    Case "Height"
-'                        .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
-'                End Select
-'
-'        vCol = vCol + 1
-'        Loop ' field Attrs
-'
-'        ElseIf fSplit(sLine, 1, ":") = "ﾀｸﾞ名" Then
-'
-'            vCol = 2
-'            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-'                    vRplAttr = .Cells(1, vCol).Value 'each field
-'
-'                    Select Case vRplAttr
-'                        Case "_TagIn"
-'                            sLine = fSplit(sLine, 3, ":")
-'                            sLine = WorksheetFunction.Substitute(sLine, ".F_CV", "")
-'                            sLine = Trim(sLine)
-'                            .Cells(ActiveCell.Row, vCol).Value = .Cells(ActiveCell.Row, vCol).Value & IIf(.Cells(ActiveCell.Row, vCol).Value = "", "", ",") & sLine
-'                    End Select
-'
-'            vCol = vCol + 1
-'            Loop ' field Attrs
-'
-'        End If
-'
-'        Loop 'next line
-'    Close #1
-'
-'End With
-'
-''out fUniqueArray(oArr.toarray)
-'
-'cnvFixReport = sTxt
-'
-'End Function
+
+Sub parseGroup(ByRef vParent As Variant, ByVal sCrrFrm As String)
+
+'If vctrl.ChildNodes.Length > 0 And bParseGrp = True Then
+'    Call parseGroup(vctrl, sCrrFrm)
+'End If
+
+Dim vCtrl As Variant
+Dim scrrFrmPlus As String
+scrrFrmPlus = sCrrFrm & "." & "C"
+
+For Each vCtrl In vParent.ChildNodes
+    'col1
+        ActiveCell.Value = lCnt
+        ActiveCell.Offset(0, 1).Value = scrrFrmPlus
+
+        'col rest
+        For l = rPropSt.Column To rPropEnd.Column
+            sCrrProp = Cells(lPropRow, l).Value
+            With Cells(ActiveCell.Row, l)
+                If vCtrl.getAttribute(sCrrProp) <> "" Then
+                    .Value = vCtrl.getAttribute(sCrrProp)
+                Else
+                    .Value = "_"
+                End If
+            End With
+        Next l
+
+        'set tempID
+        Debug.Print vCtrl.setAttribute("tempID", lCnt)
+
+        ActiveCell.Offset(1, 0).Activate
+        lCnt = lCnt + 1
+
+            If vCtrl.ChildNodes.Length > 0 And bParseGrp = True Then
+                Call parseGroup(vCtrl, sCrrFrm)
+            End If
+Next vCtrl
+
+End Sub
+
+
+Sub cnvFixReport()  ' report to Excel Sheet
+Application.ScreenUpdating = False
+Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
+Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim sLine As String
+Dim vCol As Long: vCol = 2
+Dim vRplAttr As String
+Dim s As String
+Dim sKey As String
+Dim l As Long: l = 1 'uniqueIdNum
+Dim lMatchCol As Long 'headerField
+
+
+With ActiveSheet
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+    .Range("A2").Activate 'start position
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+
+    Open sPath For Input As #1
+        Do Until EOF(1)
+        Line Input #1, sLine
+'If sLine = "" Then Stop
+
+        If fSplit(Trim(sLine), 1, ":") = "ﾋﾟｸﾁｬ名" Then
+                sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "ODF"
+                sKey = "Top": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 0
+                sKey = "Left": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 0
+                sKey = "Height": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 10000
+                sKey = "Width": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 10000
+                sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 And Right(Trim(fSplit(sLine, 2, ":")), 3) = "ODF" Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, ":"))
+        End If
+
+        Select Case fSplit(sLine, 11, " ")
+            Case "前景色"
+                s = "前景色"
+            Case "見える/見えない"
+                s = "見える/見えない"
+            Case "境界色"
+                s = "境界色"
+        End Select
+
+        '改行有
+        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
+            .Range("A1").Interior.Color = RGB(55, 155, 255)
+            If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("I").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
+                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("Note")).Value = l
+                l = l + 1
+                ActiveCell.Offset(1, 0).Activate
+            End If
+
+            vCol = 2
+            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+                    vRplAttr = .Cells(1, vCol).Value 'each field
+                    
+                        Select Case vRplAttr
+                            Case "Object"
+                                .Cells(ActiveCell.Row, vCol).Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
+                            Case "Left"
+                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
+                            Case "Top"
+                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 8, " "), ",", "")
+                            Case "Width"
+                               .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "") - fReplace(fSplit(sLine, 7, " "), ",", "")
+                                '.Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "")
+                            Case "Height"
+                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "") - fReplace(fSplit(sLine, 8, " "), ",", "")
+                            '.Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "")
+                        End Select
+                vCol = vCol + 1
+            Loop ' field Attrs
+            vCol = 2
+            
+        '改行無
+        ElseIf Trim(fSplit(sLine, 1, ":")) = "ﾀｸﾞ名" Then
+                If Not fSplit(sLine, 1, "#") = sLine Then
+                        sKey = "_TagIn"
+                        lMatchCol = searchActiveSheetHeaderCol(sKey)
+                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, lMatchCol).Value = Trim(fSplit(sLine, 2, "#"))
+                    ElseIf s = "前景色" Or s = "境界色" Then
+                        sKey = "_TagInColor"
+                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = s & " : " & Trim(sLine)
+                        lMatchCol = searchActiveSheetHeaderCol(sKey)
+                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
+    
+                    ElseIf s = "見える/見えない" Then
+                        sKey = "_TagInVisible"
+                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
+                        lMatchCol = searchActiveSheetHeaderCol(sKey)
+                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
+                    
+                    Else
+                        Stop 'new property found
+                End If
+                
+            ElseIf Trim(fSplit(Trim(sLine), 1, ":")) = "ﾃｷｽﾄ" Then
+                sKey = "_Text"
+                sLine = fSplit(Trim(sLine), 2, ":")
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
+    
+            ElseIf Trim(fSplit(sLine, 1, ":")) = "TOGGLEDIG THISNODE" Or _
+                Trim(fSplit(sLine, 1, ":")) = "SETVAL THISNODE" Or _
+                Trim(fSplit(sLine, 1, ":")) = "OFFSCAN THISNODE" Or _
+                Trim(fSplit(sLine, 1, ":")) = "CLOSEDIG THISNODE" Or _
+                Trim(fSplit(sLine, 1, ":")) = "OPENDIG THISNODE" Then
+                    sKey = "_TagIn"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then
+                        If Not fSplit(sLine, 1, "#") = sLine Then
+                            .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, "#"))
+                        Else
+                            sLine = Trim(fSplit(sLine, 1, ":")) & " : " & Trim(fSplit(fSplit(sLine, 2, ":"), 1, "."))
+                            .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+                        End If
+                    End If
+                
+                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "OPENPIC" Then
+                    sLine = fSplit(Trim(sLine), 2, " ")
+                    sKey = "_OpenPic"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+                
+                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "REPLACEPIC" Then
+                    sLine = fSplit(Trim(sLine), 3, " ")
+                    sKey = "_OpenPic"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+                
+                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "RUNTASK" Then
+                    sLine = WorksheetFunction.Substitute(Trim(sLine), "RUNTASK", " ")
+                    sKey = "_Run"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+                
+                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES1" Then
+                    sLine = fSplit(Trim(sLine), 3, " ")
+                    sKey = "_Mes1"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+                
+                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES2" Then
+                    sLine = fSplit(Trim(sLine), 3, " ")
+                    sKey = "_Mes2"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+
+        End If
+
+        Loop 'next line
+    Close #1
+                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("Note")).Value = l
+End With
+
+'out fUniqueArray(oArr.toarray)
+
+Application.ScreenUpdating = True
+End Sub
 
 
 Function printInfo()
