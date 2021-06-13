@@ -52,6 +52,35 @@ Function fGetPlcUnitData()
 End Function
 
 'Linker===============================================================
+Function fSetVal(inptKey As String, inptVal As String)
+Dim sWbName As String:  sWbName = ThisWorkbook.Name
+Dim sWsname As String:  sWsname = "Params"
+Dim sKey As String: sKey = inptKey
+Dim sMatchRow As String
+Dim sRslt As String
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsname)
+    Dim rRow As Range
+    Set rRow = .Columns(1)
+        If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+
+'        If sMatchRow = "" Then
+'            sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+'        End If
+
+        If sMatchRow <> "" Then
+            .Cells(sMatchRow, 2).Value = inptVal
+        Else
+            Stop
+        End If
+
+End With
+
+End Function
+
+
 Function fKey2Val(inptLabel As String, inptKey As String) As String
 
 Dim sLabel As String: sLabel = inptLabel
@@ -112,7 +141,7 @@ fGetCellData = sRslt
 
 End Function
 
-'on Params sheet
+'row direction serarch, on Params sheet
 Private Function fGetRowData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String) As Variant
 
 Dim sWbName As String: sWbName = inptWb
@@ -142,6 +171,37 @@ With Workbooks(sWbName).Worksheets(sWsname)
 End With
 
 fGetRowData = vRslt
+
+End Function
+
+Function searchActiveSheetHeaderCol(inptKey As String) As Long
+
+Dim sWbName As String:  sWbName = ActiveWorkbook.Name
+Dim sWsname As String:  sWsname = ActiveSheet.Name
+Dim sKey As String: sKey = inptKey
+Dim sMatchRow As String
+Dim sRslt As String
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsname)
+    Dim rRow As Range
+    Set rRow = .Rows(1)
+    
+    If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+
+'        If sMatchRow = "" Then
+'            sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+'        End If
+
+        If sMatchRow <> "" Then
+                sRslt = sMatchRow
+            Else
+                sRslt = ""
+        End If
+End With
+
+searchActiveSheetHeaderCol = CLng(sRslt)
 
 End Function
 
@@ -274,6 +334,8 @@ Dim aStr() As String
 aStr = Split(sStr, sSplt)
 
 If UBound(aStr) = -1 Or UBound(aStr) = 0 Or lCol = 0 Then
+    sRslt = sStr
+ElseIf lCol > UBound(aStr) + 1 Then
     sRslt = sStr
 ElseIf lCol < 0 Then
     sRslt = aStr(UBound(aStr) + 1 + lCol)
@@ -745,4 +807,6 @@ Dim x As Variant
   End With
 
 End Function
+
+
 
