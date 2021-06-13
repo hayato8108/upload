@@ -1,3 +1,7 @@
+
+'Note    Object  Top Left    Width   Height  LibraryClass    _Text   _TagIn  _TagInColor _TagInVisible   _OpenPic    _Run    _Mes1   _Mes2   _Img
+
+
 Sub downloadXml()
 Dim d As clsXapDebug: Set d = New clsXapDebug
 Dim f As IXMLDOMSelection
@@ -30,13 +34,14 @@ End Sub
 
 Sub createFixFilter()
 
-Dim n As IXMLDOMElement
-Dim s As String
-
+Dim c As clsXapDebug
 If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
 
-Set d = New clsXapDebug
-Set n = d.createFixFilterXml()
+Set c = New clsXapDebug
+c.cnvFixReport
+c.createFixFilterXml
 
 End Sub
+
+
 
