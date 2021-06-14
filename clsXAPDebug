@@ -1,515 +1,355 @@
-'210503 clsXapDebug
+'210603
 
-Private Base_ As clsXapDomDoc
-Private InPath_ As String
-Private OutPath_ As String
-Private FixRepoPath_ As String
+Private Base_ As DOMDocument60
+Private Path_ As String
 
-Sub loadXml()
-    Call Base_.loadClientFile(InPath_)
-End Sub
 
-Public Property Let inPath(inpt As String)
-InPath_ = inpt
-End Property
+Function loadClientFile(inpt As String)
+Dim vDoc As DOMDocument60: Set vDoc = New DOMDocument60
 
-Public Property Let outPath(inpt As String)
-OutPath_ = inpt
-End Property
+With vDoc
+    .async = False
+    .validateonparse = False
+'   .preserveWhiteSpace = True
+    If Not .Load(inpt) Then Stop ' load error
+End With
 
-Public Property Let repoPath(inpt As String)
-FixRepoPath_ = inpt
-End Property
+Set Base_ = vDoc
 
-'Property Get folderName() As String
-'    folderName = folderName_
-'End Property
-'
-'Public Property Let folderName(inpt As String)
-'    folderName_ = inpt
-'End Property
-
-Function getFolder(inptName As String) As IXMLDOMSelection 'as Alias
-Dim vRslt As IXMLDOMSelection
-Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
-Set getFolder = vRslt
-Set vRslt = Nothing
 End Function
 
-'Function getForm(inptFol As String, inptFrm As String) As IXMLDOMSelection 'as Alias
-'Dim vRslt As IXMLDOMSelection
-'Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
-'Set getForm = vRslt
-'Set vRslt = Nothing
-'End Function
 
-'Function selectNodesEX(inpt As String) As IXMLDOMSelection
-''[@clid='Folder'][@Name='Folder01']
-'Dim vRslt As IXMLDOMSelection
-'Set vRslt = Base_.selectNodesEX(inpt)
-'Set selectNodesEX = vRslt
-'Set vRslt = Nothing
-'End Function
-
-Sub downloadXml(inptList As IXMLDOMSelection)
-Application.ScreenUpdating = False
-
-Dim vWs As Worksheet: Set vWs = ActiveSheet
-Dim vFolders As IXMLDOMNodeList: Set vFolders = inptList
-Dim vFolder As IXMLDOMElement
-Dim vForms As IXMLDOMElement
-Dim vObj As IXMLDOMElement
-Dim sFolderName As String: sFolderName = ""
-Dim sFormName As String: sFormName = ""
-Dim lCol As Long: lCol = 2
-Dim lCnt As Long: lCnt = 1
-Dim l As Long: l = 0
-
-With vWs
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    .Range("A2").Activate
-
-    If vFolders Is Nothing Then Exit Sub
-    
-    For l = 0 To vFolders.Length - 1
-        Set vFolder = vFolders.Item(l)
-        sFolderName = vFolder.Attributes.getNamedItem("Name").Text
-
-            For Each vForms In vFolder.ChildNodes
-                If vForms.Attributes.getNamedItem("clid").Text = "Form" Then sFormName = vForms.Attributes.getNamedItem("Name").Text
-                    
-                    For Each vObj In vForms.ChildNodes ' Objs
-                    .Range("A1").Interior.Color = RGB(55, 155, 255)
-                    ActiveCell.Value = " " & lCnt & " " 'Column A
-    
-                        Do While .Cells(1, lCol).Value <> "" 'field Attrs
-                            If .Cells(1, lCol).Value = "Folder" Then
-                              ActiveCell.Offset(0, lCol - 1) = sFolderName
-                            ElseIf .Cells(1, lCol).Value = "Form" Then
-                               ActiveCell.Offset(0, lCol - 1) = sFormName
-                            ElseIf .Cells(1, lCol).Value = "Event" Then
-                              If Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then ActiveCell.Offset(0, lCol - 1) = eventRegx(vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text)
-                            ElseIf Not IsNull(vObj.getAttribute(.Cells(1, lCol).Value)) Then 'Attribute
-                                ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
-                            End If
-                            
-                            lCol = lCol + 1
-                        Loop
-    
-                    lCnt = lCnt + 1 'display number
-                    lCol = 2 ' reset
-                    ActiveCell.Offset(1, 0).Activate
-                
-                    Next vObj
-            Next vForms
-        Next l
-
-    .Columns.AutoFit
-    .Range("A1").Activate
+Function createNewXapDoc() As DOMDocument60
+Dim vDoc As DOMDocument60: Set vDoc = New DOMDocument60
+ 
+With vDoc
+    .async = False
+    .validateonparse = False
+'   .preservewhitespace = True
+    .loadXml ("<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""></FORMROOT></ROOT>")
 
 End With
 
+Set createNewXapDoc = vDoc
 Set vDoc = Nothing
-Set vFolder = Nothing
-Set vobh = Nothing
-Application.ScreenUpdating = True
-End Sub
-
-
-Function eventRegx(inptStr As String) As String
-Dim sEventRegx As String: sEventRegx = "AddTag\(""?[,-_A-z0-9]+""?\)"
-Dim sRslt As String: sRslt = ""
-Dim i As Long
-Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
-Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
-Dim regxR As Object: Set regxR = CreateObject("vbscript.regexp")
-Dim oMatch As Object
-Dim oMatchR As Object
-
-With regx
-    .Global = True 'isMultiple
-    .MultiLine = False
-    .ignorecase = False
-    .Pattern = sEventRegx
-End With
-
-With regxR
-    .Global = True 'isMultiple
-    .MultiLine = False
-    .ignorecase = False
-End With
-    
-If regx.test(inptStr) Then Set oMatch = regx.Execute(inptStr)
-
-If oMatch Is Nothing Then
-    eventRegx = ""
-Else
-    For i = 0 To oMatch.Count - 1
-        sRslt = sRslt & IIf(sRslt = "", "", vbLf) & oMatch.Item(i)
-        
-       ' right hand side
-       Dim s As String
-       s = fReplace(oMatch.Item(i), "AddTag(", "")
-       s = fReplace(s, ")", "")
-       s = fReplace(s, """", "")
-        regxR.Pattern = s & "\s?=.*"
-
-        If regxR.test(inptStr) Then Set oMatchR = regxR.Execute(inptStr)
-        If Not oMatchR Is Nothing Then sRslt = sRslt & "," & oMatchR.Item(0)
-        
-    Next i
-End If
-
-eventRegx = sRslt
 
 End Function
 
 
-Function createFixFilterXml()
-Application.ScreenUpdating = False
+Function createFolderElm(Optional inptValue As String = "Folder01") As IXMLDOMElement
+'<OBJ clid="Folder" Name="Folder01"></OBJ>
 
-Dim vWs As Worksheet: Set vWs = ActiveSheet
-Dim vDom As clsXapDomDoc: Set vDom = Base_
-Dim lOdfH As Long: lOdfH = 10000
-Dim lOdfW As Long: lOdfW = 10000
-Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
-Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 1
-Dim s As String
-Dim sKey As String
-Dim lMatchCol As Long
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+Dim sValue As String: sValue = inptValue
 
-With vWs
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    .Activate
-    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
+Set vElm = setAttributesEx(vElm, "clid", "Folder")
+Set vElm = setAttributesEx(vElm, "Name", sValue)
 
-    Do While ActiveCell.Value <> "" ' row direction
-        .Range("A1").Interior.Color = RGB(55, 155, 255)
-        'red filter elem
-        Set vFilter = vDom.createRedFilter(0, 0, 0, 0)
-        Set vFilter = vDom.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-64,0,700,0,0,0,0,0")
-        Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#F2F2F2")
-        Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-        "[Property]" & vbLf & _
-        "_TagInColor=[string]" & vbLf & _
-        "_TagInVisible=[string]" & vbLf & _
-        "_TagIn=[string]" & vbLf & _
-        "_OpenPic=[string]" & vbLf & _
-        "_Run=[string]" & vbLf & _
-        "_Text=[string]" & vbLf & _
-        "_Mes1=[string]" & vbLf & _
-        "_Mes2=[string]" & vbLf & _
-        "_Comment1=[string]")
-        
-        Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
-            'img elem
-            sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey)
-            If lMatchCol <> 0 And .Cells(ActiveCell.Row, lMatchCol).Value = "ODF" Then
-                Set vFilter = vDom.createImgElm(0, 0, lOdfH, lOdfW, "")
-                Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-                     "[Property]" & vbLf & _
-                     "_TagInColor=[string]" & vbLf & _
-                     "_TagInVisible=[string]" & vbLf & _
-                     "_TagIn=[string]" & vbLf & _
-                     "_OpenPic=[string]" & vbLf & _
-                     "_Run=[string]" & vbLf & _
-                     "_Text=[string]" & vbLf & _
-                     "_Mes1=[string]" & vbLf & _
-                     "_Mes2=[string]" & vbLf & _
-                     "_Comment1=[string]")
-                sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey)
-                Set vFilter = vDom.setAttributesEx(vFilter, "FileNormal", .Cells(ActiveCell.Row, lMatchCol).Value)
-            End If
+Set createFolderElm = vElm
 
-            Select Case .Cells(1, lCol).Value
-                Case "Note"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Top"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Left"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Width"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Height"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "LibraryClass"
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
-                        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
-                    Else
-                        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    End If
-                Case "_TagInColor"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagInColor", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_TagInVisible"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagInVisible", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_TagIn"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_OpenPic"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_OpenPic", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Run"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Run", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Text"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Mes1"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Mes1", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Mes2"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Mes2", CStr(.Cells(ActiveCell.Row, lCol).Value))
-            End Select
-            
-    
-                lCol = lCol + 1
-          Loop ' field Attrs
-
-        vForm.appendChild vFilter
-        lCol = 1
-
-        ActiveCell.Offset(1, 0).Activate 'row direction
-    Loop
-
-    .Range("A1").Activate 'iterate end
-End With
-
-Set createFixFilterXml = vForm
-
-s = "<?xml version=""1.0""?>" & _
-"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
-"<OBJ clid=""Folder"" Name=""Folder01"">" & _
-"PLACEHOLDER" & _
-"</OBJ>" & _
-"</FORMROOT></ROOT>"
-
-s = Replace(s, "PLACEHOLDER", vForm.XML)
-Call SaveTextWithUtf8(s, OutPath_)
-
-Set vDom = Nothing
-Set vDoc = Nothing
-Set vForm = Nothing
-Set vFilter = Nothing
-
-Application.ScreenUpdating = True
 End Function
 
 
-Sub parseGroup(ByRef vParent As Variant, ByVal sCrrFrm As String)
+Function createFormElm(inptH As Long, inptW As Long, Optional inptValue As String = "Form01") As IXMLDOMElement
+'<OBJ clid="Form" Name="Form01" Height="600" Width="800" VisualTheme="DEFAULT" LocaleLanguage="DEFAULT"></OBJ>
 
-'If vctrl.ChildNodes.Length > 0 And bParseGrp = True Then
-'    Call parseGroup(vctrl, sCrrFrm)
-'End If
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+Dim sValue As String: sValue = inptValue
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
 
-Dim vCtrl As Variant
-Dim scrrFrmPlus As String
-scrrFrmPlus = sCrrFrm & "." & "C"
+Set vElm = setAttributesEx(vElm, "clid", "Form")
+Set vElm = setAttributesEx(vElm, "Name", sValue)
 
-For Each vCtrl In vParent.ChildNodes
-    'col1
-        ActiveCell.Value = lCnt
-        ActiveCell.Offset(0, 1).Value = scrrFrmPlus
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
 
-        'col rest
-        For l = rPropSt.Column To rPropEnd.Column
-            sCrrProp = Cells(lPropRow, l).Value
-            With Cells(ActiveCell.Row, l)
-                If vCtrl.getAttribute(sCrrProp) <> "" Then
-                    .Value = vCtrl.getAttribute(sCrrProp)
-                Else
-                    .Value = "_"
-                End If
-            End With
-        Next l
+Set vElm = setAttributesEx(vElm, "VisualTheme", "DEFAULT")
+Set vElm = setAttributesEx(vElm, "LocaleLanguage", "DEFAULT")
 
-        'set tempID
-        Debug.Print vCtrl.setAttribute("tempID", lCnt)
+Set createFormElm = vElm
 
-        ActiveCell.Offset(1, 0).Activate
-        lCnt = lCnt + 1
+End Function
 
-            If vCtrl.ChildNodes.Length > 0 And bParseGrp = True Then
-                Call parseGroup(vCtrl, sCrrFrm)
-            End If
-Next vCtrl
 
+Function createGroupElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
+'<OBJ clid="Group" Top="50" Left="70" Height="280" Width="120">
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+
+Set vElm = setAttributesEx(vElm, "clid", "Group")
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set createGroupElm = vElm
+
+End Function
+
+Sub appendChildEx(inpt As IXMLDOMElement)
+    Base_.appendChild inpt
 End Sub
 
+Function createElementEx(inptElm As String) As IXMLDOMElement
 
-Sub cnvFixReport()  ' report to Excel Sheet
-Application.ScreenUpdating = False
-Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
-Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
-Dim sLine As String
-Dim vCol As Long: vCol = 2
-Dim vRplAttr As String
-Dim s As String
-Dim sKey As String
-Dim l As Long: l = 1 'uniqueIdNum
-Dim lMatchCol As Long 'headerField
+Dim vDoc As DOMDocument60: Set vDoc = Base_
+Dim vElm As IXMLDOMElement
+Dim sElm As String: sElm = inptElm
 
+Set vElm = vDoc.createElement(sElm)
+vElm.Text = "" '=> <sElm></sElm>
 
-With ActiveSheet
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-    .Range("A2").Activate 'start position
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
+Set createElementEx = vElm
 
-    Open sPath For Input As #1
-        Do Until EOF(1)
-        Line Input #1, sLine
-'If sLine = "" Then Stop
-
-        If fSplit(Trim(sLine), 1, ":") = "ﾋﾟｸﾁｬ名" Then
-                sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "ODF"
-                sKey = "Top": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 0
-                sKey = "Left": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 0
-                sKey = "Height": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 10000
-                sKey = "Width": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 10000
-                sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 And Right(Trim(fSplit(sLine, 2, ":")), 3) = "ODF" Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, ":"))
-        End If
-
-        Select Case fSplit(sLine, 11, " ")
-            Case "前景色"
-                s = "前景色"
-            Case "見える/見えない"
-                s = "見える/見えない"
-            Case "境界色"
-                s = "境界色"
-        End Select
-
-        '改行有
-        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
-            .Range("A1").Interior.Color = RGB(55, 155, 255)
-            If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("I").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
-                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("Note")).Value = l
-                l = l + 1
-                ActiveCell.Offset(1, 0).Activate
-            End If
-
-            vCol = 2
-            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-                    vRplAttr = .Cells(1, vCol).Value 'each field
-                    
-                        Select Case vRplAttr
-                            Case "Object"
-                                .Cells(ActiveCell.Row, vCol).Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
-                            Case "Left"
-                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
-                            Case "Top"
-                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 8, " "), ",", "")
-                            Case "Width"
-                               .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "") - fReplace(fSplit(sLine, 7, " "), ",", "")
-                                '.Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "")
-                            Case "Height"
-                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "") - fReplace(fSplit(sLine, 8, " "), ",", "")
-                            '.Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "")
-                        End Select
-                vCol = vCol + 1
-            Loop ' field Attrs
-            vCol = 2
-            
-        '改行無
-        ElseIf Trim(fSplit(sLine, 1, ":")) = "ﾀｸﾞ名" Then
-                If Not fSplit(sLine, 1, "#") = sLine Then
-                        sKey = "_TagIn"
-                        lMatchCol = searchActiveSheetHeaderCol(sKey)
-                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, lMatchCol).Value = Trim(fSplit(sLine, 2, "#"))
-                    ElseIf s = "前景色" Or s = "境界色" Then
-                        sKey = "_TagInColor"
-                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = s & " : " & Trim(sLine)
-                        lMatchCol = searchActiveSheetHeaderCol(sKey)
-                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
-    
-                    ElseIf s = "見える/見えない" Then
-                        sKey = "_TagInVisible"
-                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
-                        lMatchCol = searchActiveSheetHeaderCol(sKey)
-                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
-                    
-                    Else
-                        Stop 'new property found
-                End If
-                
-            ElseIf Trim(fSplit(Trim(sLine), 1, ":")) = "ﾃｷｽﾄ" Then
-                sKey = "_Text"
-                sLine = fSplit(Trim(sLine), 2, ":")
-                lMatchCol = searchActiveSheetHeaderCol(sKey)
-                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
-    
-            ElseIf Trim(fSplit(sLine, 1, ":")) = "TOGGLEDIG THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "SETVAL THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "OFFSCAN THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "CLOSEDIG THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "OPENDIG THISNODE" Then
-                    sKey = "_TagIn"
-                    lMatchCol = searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then
-                        If Not fSplit(sLine, 1, "#") = sLine Then
-                            .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, "#"))
-                        Else
-                            sLine = Trim(fSplit(sLine, 1, ":")) & " : " & Trim(fSplit(fSplit(sLine, 2, ":"), 1, "."))
-                            .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                        End If
-                    End If
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "OPENPIC" Then
-                    sLine = fSplit(Trim(sLine), 2, " ")
-                    sKey = "_OpenPic"
-                    lMatchCol = searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "REPLACEPIC" Then
-                    sLine = fSplit(Trim(sLine), 3, " ")
-                    sKey = "_OpenPic"
-                    lMatchCol = searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "RUNTASK" Then
-                    sLine = WorksheetFunction.Substitute(Trim(sLine), "RUNTASK", " ")
-                    sKey = "_Run"
-                    lMatchCol = searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES1" Then
-                    sLine = fSplit(Trim(sLine), 3, " ")
-                    sKey = "_Mes1"
-                    lMatchCol = searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES2" Then
-                    sLine = fSplit(Trim(sLine), 3, " ")
-                    sKey = "_Mes2"
-                    lMatchCol = searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-
-        End If
-
-        Loop 'next line
-    Close #1
-                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("Note")).Value = l
-End With
-
-'out fUniqueArray(oArr.toarray)
-
-Application.ScreenUpdating = True
-End Sub
+End Function
 
 
-Function printInfo()
-    Debug.Print "------------------------------------------------------------------"
-    Debug.Print " path in: " & InPath_
-    Debug.Print " path out: " & OutPath_
-    Debug.Print " path fixRepo: " & FixRepoPath_
-    Debug.Print "------------------------------------------------------------------"
+Function setAttributesEx(inptElm As IXMLDOMElement, inptAttrName As String, inptAttrVal As String) As IXMLDOMElement
+'Set d = New DomEx
+'Set e = d.createElementEx("OBJ")
+'Set e2 = d.setAttributesEx(e, "new", "newVal")
+
+Dim vDoc As DOMDocument60: Set vDoc = Base_
+Dim vElm As IXMLDOMElement: Set vElm = inptElm
+Dim sAttrName As String: sAttrName = inptAttrName
+Dim sAttrVal As String: sAttrVal = inptAttrVal
+Dim vAtr As IXMLDOMAttribute: Set vAtr = vDoc.createAttribute(sAttrName)
+
+vElm.Attributes.setNamedItem(vAtr).Text = sAttrVal
+
+Set setAttributesEx = vElm
+
+End Function
+
+
+Function createEllipseElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
+'<OBJ clid="Ellipse" RotateX="45" RotateY="45" Top="0" Left="0" Height="90" Width="90" LibraryClass="_Circle">
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+Dim sRX As String
+Dim sRY As String
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+
+Set vElm = setAttributesEx(vElm, "clid", "Ellipse")
+
+sRX = sL + (sW / 2)
+sRY = sT + (sH / 2)
+
+Set vElm = setAttributesEx(vElm, "RotateX", sRX)
+Set vElm = setAttributesEx(vElm, "RotateY", sRY)
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set vElm = setAttributesEx(vElm, "LibraryClass", "p_Circle")
+
+
+Set createEllipseElm = vElm
+
+End Function
+
+
+Function createLineElm(inptY1 As Long, inptX2 As Long, inptY2 As Long, inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
+'<OBJ clid="Line" Y1="170" X2="110" Y2="170" Top="170" Left="0" Height="1" Width="110" LibraryClass="_Line">
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+
+Dim sY1 As String: sY1 = CStr(inptY1)
+Dim sY2 As String: sY2 = CStr(inptY2)
+Dim sX2 As String: sX2 = CStr(inptX2)
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+
+Set vElm = setAttributesEx(vElm, "clid", "Line")
+
+Set vElm = setAttributesEx(vElm, "Y1", sY1)
+Set vElm = setAttributesEx(vElm, "X2", sX2)
+Set vElm = setAttributesEx(vElm, "Y2", sY2)
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set vElm = setAttributesEx(vElm, "LibraryClass", "p_Line")
+
+
+Set createLineElm = vElm
+
+End Function
+
+
+Function createLabelElm(inptTxt As String, inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
+'<OBJ clid="Label" Text="LabelText" Top="250" Left="0" Height="30" Width="120" LibraryClass="_Label">
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+Dim sTxt As String: sTxt = inptTxt
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+
+Set vElm = setAttributesEx(vElm, "clid", "Label")
+
+Set vElm = setAttributesEx(vElm, "Text", sTxt)
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set vElm = setAttributesEx(vElm, "LibraryClass", "p_Label")
+
+
+Set createLabelElm = vElm
+
+End Function
+
+
+Function createRectElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
+'<OBJ clid="Rectangle" RotateX="325" RotateY="190" Top="150" Left="270" Height="80" Width="110">
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+
+Dim sRX As String
+Dim sRY As String
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+
+sRX = sL + (sW / 2)
+sRY = sT + (sH / 2)
+
+Set vElm = setAttributesEx(vElm, "clid", "Rectangle")
+
+Set vElm = setAttributesEx(vElm, "RotateX", sRX)
+Set vElm = setAttributesEx(vElm, "RotateY", sRY)
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set vElm = setAttributesEx(vElm, "LibraryClass", "p_Rect")
+
+
+Set createRectElm = vElm
+
+End Function
+
+
+Function createRedFilter(inptT As String, inptL As String, inptH As String, inptW As String) As IXMLDOMElement
+'<OBJ clid="Rectangle" Border="F" FillColor="#800000" Alpha="0.7" RotateX="630" RotateY="390" Top="290" Left="540" Height="190" Width="180">
+Dim vC As IXMLDOMElement: Set vC = createElementEx("OBJ")
+
+Dim sT As Long
+Dim sL As Long
+Dim sH As Long
+Dim sW As Long
+
+sT = CLng(inptT)
+sL = CLng(inptL)
+sH = CLng(inptH)
+sW = CLng(inptW)
+
+Set vC = createRectElm(sT, sL, sH, sW)
+
+Set vC = setAttributesEx(vC, "Border", "F")
+Set vC = setAttributesEx(vC, "FillColor", "#800000")
+Set vC = setAttributesEx(vC, "Alpha", "0.4")
+
+Set vC = setAttributesEx(vC, "LibraryClass", "p_FilterR")
+
+Set createRedFilter = vC
+
+End Function
+
+
+Function createPartsElm(inptClid As String, Optional inptValue As String = "Folder01") As IXMLDOMElement
+
+
+End Function
+
+Function createImgElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long, inptImg As String) As IXMLDOMElement
+'"<OBJ clid=""Image"" FileNormal=""C:\Users\Owner\Documents\workspace\FIXREPORT\溶解画面.jpg"" RotateX=""0"" RotateY=""0"" Top=""28"" Left=""0"" Height=""10537"" Width=""13127"">"
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+Dim sI As String: sI = CStr(inptImg)
+
+Set vElm = setAttributesEx(vElm, "clid", "Image")
+Set vElm = setAttributesEx(vElm, "FileNormal", sI)
+
+Set vElm = setAttributesEx(vElm, "RotateX", 0)
+Set vElm = setAttributesEx(vElm, "RotateY", 0)
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set vElm = setAttributesEx(vElm, "LibraryClass", "p_Img")
+
+
+Set createImgElm = vElm
+
+End Function
+
+
+'Converter ======================================================================================
+
+Function cnvElm2Objs(inptElm As IXMLDOMElement) As IXMLDOMNodeList
+'Set vObjs = d.CnvElm2Objs(vFrms, "OBJ")
+
+Dim vElm As IXMLDOMElement: Set vElm = inptElm
+Dim vSelection As IXMLDOMNodeList
+Set vSelection = vElm.getElementsByTagName("OBJ")
+
+'usage
+'vSelection(n).BaseName => OBJ
+'vSelection(n).text => ""
+'vSelection(0).Attributes.getNamedItem("clid").Text => Folder
+'vSelection(0).Attributes(0).XML => " clid = "Folder" " <= attribute's .xml
+
+Set cnvElm2Objs = vSelection
+
+Set vElm = Nothing
+Set vSelection = Nothing
+
+End Function
+
+
+Function selectNodesEX(inpt As String) As IXMLDOMSelection
+    Set selectNodesEX = Base_.SelectNodes(inpt)
 End Function
 
 
 Private Sub class_initialize()
-    Set Base_ = New clsXapDomDoc
-    InPath_ = fKey2Val("PrmSht", "xml_in_path")
-    OutPath_ = fKey2Val("PrmSht", "xml_out_path")
-    FixRepoPath_ = fKey2Val("prmsht", "fix_repo_path")
-    Call Base_.loadClientFile(InPath_)
+    Set Base_ = New DOMDocument60
 End Sub
-
 
 
