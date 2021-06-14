@@ -1,15 +1,77 @@
 
 'Note    Object  Top Left    Width   Height  LibraryClass    _Text   _TagIn  _TagInColor _TagInVisible   _OpenPic    _Run    _Mes1   _Mes2   _Img
 
+'mod_pc config, after delete
+Function pA2fA(inpt As String) As String
+    pA2fA = fKey2Val("index", inpt)
+End Function
 
+Function io2plc03(inpt As String) As String
+    io2plc03 = WorksheetFunction.Substitute(inpt, "X", "PLC03.X.X00")
+End Function
+
+Function io2plc00(inpt As String) As String
+    io2plc00 = WorksheetFunction.Substitute(inpt, "X", "PLC00.X.X00")
+End Function
+
+
+Sub dde_0() 'eg X001
+Dim v As Variant
+Dim sAdrs As String
+Dim rRng As Range
+    For Each v In Selection
+        If Not v.Value = "" Then
+'            sAdrs = io2pc00(v.Value)
+            sAdrs = v.Value
+            Set rRng = ActiveSheet.Range("XFD1")
+            Call DdeOut(sAdrs, rRng)
+        End If
+    Next v
+DDETerminate (chan)
+End Sub
+
+Sub dde_1() 'eg X001
+Dim v As Variant
+Dim sAdrs As String
+Dim rRng As Range
+    For Each v In Selection
+        If Not v.Value = "" Then
+'            sAdrs = io2pc00(v.Value)
+            sAdrs = v.Value
+            Set rRng = ActiveSheet.Range("XFD2")
+            Call DdeOut(sAdrs, rRng)
+        End If
+    Next v
+DDETerminate (chan)
+End Sub
+
+
+Sub dde_B() 'eg X001
+Dim v As Variant
+Dim sAdrs As String
+Dim rRng As Range
+    For Each v In Selection
+        If Not v.Value = "" Then
+'            sAdrs = io2pc00(v.Value)
+            sAdrs = v.Value
+            Set rRng = ActiveSheet.Cells(v.Row, Columns(Range("XFD3").Value).Column)
+            Call DdeOut(sAdrs, rRng)
+        End If
+    Next v
+DDETerminate (chan)
+End Sub
+
+
+
+'mod_ws
 Sub downloadXml()
 Dim d As clsXapDebug: Set d = New clsXapDebug
 Dim f As IXMLDOMSelection
 Dim sFol As String: sFol = ""
-Dim sFrm As String: sFrm = ""
+'Dim sFrm As String: sFrm = ""
 Dim sCid As String
-sFol = "Menu1"
-'sFrm = "MFG0001"
+sFol = "_Graphic"
+'sFrm = "DFR0001"
 
 Set f = d.getFolder(sFol)
 
