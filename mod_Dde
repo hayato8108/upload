@@ -1,0 +1,55 @@
+'Sub SetKeyDde()
+    'Call Application.OnKey("^%+{right}", "DdeIn")
+    'Call Application.OnKey("^%+{left}", "DdeOut")
+'End Sub
+
+Sub DdeIn()
+
+    Dim chan As Variant
+    Dim result As Variant
+    Dim sAdrs As String
+    Dim sTopic As String
+    Dim sTag As String
+    Dim sAlias As String
+    Dim l As Long
+    Dim v As Variant
+    
+    For Each v In Selection
+    
+        If Not v.Value = "" Then
+            sAlias = v.Value
+            sAdrs = GetFapPlc6notDBFol1(sAlias)
+            sTopic = fSplitedWithSplt(sAdrs, ".", 1) & "." & fSplitedWithSplt(sAdrs, ".", 2)
+            sTag = fSplitedWithSplt(sAdrs, ".", 3)
+            
+            chan = DDEInitiate("FASERVER", sTopic)
+            result = DDERequest(chan, sTag)
+            
+            If Not TypeName(result) = "Error" Then
+                v.Offset(0, 1).Value = result(1)
+            End If
+        End If
+    Next v
+
+    DDETerminate (chan)
+    
+End Sub
+
+
+
+Sub DdeOut(inptFullAdr As String, inptRng As Range) 'FullAdr => PLC03.X.X0001
+Dim sTopic As String
+Dim sTag As String
+Dim chan As Variant
+Dim sAdrs As String: sAdrs = inptFullAdr
+
+sTopic = fSplit(sAdrs, 1, ".") & "." & fSplit(sAdrs, 2, ".")
+sTag = "#" & fSplit(sAdrs, 3, ".")
+
+chan = DDEInitiate("FASERVER", sTopic) 'online ?
+DDEPoke chan, sTag, Cells(inptRng.Row, inptRng.Column)
+
+DDETerminate (chan)
+
+End Sub
+
