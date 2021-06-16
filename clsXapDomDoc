@@ -111,7 +111,7 @@ Set createElementEx = vElm
 End Function
 
 
-Function setAttributesEx(inptElm As IXMLDOMElement, inptAttrName As String, inptAttrVal As String) As IXMLDOMElement
+Function setAttributesEx(ByVal inptElm As IXMLDOMElement, inptAttrName As String, inptAttrVal As String) As IXMLDOMElement
 'Set d = New DomEx
 'Set e = d.createElementEx("OBJ")
 'Set e2 = d.setAttributesEx(e, "new", "newVal")
@@ -127,6 +127,24 @@ vElm.Attributes.setNamedItem(vAtr).Text = sAttrVal
 Set setAttributesEx = vElm
 
 End Function
+
+
+Function getAttributesEx(ByVal inptElm As IXMLDOMElement, inptAttr As String) As String
+'Set d = New clsXapDomDoc
+'Set e = d.createElementEx("OBJ")
+'Set e = d.setAttributesEx(e, "new", "val")
+'Print d.getAttributesEx(e, "new")
+
+If inptAttr = "" Then
+    getAttributesEx = ""
+ElseIf Not IsNull(inptElm.getAttribute(inptAttr)) Then
+    getAttributesEx = inptElm.getAttribute(inptAttr)
+Else
+    getAttributesEx = ""
+End If
+
+End Function
+
 
 
 Function createEllipseElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
@@ -275,7 +293,7 @@ Set vC = createRectElm(sT, sL, sH, sW)
 
 Set vC = setAttributesEx(vC, "Border", "F")
 Set vC = setAttributesEx(vC, "FillColor", "#800000")
-Set vC = setAttributesEx(vC, "Alpha", "0.7")
+Set vC = setAttributesEx(vC, "Alpha", "0.6")
 
 Set vC = setAttributesEx(vC, "LibraryClass", "p_FilterR")
 
@@ -288,6 +306,37 @@ Function createPartsElm(inptClid As String, Optional inptValue As String = "Fold
 
 
 End Function
+
+Function createImgElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long, inptImg As String) As IXMLDOMElement
+'"<OBJ clid=""Image"" FileNormal=""C:\Users\Owner\Documents\workspace\FIXREPORT\溶解画面.jpg"" RotateX=""0"" RotateY=""0"" Top=""28"" Left=""0"" Height=""10537"" Width=""13127"">"
+
+Dim vElm As IXMLDOMElement: Set vElm = createElementEx("OBJ")
+
+Dim sT As String: sT = CStr(inptT)
+Dim sL As String: sL = CStr(inptL)
+Dim sH As String: sH = CStr(inptH)
+Dim sW As String: sW = CStr(inptW)
+Dim sI As String: sI = CStr(inptImg)
+
+Set vElm = setAttributesEx(vElm, "clid", "Image")
+Set vElm = setAttributesEx(vElm, "FileNormal", sI)
+
+Set vElm = setAttributesEx(vElm, "RotateX", 0)
+Set vElm = setAttributesEx(vElm, "RotateY", 0)
+
+Set vElm = setAttributesEx(vElm, "Top", sT)
+Set vElm = setAttributesEx(vElm, "Left", sL)
+
+Set vElm = setAttributesEx(vElm, "Height", sH)
+Set vElm = setAttributesEx(vElm, "Width", sW)
+
+Set vElm = setAttributesEx(vElm, "LibraryClass", "p_Img")
+
+
+Set createImgElm = vElm
+
+End Function
+
 
 'Converter ======================================================================================
 
