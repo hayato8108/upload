@@ -95,7 +95,11 @@ With vWs
                                 ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
                             End If
                             
-                            lCol = lCol + 1
+                            if
+                                lCol = lCol + 1
+                                
+                            End If
+                        
                         Loop
     
                     lCnt = lCnt + 1 'display number
@@ -166,6 +170,78 @@ eventRegx = sRslt
 
 End Function
 
+Function setBaseRect() As IXMLDOMElement
+Dim vFilter As IXMLDOMElement
+'red filter elem
+Set vFilter = Base_.createRedFilter(0, 0, 0, 0)
+
+Set vFilter = Base_.setAttributesEx(vFilter, "Customize", _
+"[Property]" & vbLf & _
+"_Index=[string]" & vbLf & _
+"_TagInColor=[string]" & vbLf & _
+"_TagInVisible=[string]" & vbLf & _
+"_TagIn=[string]" & vbLf & _
+"_OpenPic=[string]" & vbLf & _
+"_Run=[string]" & vbLf & _
+"_Text=[string]" & vbLf & _
+"_Mes1=[string]" & vbLf & _
+"_Mes2=[string]" & vbLf & _
+"_Hi=[string]" & vbLf & _
+"_Lo=[string]" & vbLf & _
+"_Comment1=[string]")
+
+Set setBaseRect = vFilter
+
+End Function
+
+
+Function setFilterBorder(inptElm As IXMLDOMElement) As IXMLDOMElement
+Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
+
+Set vFilter = Base_.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-64,0,700,0,0,0,0,0")
+Set vFilter = Base_.setAttributesEx(vFilter, "TextColor", "#800000")
+Set vFilter = Base_.setAttributesEx(vFilter, "FillColor", "#FFFFFF")
+Set vFilter = Base_.setAttributesEx(vFilter, "Border", "True")
+Set vFilter = Base_.setAttributesEx(vFilter, "BorderColor", "#800000")
+Set vFilter = Base_.setAttributesEx(vFilter, "BorderWidth", "20")
+
+Set setFilterBorder = vFilter
+
+End Function
+
+
+Function setFilterText(inptElm As IXMLDOMElement, inptValue As String) As IXMLDOMElement
+Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
+Dim sValue As String: sValue = inptValue
+
+If Not IsNull(vFilter.getAttribute("Text")) And sValue <> "" Then
+    Set vFilter = Base_.setAttributesEx(vFilter, "Text", vDom.getAttributesEx(vFilter, "Text") & ", " & sValue)
+ElseIf sValue <> "" Then
+    Set vFilter = Base_.setAttributesEx(vFilter, "Text", sValue)
+Else
+
+End If
+
+Set setFilterText = vFilter
+
+End Function
+
+Function setFilterValue(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
+Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
+Dim sValue As String: sValue = inptValue
+
+If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
+    Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, vDom.getAttributesEx(vFilter, inptAtr) & ", " & sValue)
+ElseIf sValue <> "" Then
+    Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, sValue)
+Else
+
+End If
+
+Set setFilterValue = vFilter
+
+End Function
+
 
 Function createFixFilterXml()
 Application.ScreenUpdating = False
@@ -180,7 +256,7 @@ Dim lCol As Long: lCol = 1
 Dim s As String
 Dim sKey As String
 Dim lMatchCol As Long
-
+           
 With vWs
     .Range("A1").Interior.Color = RGB(255, 155, 155)
     .Activate
@@ -188,45 +264,33 @@ With vWs
 
     Do While ActiveCell.Value <> "" ' row direction
         .Range("A1").Interior.Color = RGB(55, 155, 255)
-        'red filter elem
-        Set vFilter = vDom.createRedFilter(0, 0, 0, 0)
-        Set vFilter = vDom.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-64,0,700,0,0,0,0,0")
-        Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#F2F2F2")
-        Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-        "[Property]" & vbLf & _
-        "_TagInColor=[string]" & vbLf & _
-        "_TagInVisible=[string]" & vbLf & _
-        "_TagIn=[string]" & vbLf & _
-        "_OpenPic=[string]" & vbLf & _
-        "_Run=[string]" & vbLf & _
-        "_Text=[string]" & vbLf & _
-        "_Mes1=[string]" & vbLf & _
-        "_Mes2=[string]" & vbLf & _
-        "_Comment1=[string]")
-        
+        Set vFilter = setBaseRect
+
         Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
-            'img elem
-            sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey)
-            If lMatchCol <> 0 And .Cells(ActiveCell.Row, lMatchCol).Value = "ODF" Then
-                Set vFilter = vDom.createImgElm(0, 0, lOdfH, lOdfW, "")
-                Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-                     "[Property]" & vbLf & _
-                     "_TagInColor=[string]" & vbLf & _
-                     "_TagInVisible=[string]" & vbLf & _
-                     "_TagIn=[string]" & vbLf & _
-                     "_OpenPic=[string]" & vbLf & _
-                     "_Run=[string]" & vbLf & _
-                     "_Text=[string]" & vbLf & _
-                     "_Mes1=[string]" & vbLf & _
-                     "_Mes2=[string]" & vbLf & _
-                     "_Comment1=[string]")
-                sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey)
-                Set vFilter = vDom.setAttributesEx(vFilter, "FileNormal", .Cells(ActiveCell.Row, lMatchCol).Value)
-            End If
+'                        '''''''''''''''''''''''''''''''''''img elem
+'                        sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey)
+'                        If lMatchCol <> 0 And .Cells(ActiveCell.Row, lMatchCol).Value = "ODF" Then
+'                            Set vFilter = vDom.createImgElm(0, 0, lOdfH, lOdfW, "")
+'                            Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
+'                                 "[Property]" & vbLf & _
+'                                 "_Index=[string]" & vbLf & _
+'                                 "_TagInColor=[string]" & vbLf & _
+'                                 "_TagInVisible=[string]" & vbLf & _
+'                                 "_TagIn=[string]" & vbLf & _
+'                                 "_OpenPic=[string]" & vbLf & _
+'                                 "_Run=[string]" & vbLf & _
+'                                 "_Text=[string]" & vbLf & _
+'                                 "_Mes1=[string]" & vbLf & _
+'                                 "_Mes2=[string]" & vbLf & _
+'                                 "_Comment1=[string]")
+'                            sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey)
+'                            Set vFilter = vDom.setAttributesEx(vFilter, "FileNormal", .Cells(ActiveCell.Row, lMatchCol).Value)
+'                        End If
+
 
             Select Case .Cells(1, lCol).Value
-                Case "Note"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Index"
+                    Set vFilter = vDom.setAttributesEx(vFilter, "_Index", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Top"
                     Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Left"
@@ -243,20 +307,34 @@ With vWs
                     End If
                 Case "_TagInColor"
                     Set vFilter = vDom.setAttributesEx(vFilter, "_TagInColor", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    
                 Case "_TagInVisible"
                     Set vFilter = vDom.setAttributesEx(vFilter, "_TagInVisible", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    
                 Case "_TagIn"
                     Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    
                 Case "_OpenPic"
                     Set vFilter = vDom.setAttributesEx(vFilter, "_OpenPic", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Run"
                     Set vFilter = vDom.setAttributesEx(vFilter, "_Run", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Text"
                     Set vFilter = vDom.setAttributesEx(vFilter, "_Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Mes1"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Mes1", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Mes2"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Mes2", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Hi"
+                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Lo"
+                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
             End Select
             
     
@@ -379,8 +457,8 @@ With ActiveSheet
         '改行有
         If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
             .Range("A1").Interior.Color = RGB(55, 155, 255)
-            If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("I").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
-                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("Note")).Value = l
+            If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("H").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
+                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("_Index")).Value = l
                 l = l + 1
                 ActiveCell.Offset(1, 0).Activate
             End If
@@ -406,7 +484,7 @@ With ActiveSheet
                 vCol = vCol + 1
             Loop ' field Attrs
             vCol = 2
-            
+
         '改行無
         ElseIf Trim(fSplit(sLine, 1, ":")) = "ﾀｸﾞ名" Then
                 If Not fSplit(sLine, 1, "#") = sLine Then
@@ -415,7 +493,7 @@ With ActiveSheet
                         If lMatchCol <> 0 Then .Cells(ActiveCell.Row, lMatchCol).Value = Trim(fSplit(sLine, 2, "#"))
                     ElseIf s = "前景色" Or s = "境界色" Then
                         sKey = "_TagInColor"
-                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = s & " : " & Trim(sLine)
+                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
                         lMatchCol = searchActiveSheetHeaderCol(sKey)
                         If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
     
@@ -481,11 +559,24 @@ With ActiveSheet
                     lMatchCol = searchActiveSheetHeaderCol(sKey)
                     If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
 
+                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#IN_MAX" Then
+                    sLine = fSplit(fReplace(sLine, " ", ""), 2, "=")
+                    sKey = "_Hi"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+
+                ElseIf Trim(fSplit(Trim(sLine), 1, "=")) = "#IN_MIN" Then
+                    sLine = fSplit(fReplace(sLine, " ", ""), 2, "=")
+                    sKey = "_Lo"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+
+
         End If
 
         Loop 'next line
     Close #1
-                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("Note")).Value = l
+                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("_Index")).Value = l
 End With
 
 'out fUniqueArray(oArr.toarray)
