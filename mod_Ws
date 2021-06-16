@@ -1,5 +1,5 @@
 
-'Note    Object  Top Left    Width   Height  LibraryClass    _Text   _TagIn  _TagInColor _TagInVisible   _OpenPic    _Run    _Mes1   _Mes2   _Img
+'_Index  Object  Top Left    Width   Height  LibraryClass    _Text   _TagIn  _TagInColor _TagInVisible   _OpenPic    _Run    _Mes1   _Mes2   _Img    _Hi _Lo
 
 'mod_pc config, after delete
 Function pA2fA(inpt As String) As String
@@ -70,23 +70,22 @@ Dim f As IXMLDOMSelection
 Dim sFol As String: sFol = ""
 'Dim sFrm As String: sFrm = ""
 Dim sCid As String
-sFol = "_Graphic"
+Dim l As Long
+'sFol = "_Graphic"
 'sFrm = "DFR0001"
+sFol = "Folder01"
 
 Set f = d.getFolder(sFol)
 
-Call d.downloadXml(f)
-
-'Dim l As Long
-'For l = 0 To f.Length - 1
-'Debug.Print f.Item(l).XML
-'Next l
-
-'uf1.out f.Context.XML
-
-'Debug.Print f.Length
-
-'uf1.out f.Item(0).XML
+'Call d.downloadXml(f)
+Cells(ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row, 1).Activate
+Do Until ActiveCell.Row = 1
+    If Cells(ActiveCell.Row, Columns("H").Column) = "" Then ''''''''''condition
+        ActiveCell.EntireRow.Select
+        Selection.Delete Shift:=xlUp
+    End If
+ActiveCell.Offset(-1, 0).Activate
+Loop
 
 Set d = Nothing
 Set f = Nothing
