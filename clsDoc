@@ -37,7 +37,7 @@ Dim ws As Worksheet ' iterate
 With Workbooks.add
     For Each ws In wbCrr.Worksheets
         If ws.Tab.ColorIndex = -4142 Then
-            ws.Copy after:=.Sheets(.Sheets.Count)
+            ws.Copy After:=.Sheets(.Sheets.Count)
             .Sheets(.Sheets.Count).Cells.Activate
             Selection.Copy
             Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
@@ -106,7 +106,7 @@ ActiveSheet.Delete
 End Sub
 
 Sub nIns()
-Sheets.add after:=ActiveSheet
+Sheets.add After:=ActiveSheet
 End Sub
 
 Sub insertPict()
