@@ -1,5 +1,4 @@
-'c20201110から更新20210410
-
+'c20210618
 
 Sub reload()
     Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
@@ -9,25 +8,15 @@ End Sub
 
 'PRJ PARAM===============================================================
 Sub LoadKeyBind()
-
 Dim r As Range
-
-Worksheets("KEY_BIND").Select
-
-For Each r In Range("A:A")
-
-    If r.Value = "s" Then
-
-        Call Application.OnKey(r.Offset(0, 1).Value, r.Offset(0, 2).Value)
-
-    ElseIf r.Value = "d" Then
-
-        Call Application.OnKey(r.Offset(0, 1).Value, "")
-
-    End If
-
-Next r
-
+    Worksheets("KEY_BIND").Select
+    For Each r In Range("A:A")
+        If r.Value = "s" Then
+            Call Application.OnKey(r.Offset(0, 1).Value, r.Offset(0, 2).Value)
+        ElseIf r.Value = "d" Then
+            Call Application.OnKey(r.Offset(0, 1).Value, "")
+        End If
+    Next r
 End Sub
 
 'PRJ PARAM===============================================================
@@ -52,7 +41,12 @@ Function fGetPlcUnitData()
 End Function
 
 'Linker===============================================================
-Function fSetVal(inptKey As String, inptVal As String)
+
+Function fGetVal(inpt As String) As String
+    fGetVal = fKey2Val("PrmSht", inpt)
+End Function
+
+Function fSetVal(inptKey As String, inptVal As String) As String
 Dim sWbName As String:  sWbName = ThisWorkbook.Name
 Dim sWsname As String:  sWsname = "Params"
 Dim sKey As String: sKey = inptKey
@@ -63,12 +57,9 @@ On Error Resume Next
 With Workbooks(sWbName).Worksheets(sWsname)
     Dim rRow As Range
     Set rRow = .Columns(1)
-        If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
+        If rRow Is Nothing Then fSetVal = False ' "Book or Sheet name is wrong"
         sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
-
-'        If sMatchRow = "" Then
-'            sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
-'        End If
+        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
 
         If sMatchRow <> "" Then
             .Cells(sMatchRow, 2).Value = inptVal
@@ -76,6 +67,7 @@ With Workbooks(sWbName).Worksheets(sWsname)
             Stop
         End If
 
+    fSetVal = True
 End With
 
 End Function
@@ -99,8 +91,7 @@ Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("KeyC
 Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("RtnCol", rRng, 0))
 
 sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
-
-fKey2Val = sResult
+fKey2Val = IIf(sResult = "", "#N\A#", sResult)
 
 End Function
 
@@ -121,20 +112,16 @@ With Workbooks(sWbName).Worksheets(sWsname)
 
     Dim rColKey As Range
     Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
-    If rColKey Is Nothing Then Stop ' "Book or Sheet name is wrong"
+    If rColKey Is Nothing Then fGetCellData = "#N/A#"
 
     sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
-
-    If sMatchRow = "" Then
-        sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
-    End If
-
+    If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
+    
     If sMatchRow <> "" Then
-            sRslt = .Cells(CLng(sMatchRow), sTargetCol).Value
-        Else
-            sRslt = Array()
+        sRslt = .Cells(CLng(sMatchRow), sTargetCol).Value
+    Else
+        sRslt = Array() '??
     End If
-
 End With
 
 fGetCellData = sRslt
@@ -158,7 +145,7 @@ With Workbooks(sWbName).Worksheets(sWsname)
 
     Dim rColKey As Range
     Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
-    If rColKey Is Nothing Then Stop ' "Book or Sheet name is wrong"
+    If rColKey Is Nothing Then fGetRowData = Array()
 
     sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
 
@@ -404,7 +391,7 @@ Dim vArr As Variant: vArr = inptArr
 Dim v As Variant
 
 For Each v In vArr
-    oArr.add v
+    oArr.Add v
 Next v
 
 Set cnvArray2ArrayList = oArr
@@ -433,7 +420,7 @@ End If
 
 For l = LBound(vArr) To UBound(vArr)
     If sPrev = oArr(l - lSft) Then
-        oResult.add oArr(l - lSft)
+        oResult.Add oArr(l - lSft)
     End If
         sPrev = oArr(l - lSft)
 Next l
@@ -464,7 +451,7 @@ End If
 
 For l = LBound(vArr) To UBound(vArr)
     If Not sPrev = oArr(l - lSft) Then
-        oResult.add oArr(l - lSft)
+        oResult.Add oArr(l - lSft)
     End If
         sPrev = oArr(l - lSft)
 Next l
@@ -807,7 +794,6 @@ Dim x As Variant
   End With
 
 End Function
-
 
 
 
