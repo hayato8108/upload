@@ -1,4 +1,4 @@
-'210503 clsXapDebug
+'210618 clsXapDebug
 
 Private Base_ As clsXapDomDoc
 Private InPath_ As String
@@ -95,10 +95,7 @@ With vWs
                                 ActiveCell.Offset(0, lCol - 1) = vObj.Attributes.getNamedItem(.Cells(1, lCol).Value).Text
                             End If
                             
-                            if
                                 lCol = lCol + 1
-                                
-                            End If
                         
                         Loop
     
@@ -174,6 +171,7 @@ Function setBaseRect() As IXMLDOMElement
 Dim vFilter As IXMLDOMElement
 'red filter elem
 Set vFilter = Base_.createRedFilter(0, 0, 0, 0)
+Set vFilter = Base_.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
 
 Set vFilter = Base_.setAttributesEx(vFilter, "Customize", _
 "[Property]" & vbLf & _
@@ -210,53 +208,53 @@ Set setFilterBorder = vFilter
 End Function
 
 
-Function setFilterText(inptElm As IXMLDOMElement, inptValue As String) As IXMLDOMElement
+Function setFilterText(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
 Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
 Dim sValue As String: sValue = inptValue
 
-If Not IsNull(vFilter.getAttribute("Text")) And sValue <> "" Then
-    Set vFilter = Base_.setAttributesEx(vFilter, "Text", vDom.getAttributesEx(vFilter, "Text") & ", " & sValue)
+If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
+    Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, sValue)
 ElseIf sValue <> "" Then
-    Set vFilter = Base_.setAttributesEx(vFilter, "Text", sValue)
+    Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, sValue)
 Else
-
+    'usual
 End If
 
 Set setFilterText = vFilter
 
 End Function
 
-Function setFilterValue(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
+
+Function addFilterText(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
 Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
 Dim sValue As String: sValue = inptValue
 
 If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
-    Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, vDom.getAttributesEx(vFilter, inptAtr) & ", " & sValue)
+    Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, Base_.getAttributesEx(vFilter, inptAtr) & ", " & sValue)
 ElseIf sValue <> "" Then
     Set vFilter = Base_.setAttributesEx(vFilter, inptAtr, sValue)
 Else
-
+    'usual
 End If
 
-Set setFilterValue = vFilter
+Set addFilterText = vFilter
 
 End Function
 
 
-Function createFixFilterXml()
-Application.ScreenUpdating = False
-
+Sub createFixFilterXml()
 Dim vWs As Worksheet: Set vWs = ActiveSheet
 Dim vDom As clsXapDomDoc: Set vDom = Base_
 Dim lOdfH As Long: lOdfH = 10000
 Dim lOdfW As Long: lOdfW = 10000
 Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
 Dim vFilter As IXMLDOMElement
+Dim sPathOut As String: sPathOut = fGetVal("fix_repoOut_path"): If sPathOut = "" Then MsgBox ("wrong path : fix_repoOut_path"): Exit Sub
 Dim lCol As Long: lCol = 1
 Dim s As String
 Dim sKey As String
 Dim lMatchCol As Long
-           
+
 With vWs
     .Range("A1").Interior.Color = RGB(255, 155, 155)
     .Activate
@@ -287,60 +285,61 @@ With vWs
 '                            Set vFilter = vDom.setAttributesEx(vFilter, "FileNormal", .Cells(ActiveCell.Row, lMatchCol).Value)
 '                        End If
 
-
             Select Case .Cells(1, lCol).Value
                 Case "_Index"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Index", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Top"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Top", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Left"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Left", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Width"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Width", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Height"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "Height", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "LibraryClass"
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
-                        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", "p_FixFil")
-                    Else
-                        Set vFilter = vDom.setAttributesEx(vFilter, "LibraryClass", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    End If
+                        Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_TagInColor"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagInColor", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                     Set vFilter = setFilterBorder(vFilter)
-                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "TagIn")
+
                 Case "_TagInVisible"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagInVisible", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                     Set vFilter = setFilterBorder(vFilter)
-                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "TagIn")
                     
                 Case "_TagIn"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_TagIn", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                     Set vFilter = setFilterBorder(vFilter)
-                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "TagIn")
+
                 Case "_OpenPic"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_OpenPic", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Run"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Run", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Text"
-                    Set vFilter = vDom.setAttributesEx(vFilter, "_Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    Set vFilter = setFilterText(vFilter, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = setFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Mes1"
-                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Mes2"
-                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Hi"
-                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "HL")
                 Case "_Lo"
-                    Set vFilter = setFilterValue(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "HL")
+                     
             End Select
             
-    
                 lCol = lCol + 1
-          Loop ' field Attrs
 
+          Loop ' field Attrs
+          
         vForm.appendChild vFilter
         lCol = 1
 
@@ -350,8 +349,6 @@ With vWs
     .Range("A1").Activate 'iterate end
 End With
 
-Set createFixFilterXml = vForm
-
 s = "<?xml version=""1.0""?>" & _
 "<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
 "<OBJ clid=""Folder"" Name=""Folder01"">" & _
@@ -360,15 +357,14 @@ s = "<?xml version=""1.0""?>" & _
 "</FORMROOT></ROOT>"
 
 s = Replace(s, "PLACEHOLDER", vForm.XML)
-Call SaveTextWithUtf8(s, OutPath_)
+Call SaveTextWithUtf8(s, sPathOut)
 
 Set vDom = Nothing
 Set vDoc = Nothing
 Set vForm = Nothing
 Set vFilter = Nothing
 
-Application.ScreenUpdating = True
-End Function
+End Sub
 
 
 Sub parseGroup(ByRef vParent As Variant, ByVal sCrrFrm As String)
@@ -412,9 +408,8 @@ Next vCtrl
 End Sub
 
 
-Sub cnvFixReport()  ' report to Excel Sheet
-Application.ScreenUpdating = False
-Dim sPath As String: sPath = fKey2Val("PrmSht", "fix_report_path")
+Sub downloadFixReport()  ' report to Excel Sheet
+Dim sPathIn As String: sPathIn = fGetVal("fix_repoIn_path"): If sPathIn = "" Then MsgBox ("wrong path : fix_repoIn_path"): Exit Sub
 Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
 Dim sLine As String
 Dim vCol As Long: vCol = 2
@@ -424,14 +419,13 @@ Dim sKey As String
 Dim l As Long: l = 1 'uniqueIdNum
 Dim lMatchCol As Long 'headerField
 
-
 With ActiveSheet
     .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
     .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
     .Range("A2").Activate 'start position
     .Range("A1").Interior.Color = RGB(255, 155, 155)
 
-    Open sPath For Input As #1
+    Open sPathIn For Input As #1
         Do Until EOF(1)
         Line Input #1, sLine
 'If sLine = "" Then Stop
@@ -459,6 +453,7 @@ With ActiveSheet
             .Range("A1").Interior.Color = RGB(55, 155, 255)
             If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("H").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
                 .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("_Index")).Value = l
+
                 l = l + 1
                 ActiveCell.Offset(1, 0).Activate
             End If
@@ -487,6 +482,7 @@ With ActiveSheet
 
         '改行無
         ElseIf Trim(fSplit(sLine, 1, ":")) = "ﾀｸﾞ名" Then
+
                 If Not fSplit(sLine, 1, "#") = sLine Then
                         sKey = "_TagIn"
                         lMatchCol = searchActiveSheetHeaderCol(sKey)
@@ -506,7 +502,7 @@ With ActiveSheet
                     Else
                         Stop 'new property found
                 End If
-                
+
             ElseIf Trim(fSplit(Trim(sLine), 1, ":")) = "ﾃｷｽﾄ" Then
                 sKey = "_Text"
                 sLine = fSplit(Trim(sLine), 2, ":")
@@ -581,7 +577,6 @@ End With
 
 'out fUniqueArray(oArr.toarray)
 
-Application.ScreenUpdating = True
 End Sub
 
 
@@ -600,6 +595,9 @@ Private Sub class_initialize()
     OutPath_ = fKey2Val("PrmSht", "xml_out_path")
     FixRepoPath_ = fKey2Val("prmsht", "fix_repo_path")
     Call Base_.loadClientFile(InPath_)
+    
+    'Dim sPathOut As String: sPathOut = fGetVal("fix_repoOut_path"): If sPathOut = "" Then MsgBox ("wrong path : fix_repoOut_path"): Exit Sub
+    
 End Sub
 
 
