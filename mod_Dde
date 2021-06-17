@@ -1,7 +1,57 @@
+'210618
 'Sub SetKeyDde()
     'Call Application.OnKey("^%+{right}", "DdeIn")
     'Call Application.OnKey("^%+{left}", "DdeOut")
 'End Sub
+
+
+Sub dde_0() 'eg X001
+Dim v As Variant
+Dim sAdrs As String
+Dim rRng As Range
+    For Each v In Selection
+        If Not v.Value = "" Then
+'            sAdrs = io2pc00(v.Value)
+            sAdrs = v.Value
+            Set rRng = ActiveSheet.Range("XFD1")
+            Call DdeOut(sAdrs, rRng)
+        End If
+    Next v
+DDETerminate (chan)
+End Sub
+
+Sub dde_1() 'eg X001
+Dim v As Variant
+Dim sAdrs As String
+Dim rRng As Range
+    For Each v In Selection
+        If Not v.Value = "" Then
+'            sAdrs = io2pc00(v.Value)
+            sAdrs = v.Value
+            Set rRng = ActiveSheet.Range("XFD2")
+            Call DdeOut(sAdrs, rRng)
+        End If
+    Next v
+DDETerminate (chan)
+End Sub
+
+
+Sub dde_B() 'eg X001
+Dim v As Variant
+Dim sAdrs As String
+Dim rRng As Range
+    For Each v In Selection
+        If Not v.Value = "" Then
+'            sAdrs = io2pc00(v.Value)
+            sAdrs = v.Value
+            Set rRng = ActiveSheet.Cells(v.Row, Columns(Range("XFD3").Value).Column)
+            Call DdeOut(sAdrs, rRng)
+        End If
+    Next v
+DDETerminate (chan)
+End Sub
+
+
 
 Sub DdeIn()
 
