@@ -1,5 +1,31 @@
 '210621 clsXapDebug
 
+
+
+src_Alias_path
+
+
+xml_in_path
+xml_in_path___
+xml_out_path
+xml_out_sht
+
+
+xml_dl_FolderName
+_xml_dl_FolderName
+xml_dl_HiddenCol
+
+
+
+fix_repo_InPath
+fix_repo_OutPath
+
+fix_repo_OutSht
+fix_repo_isIndex
+
+
+fix_repo_dir
+
 Private Base_ As clsXapDomDoc
 Private InPath_ As String
 Private OutPath_ As String
