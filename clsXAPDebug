@@ -1,25 +1,38 @@
-'210618 clsXapDebug
+'210621 clsXapDebug
 
 Private Base_ As clsXapDomDoc
 Private InPath_ As String
 Private OutPath_ As String
-Private FixRepoPath_ As String
+Private FixRepoInPath_ As String
+Private FixRepoOutPath_ As String
 
 Sub loadXml()
     Call Base_.loadClientFile(InPath_)
 End Sub
 
-Public Property Let inPath(inpt As String)
-InPath_ = inpt
-End Property
+Sub reloadPath()
+    InPath_ = fGetPgVal("xml_in_path")
+    OutPath_ = fGetPgVal("xml_out_path")
+    FixRepoInPath_ = fGetPgVal("fix_repo_inpath")
+    FixRepoOutPath_ = fGetPgVal("fix_repo_outpath")
+    loadXml
+End Sub
 
-Public Property Let outPath(inpt As String)
-OutPath_ = inpt
-End Property
-
-Public Property Let repoPath(inpt As String)
-FixRepoPath_ = inpt
-End Property
+'Public Property Let inPath(inpt As String)
+'InPath_ = inpt
+'End Property
+'
+'Public Property Let outPath(inpt As String)
+'OutPath_ = inpt
+'End Property
+'
+'Public Property Let repoInPath(inpt As String)
+'FixRepoInPath_ = inpt
+'End Property
+'
+'Public Property Let repoOutPath(inpt As String)
+'FixRepoOutPath_ = inpt
+'End Property
 
 'Property Get folderName() As String
 '    folderName = folderName_
@@ -51,9 +64,8 @@ End Function
 'Set vRslt = Nothing
 'End Function
 
+'Mark
 Sub downloadXml(inptList As IXMLDOMSelection)
-Application.ScreenUpdating = False
-
 Dim vWs As Worksheet: Set vWs = ActiveSheet
 Dim vFolders As IXMLDOMNodeList: Set vFolders = inptList
 Dim vFolder As IXMLDOMElement
@@ -114,8 +126,7 @@ End With
 
 Set vDoc = Nothing
 Set vFolder = Nothing
-Set vobh = Nothing
-Application.ScreenUpdating = True
+Set vObj = Nothing
 End Sub
 
 
@@ -166,6 +177,7 @@ End If
 eventRegx = sRslt
 
 End Function
+
 
 Function setBaseRect() As IXMLDOMElement
 Dim vFilter As IXMLDOMElement
@@ -249,7 +261,6 @@ Dim lOdfH As Long: lOdfH = 10000
 Dim lOdfW As Long: lOdfW = 10000
 Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
 Dim vFilter As IXMLDOMElement
-Dim sPathOut As String: sPathOut = fGetVal("fix_repoOut_path"): If sPathOut = "" Then MsgBox ("wrong path : fix_repoOut_path"): Exit Sub
 Dim lCol As Long: lCol = 1
 Dim s As String
 Dim sKey As String
@@ -265,29 +276,10 @@ With vWs
         Set vFilter = setBaseRect
 
         Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
-'                        '''''''''''''''''''''''''''''''''''img elem
-'                        sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey)
-'                        If lMatchCol <> 0 And .Cells(ActiveCell.Row, lMatchCol).Value = "ODF" Then
-'                            Set vFilter = vDom.createImgElm(0, 0, lOdfH, lOdfW, "")
-'                            Set vFilter = vDom.setAttributesEx(vFilter, "Customize", _
-'                                 "[Property]" & vbLf & _
-'                                 "_Index=[string]" & vbLf & _
-'                                 "_TagInColor=[string]" & vbLf & _
-'                                 "_TagInVisible=[string]" & vbLf & _
-'                                 "_TagIn=[string]" & vbLf & _
-'                                 "_OpenPic=[string]" & vbLf & _
-'                                 "_Run=[string]" & vbLf & _
-'                                 "_Text=[string]" & vbLf & _
-'                                 "_Mes1=[string]" & vbLf & _
-'                                 "_Mes2=[string]" & vbLf & _
-'                                 "_Comment1=[string]")
-'                            sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey)
-'                            Set vFilter = vDom.setAttributesEx(vFilter, "FileNormal", .Cells(ActiveCell.Row, lMatchCol).Value)
-'                        End If
-
             Select Case .Cells(1, lCol).Value
                 Case "_Index"
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        If fGetPgVal("fix_repo_isIndex") = 1 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Top"
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Left"
@@ -301,19 +293,19 @@ With vWs
                 Case "_TagInColor"
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                     Set vFilter = setFilterBorder(vFilter)
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "TagIn")
 
                 Case "_TagInVisible"
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                     Set vFilter = setFilterBorder(vFilter)
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "TagIn")
                     
                 Case "_TagIn"
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                     Set vFilter = setFilterBorder(vFilter)
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "TagIn")
 
                 Case "_OpenPic"
@@ -327,14 +319,27 @@ With vWs
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Mes2"
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes2"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Img"
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
+                        Set vFilter = Base_.setAttributesEx(vFilter, "clid", "Image")
+                        Set vFilter = addFilterText(vFilter, "FileNormal", fReplace(fReplace(FixRepoOutPath_, Dir(FixRepoOutPath_), CStr(.Cells(ActiveCell.Row, lCol).Value)), ".ODF", ".jpg"))
+                    End If
                 Case "_Hi"
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "HL")
+                     If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "HL")
                 Case "_Lo"
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "HL")
-                     
-            End Select
+                     If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryClass", "HL")
+                Case "_Del"
+                    If .Cells(ActiveCell.Row, lCol).Value = 1 Then
+                        Set vFilter = Base_.setAttributesEx(vFilter, "FillColor", "#7F7F7F")
+                        Set vFilter = Base_.setAttributesEx(vFilter, "TextColor", "#5A5A5A")
+                        Set vFilter = Base_.setAttributesEx(vFilter, "BorderColor", "#5A5A5A")
+                    End If
+           
+           End Select
             
                 lCol = lCol + 1
 
@@ -357,7 +362,8 @@ s = "<?xml version=""1.0""?>" & _
 "</FORMROOT></ROOT>"
 
 s = Replace(s, "PLACEHOLDER", vForm.XML)
-Call SaveTextWithUtf8(s, sPathOut)
+
+Call SaveTextWithUtf8(s, FixRepoOutPath_)
 
 Set vDom = Nothing
 Set vDoc = Nothing
@@ -366,9 +372,8 @@ Set vFilter = Nothing
 
 End Sub
 
-
+'Mark
 Sub parseGroup(ByRef vParent As Variant, ByVal sCrrFrm As String)
-
 'If vctrl.ChildNodes.Length > 0 And bParseGrp = True Then
 '    Call parseGroup(vctrl, sCrrFrm)
 'End If
@@ -409,7 +414,7 @@ End Sub
 
 
 Sub downloadFixReport()  ' report to Excel Sheet
-Dim sPathIn As String: sPathIn = fGetVal("fix_repoIn_path"): If sPathIn = "" Then MsgBox ("wrong path : fix_repoIn_path"): Exit Sub
+Dim sPathIn As String: sPathIn = fGetPgVal("fix_repo_Inpath"): If sPathIn = "#N\A#" Then MsgBox "wrong path : fix_repoIn_path": Exit Sub
 Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
 Dim sLine As String
 Dim vCol As Long: vCol = 2
@@ -453,7 +458,6 @@ With ActiveSheet
             .Range("A1").Interior.Color = RGB(55, 155, 255)
             If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("H").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
                 .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("_Index")).Value = l
-
                 l = l + 1
                 ActiveCell.Offset(1, 0).Activate
             End If
@@ -566,8 +570,6 @@ With ActiveSheet
                     sKey = "_Lo"
                     lMatchCol = searchActiveSheetHeaderCol(sKey)
                     If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-
-
         End If
 
         Loop 'next line
@@ -591,13 +593,6 @@ End Function
 
 Private Sub class_initialize()
     Set Base_ = New clsXapDomDoc
-    InPath_ = fKey2Val("PrmSht", "xml_in_path")
-    OutPath_ = fKey2Val("PrmSht", "xml_out_path")
-    FixRepoPath_ = fKey2Val("prmsht", "fix_repo_path")
-    Call Base_.loadClientFile(InPath_)
-    
-    'Dim sPathOut As String: sPathOut = fGetVal("fix_repoOut_path"): If sPathOut = "" Then MsgBox ("wrong path : fix_repoOut_path"): Exit Sub
-    
 End Sub
 
 
