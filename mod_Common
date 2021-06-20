@@ -1,4 +1,4 @@
-'c20210618
+'c20210621 cmn
 
 Sub reload()
     Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
@@ -21,32 +21,81 @@ End Sub
 
 'PRJ PARAM===============================================================
 Function fGetDsWb() As String
-    fGetDsWb = fKey2Val("PrmSht", "DS_WB")
+    fGetDsWb = fGetPgVal("DS_WB")
 End Function
 
 Function fGetDsWbn() As String
-    fGetDsWbn = fKey2Val("PrmSht", "DS_WBN")
+    fGetDsWbn = fGetPgVal("DS_WBN")
 End Function
 
 Function fGetDsWs() As String
-    fGetDsWs = fKey2Val("PrmSht", "DS_WS")
+    fGetDsWs = fGetPgVal("DS_WS")
 End Function
 
 Function fGetDsRng() As String
-    fGetDsRng = fKey2Val("PrmSht", "DS_RNG")
+    fGetDsRng = fGetPgVal("DS_RNG")
 End Function
 
 Function fGetPlcUnitData()
-    fGetPlcUnitData = fKey2Val("PrmSht", "PLC_UNIT_DATA")
+    fGetPlcUnitData = fGetPgVal("PLC_UNIT_DATA")
 End Function
 
 'Linker===============================================================
+'xml_in_path
+'xml_out_path
+'fix_repo_path
+'fix_repo_dir
+'
+'xml_dl_FolderName
+'xml_dl_HiddenCol
+'
+'fix_repo_InPath
+'fix_repo_OutPath
+'
+'fix_repo_OutSht
 
-Function fGetVal(inpt As String) As String
-    fGetVal = fKey2Val("PrmSht", inpt)
+Function fGetPgVal(inptKey As String) As String
+Dim sKey As String: sKey = inptKey
+Dim sResult As Variant
+Dim lIndex As Long
+
+Dim sWb As String: sWb = ThisWorkbook.Name
+Dim sWs As String: sWs = "pgParams"
+Dim sKeyCol As String: sKeyCol = "A"
+Dim sRtnCol As String: sRtnCol = "B"
+
+sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
+fGetPgVal = IIf(sResult = "", "#N\A#", sResult)
+
 End Function
 
-Function fSetVal(inptKey As String, inptVal As String) As String
+Function fSetPgVal(inptKey As String, inptVal As String) As Boolean
+Dim sWbName As String:  sWbName = ThisWorkbook.Name
+Dim sWsname As String:  sWsname = "pgParams"
+Dim sKey As String: sKey = inptKey
+Dim sMatchRow As String
+Dim sRslt As String
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsname)
+    Dim rRow As Range
+    Set rRow = .Columns(1)
+        If rRow Is Nothing Then fSetPgVal = False: Exit Function  ' "Book or Sheet name is wrong"
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+
+        If sMatchRow <> "" Then
+            .Cells(sMatchRow, 2).Value = inptVal
+        Else
+            fSetPgVal = False: Exit Function
+        End If
+
+    fSetPgVal = True
+End With
+
+End Function
+
+Function fSetVal(inptKey As String, inptVal As String) As Boolean
 Dim sWbName As String:  sWbName = ThisWorkbook.Name
 Dim sWsname As String:  sWsname = "Params"
 Dim sKey As String: sKey = inptKey
@@ -57,14 +106,14 @@ On Error Resume Next
 With Workbooks(sWbName).Worksheets(sWsname)
     Dim rRow As Range
     Set rRow = .Columns(1)
-        If rRow Is Nothing Then fSetVal = False ' "Book or Sheet name is wrong"
+        If rRow Is Nothing Then fSetVal = False: Exit Function
         sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
         If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
 
         If sMatchRow <> "" Then
             .Cells(sMatchRow, 2).Value = inptVal
         Else
-            Stop
+            fSetVal = False: Exit Function
         End If
 
     fSetVal = True
@@ -94,6 +143,7 @@ sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
 fKey2Val = IIf(sResult = "", "#N\A#", sResult)
 
 End Function
+
 
 'on Target Sheet
 Private Function fGetCellData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String, inptTargetCol As String) As String
@@ -693,6 +743,21 @@ fRegxTest = bResult
 
 End Function
 'WS ========================================================================================
+
+Sub delBlankRow(inpt As String)
+
+Dim sDelCol As String: sDelCol = inpt
+
+Cells(ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row, 1).Activate
+Do Until ActiveCell.Row = 1
+    If Cells(ActiveCell.Row, Columns(sDelCol).Column) = "" Then  ''''''''''condition
+        ActiveCell.EntireRow.Select
+        Selection.Delete Shift:=xlUp
+    End If
+    ActiveCell.Offset(-1, 0).Activate
+Loop
+
+End Sub
 
 Sub CopyWithFormat()
 
