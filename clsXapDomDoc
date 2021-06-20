@@ -1,4 +1,4 @@
-'210618
+'210621 xapDomDoc
 
 Private Base_ As DOMDocument60
 Private Path_ As String
@@ -11,7 +11,7 @@ With vDoc
     .async = False
     .validateonparse = False
 '   .preserveWhiteSpace = True
-    If Not .Load(inpt) Then Stop ' load error
+    If Not .Load(inpt) Then MsgBox "xml path load error : " & inpt ' load error
 End With
 
 Set Base_ = vDoc
