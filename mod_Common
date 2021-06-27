@@ -1,4 +1,5 @@
-'c20210621 cmn
+'c20210628 common
+
 
 Sub reload()
     Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
@@ -65,7 +66,7 @@ Dim sKeyCol As String: sKeyCol = "A"
 Dim sRtnCol As String: sRtnCol = "B"
 
 sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
-fGetPgVal = IIf(sResult = "", "#N\A#", sResult)
+fGetPgVal = sResult
 
 End Function
 
@@ -140,7 +141,7 @@ Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("KeyC
 Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("RtnCol", rRng, 0))
 
 sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
-fKey2Val = IIf(sResult = "", "#N\A#", sResult)
+fKey2Val = sResult
 
 End Function
 
@@ -162,15 +163,13 @@ With Workbooks(sWbName).Worksheets(sWsname)
 
     Dim rColKey As Range
     Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
-    If rColKey Is Nothing Then fGetCellData = "#N/A#"
-
+    If rColKey Is Nothing Then fGetCellData = "#N/A#": Exit Function
     sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
     If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
-    
     If sMatchRow <> "" Then
         sRslt = .Cells(CLng(sMatchRow), sTargetCol).Value
     Else
-        sRslt = Array() '??
+        sRslt = "#N/A#"
     End If
 End With
 
@@ -190,15 +189,12 @@ Dim sMatchRow As String
 Dim vRslt As Variant
 
 On Error Resume Next
-
 With Workbooks(sWbName).Worksheets(sWsname)
 
     Dim rColKey As Range
     Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
     If rColKey Is Nothing Then fGetRowData = Array()
-
     sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
-
     If sMatchRow <> "" Then
             vRslt = Application.Transpose(Application.Transpose(.Rows(CLng(sMatchRow)).Value))
         Else
@@ -211,36 +207,6 @@ fGetRowData = vRslt
 
 End Function
 
-Function searchActiveSheetHeaderCol(inptKey As String) As Long
-
-Dim sWbName As String:  sWbName = ActiveWorkbook.Name
-Dim sWsname As String:  sWsname = ActiveSheet.Name
-Dim sKey As String: sKey = inptKey
-Dim sMatchRow As String
-Dim sRslt As String
-On Error Resume Next
-
-With Workbooks(sWbName).Worksheets(sWsname)
-    Dim rRow As Range
-    Set rRow = .Rows(1)
-    
-    If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
-        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
-
-'        If sMatchRow = "" Then
-'            sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
-'        End If
-
-        If sMatchRow <> "" Then
-                sRslt = sMatchRow
-            Else
-                sRslt = ""
-        End If
-End With
-
-searchActiveSheetHeaderCol = CLng(sRslt)
-
-End Function
 
 'DEBUG OUT===============================================================
 Sub out(ByVal inptArr As Variant, Optional inptLimit As Long = 10)
@@ -580,7 +546,7 @@ Private Function fFilter(ByVal inptArray As Variant, ByVal inptOperator As Strin
 End Function
 
 'NUM FORMAT ===================================================================================
-Function fDigitN(inptStr As String, inptDigit As String) As String
+Function fDigitN(inptStr As String, inptDigit As Long) As String
     fDigitN = Application.WorksheetFunction.Rept("0", inptDigit - Len(inptStr)) & inptStr
 End Function
 
@@ -744,20 +710,6 @@ fRegxTest = bResult
 End Function
 'WS ========================================================================================
 
-Sub delBlankRow(inpt As String)
-
-Dim sDelCol As String: sDelCol = inpt
-
-Cells(ActiveSheet.Cells(Rows.Count, 1).End(xlUp).Row, 1).Activate
-Do Until ActiveCell.Row = 1
-    If Cells(ActiveCell.Row, Columns(sDelCol).Column) = "" Then  ''''''''''condition
-        ActiveCell.EntireRow.Select
-        Selection.Delete Shift:=xlUp
-    End If
-    ActiveCell.Offset(-1, 0).Activate
-Loop
-
-End Sub
 
 Sub CopyWithFormat()
 
