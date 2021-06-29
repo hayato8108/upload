@@ -1,11 +1,4 @@
-'2106208 clsXapDebug
-'parseGroup
-
-'xml_nrw_Enabled
-'xml_nrw_Form
-'xml_nrw_LibName
-'xml_nrw_Group
-
+'210630 clsXapDebug
 
 Private base_ As clsXapDomDoc
 Private InPath_ As String
@@ -63,20 +56,22 @@ Set getFolder = vRslt
 Set vRslt = Nothing
 End Function
 
+'
 'Function getForm(inptFol As String, inptFrm As String) As IXMLDOMSelection 'as Alias
 'Dim vRslt As IXMLDOMSelection
-'Set vRslt = Base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
+'Set vRslt = base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptFol & "']/OBJ[@clid='Form'][@Name='" & inptFrm & "']")
 'Set getForm = vRslt
 'Set vRslt = Nothing
 'End Function
 
-'Function selectNodesEX(inpt As String) As IXMLDOMSelection
-''[@clid='Folder'][@Name='Folder01']
-'Dim vRslt As IXMLDOMSelection
-'Set vRslt = Base_.selectNodesEX(inpt)
-'Set selectNodesEX = vRslt
-'Set vRslt = Nothing
-'End Function
+
+Function selectNodesEX(inpt As String) As IXMLDOMSelection
+'[@clid='Folder'][@Name='Folder01']
+Dim vRslt As IXMLDOMSelection
+Set vRslt = base_.selectNodesEX(inpt)
+Set selectNodesEX = vRslt
+Set vRslt = Nothing
+End Function
 
 
 Sub uploadFormXml()
@@ -188,7 +183,7 @@ s = "<?xml version=""1.0""?>" & _
 
 s = Replace(s, "PLACEHOLDER", vForm.XML)
 
-Call SaveTextWithUtf8(s, FixRepoOutPath_)
+''''''''''Call SaveTextWithUtf8(s, OutPath_)
 
 Set vDom = Nothing
 Set vDoc = Nothing
@@ -356,6 +351,27 @@ eventRegx = sRslt
 End Function
 
 
+
+Function setBaseNumEll() As IXMLDOMElement
+Dim vFilter As IXMLDOMElement
+'<OBJ clid="Ellipse" Text="1" TextFont="HGPｺﾞｼｯｸE,-8,0,400,0,0,0,0,0" RotateX="339" RotateY="100" Top="90" Left="329" Height="21" Width="21" LibraryComment="p_dbgNumber">
+Set vFilter = base_.createEllipseElm(0, 0, 0, 0)
+Set vFilter = base_.setAttributesEx(vFilter, "LibraryComment", "p_dbgNumEll")
+Set vFilter = base_.setAttributesEx(vFilter, "Text", "")
+Set vFilter = base_.setAttributesEx(vFilter, "Width", "20")
+Set vFilter = base_.setAttributesEx(vFilter, "Height", "20")
+Set vFilter = base_.setAttributesEx(vFilter, "TextFont", "HGPｺﾞｼｯｸE,-8,0,400,0,0,0,0,0")
+Set vFilter = base_.setAttributesEx(vFilter, "Customize", _
+"[Property]" & vbLf & _
+"_Index=[string]" & vbLf & _
+"_Comment1=[string]")
+
+Set setBaseNumEll = vFilter
+
+End Function
+
+
+
 Function setBaseRect() As IXMLDOMElement
 Dim vFilter As IXMLDOMElement
 'red filter elem
@@ -431,6 +447,77 @@ Set addFilterText = vFilter
 End Function
 
 
+Sub createNumberingXml()
+'Function createEllipseElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
+''<OBJ clid="Ellipse" RotateX="45" RotateY="45" Top="0" Left="0" Height="90" Width="90" LibraryComment="_Circle">
+Dim vWs As Worksheet: Set vWs = ActiveSheet
+Dim vDom As clsXapDomDoc: Set vDom = base_
+Dim lOdfH As Long: lOdfH = 1200
+Dim lOdfW As Long: lOdfW = 1920
+Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
+Dim vFilter As IXMLDOMElement
+Dim lCol As Long: lCol = 1
+Dim s As String
+Dim sKey As String
+Dim lMatchCol As Long
+
+With vWs
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    .Activate
+    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
+
+    Do While ActiveCell.Value <> "" ' row direction
+        .Range("A1").Interior.Color = RGB(55, 155, 255)
+        Set vFilter = setBaseNumEll
+
+        Do While .Cells(1, lCol).Value <> ""  'field Attrs <--->
+            Select Case .Cells(1, lCol).Value
+                Case "_Index"
+                        Set vFilter = base_.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Top"
+                        Set vFilter = base_.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Left"
+                        Set vFilter = base_.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Height"
+                    If base_.getAttributesEx(vFilter, "Top") = 0 Then Stop 'TMP
+                        Set vFilter = base_.setAttributesEx(vFilter, "Top", base_.getAttributesEx(vFilter, "Top") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
+                Case "Width"
+                        If base_.getAttributesEx(vFilter, "Left") = 0 Then Stop 'TMP
+                        Set vFilter = base_.setAttributesEx(vFilter, "Left", base_.getAttributesEx(vFilter, "Left") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
+                End Select
+                lCol = lCol + 1
+
+          Loop ' field Attrs
+
+          
+        vForm.appendChild vFilter
+        lCol = 1
+
+        ActiveCell.Offset(1, 0).Activate 'row direction
+    Loop
+
+    .Range("A1").Activate 'iterate end
+End With
+
+s = "<?xml version=""1.0""?>" & _
+"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
+"<OBJ clid=""Folder"" Name=""Folder01"">" & _
+"PLACEHOLDER" & _
+"</OBJ>" & _
+"</FORMROOT></ROOT>"
+
+s = Replace(s, "PLACEHOLDER", vForm.XML)
+
+Call SaveTextWithUtf8(s, OutPath_)
+
+Set vDom = Nothing
+Set vDoc = Nothing
+Set vForm = Nothing
+Set vFilter = Nothing
+
+End Sub
+
+
 Sub createFixFilterXml()
 Dim vWs As Worksheet: Set vWs = ActiveSheet
 Dim vDom As clsXapDomDoc: Set vDom = base_
@@ -438,7 +525,7 @@ Dim lOdfH As Long: lOdfH = 10000
 Dim lOdfW As Long: lOdfW = 10000
 Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
 Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 1
+Dim lCol As Long: lCol = 2
 Dim s As String
 Dim sKey As String
 Dim lMatchCol As Long
