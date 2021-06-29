@@ -1,5 +1,6 @@
-'210621 ws
-'_Index  Object  Top Left    Width   Height  LibraryClass    _Text   _TagIn  _TagInColor _TagInVisible   _OpenPic    _Run    _Mes1   _Mes2   _Img    _Hi _Lo
+'210626
+' RENAME Sub downloadFolderXml()
+'folder  form    clid    group
 
 'mod_pc config, after delete
 Function pA2fA(inpt As String) As String
@@ -14,13 +15,42 @@ Function io2plc00(inpt As String) As String
     io2plc00 = WorksheetFunction.Substitute(inpt, "X", "PLC00.X.X00")
 End Function
 
-'mod_ws
-Sub downloadXml()
+
+Sub createNumberingXml()
+Application.ScreenUpdating = False
+'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+Dim C As clsXapDebug: Set C = New clsXapDebug
+Dim sRet As String
+Dim ws As Worksheet
+On Error Resume Next
+
+If fGetPgVal("xml_out_sht") = "" Then
+    Set ws = ActiveSheet
+Else
+    Set ws = Sheets(fGetPgVal("xml_out_sht"))
+    If ws.Name <> fGetPgVal("xml_out_sht") Then MsgBox "does not exist  : " & fGetPgVal("xml_out_sht"): Exit Sub
+End If
+
+With ws
+    .Activate
+    C.reloadPath
+    C.createNumberingXml
+'    C.reloadFixPath
+'    C.createFixFilterXml
+End With
+
+MsgBox "uploadFormXml :" & fGetPgVal("xml_out_path")
+
+Set C = Nothing
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub downloadFolderXml()
 Application.ScreenUpdating = False
 Dim d As clsXapDebug: Set d = New clsXapDebug
 Dim f As IXMLDOMSelection
 Dim sFol As String: sFol = ""
-'Dim sFrm As String: sFrm = ""
 Dim sCid As String
 Dim l As Long
 Dim sRet As String
@@ -42,11 +72,22 @@ If f.Length = 0 Then MsgBox "Folder Load Error : " & sFol: Exit Sub
 
 Call d.downloadXml(f)
 
+If fGetPgVal("xml_nrw_Form") = "" And fGetPgVal("xml_nrw_LibName") = "" Then Exit Sub
+
+If fGetPgVal("xml_nrw_Enabled") = 1 Then
+    If fGetPgVal("xml_nrw_Form") <> "#N/A#" And fGetPgVal("xml_nrw_Form") <> "" And d.searchActiveSheetHeaderCol("LibraryComment") <> 0 Then
+        Call d.delUnMatchForm(d.searchActiveSheetHeaderCol("form"), fGetPgVal("xml_nrw_Form"))
+    End If
+    If fGetPgVal("xml_nrw_LibName") <> "#N/A#" And fGetPgVal("xml_nrw_LibName") <> "" And d.searchActiveSheetHeaderCol("form") <> 0 Then
+
+       Call d.delUnMatchRow(d.searchActiveSheetHeaderCol("LibraryComment"), fGetPgVal("xml_nrw_LibName"))
+    End If
+End If
+
 Set d = Nothing
 Set f = Nothing
 Set fr = Nothing
 
-'delBlankRow fGetPgVal("xml_dl_HiddenCol")
 Application.ScreenUpdating = True
 End Sub
 
@@ -69,8 +110,8 @@ End If
 With ws
     .Activate
     .Cells.Clear
-    .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryClass,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
-    C.reloadPath
+    .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+    C.reloadFixPath
     C.downloadFixReport
 End With
 
@@ -96,7 +137,7 @@ End If
 
 With ws
     .Activate
-    C.reloadPath
+    C.reloadFixPath
     C.createFixFilterXml
 End With
 
@@ -133,10 +174,10 @@ Set wb = Workbooks.Add: wb.Activate
 
 For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
     With wb.Worksheets.Add
-        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryClass,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
         sRet = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
         sRet = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
-        C.reloadPath
+        C.reloadFixPath
         C.downloadFixReport
         .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
         C.createFixFilterXml
@@ -155,23 +196,27 @@ Function Alias2Cmt(inpt As String) As String
 '=>PLC03_M800
 '=>PLC03_KEIKI
 '=>PLC03_X1
-
-Dim sAdr As String
+Dim sAdr As String: sAdr = inpt
 Dim sFind As String
 Dim sDev As String
 Dim sKey As String
 Dim sRslt As String
+Dim sD As Long
 
-If UBound(Split(inpt, ".")) = 2 Then sAdr = inpt Else sAdr = fKey2Val("SRC_Alias", inpt)
+'If UBound(Split(inpt, ".")) = 2 Then sAdr = inpt Else sAdr = fKey2Val("SRC_Alias", inpt)
 
 sFind = fSplit(sAdr, 3, ".")
 sFind = fReplaceRegx(sFind, "[A-Z]+", "")
 sFind = fSplit(sFind, 1, "@")
 sFind = CInt(sFind)
 sDev = sFind
-Stop
 'MDR device
-If sFind > 999 Then
+
+sD = IIf(sFind > 9999, 5, 4)
+
+If sFind > 9999 Then
+    sFind = Left(sFind, Len(sFind) - 2) & Application.WorksheetFunction.Rept(0, 2)
+ElseIf sFind > 999 Then
     sFind = Left(sFind, Len(sFind) - 2) & Application.WorksheetFunction.Rept(0, 2)
 ElseIf sFind < 1000 And sFind > 99 Then
     sFind = Left(sFind, 1) & Application.WorksheetFunction.Rept(0, Len(sFind) - 1)
@@ -180,8 +225,8 @@ Else
 End If
 
 sKey = fSplit(sAdr, 1, ".") & "_" & fSplit(sAdr, 2, ".") & sFind
-sRslt = fKey2Val(sKey, fSplit(sAdr, 2, ".") & fDigitN(sDev, 4))
-If Not sRslt = "#N\A#" Then Dev2Cmt = sRslt: Exit Function
+sRslt = fKey2Val(sKey, fSplit(sAdr, 2, ".") & fDigitN(sDev, sD))
+If Not sRslt = "#N\A#" Then Alias2Cmt = sRslt: Exit Function
 
 'XY device
 If sFind > 999 Then
@@ -193,12 +238,12 @@ Else
 End If
 sKey = fSplit(sAdr, 1, ".") & "_" & fSplit(sAdr, 2, ".") & sFind
 sRslt = fKey2Val(sKey, fSplit(sAdr, 2, ".") & fDigitN(sDev, 3))
-If Not sRslt = "#N\A#" Then Dev2Cmt = sRslt: Exit Function
+If Not sRslt = "#N\A#" Then Alias2Cmt = sRslt: Exit Function
 
 'keiki
 sRslt = fKey2Val(fSplit(sAdr, 1, ".") & "_Keiki", sAdr)
 
-Dev2Cmt = sRslt
+Alias2Cmt = sRslt
 
 End Function
 
