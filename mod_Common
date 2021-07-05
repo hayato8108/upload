@@ -1,4 +1,5 @@
-'c20210628 common
+'c20210706 common
+'[KEY]   [WorkBookName]  [WorkSheetName] [KeyCol]    [RtnCol]
 
 
 Sub reload()
@@ -131,19 +132,50 @@ Dim sData As Variant
 Dim sResult As Variant
 Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("LinkData").Rows(1)
 Dim lIndex As Long
+
 sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A") 'single row, get link parameters
 
 If UBound(sData) = -1 Then fKey2Val = "#N/A#": Exit Function
 
-Dim sWb As String: sWb = sData(Application.WorksheetFunction.Match("WorkBookName", rRng, 0))
-Dim sWs As String: sWs = sData(Application.WorksheetFunction.Match("WorkSheetName", rRng, 0))
-Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("KeyCol", rRng, 0))
-Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("RtnCol", rRng, 0))
+'Dim sWb As String: sWb = sData(Application.WorksheetFunction.Match("[WorkBookName]", rRng, 0))
+'Dim sWs As String: sWs = sData(Application.WorksheetFunction.Match("[WorkSheetName]", rRng, 0))
+'Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("[KeyCol]", rRng, 0))
+'Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("[RtnCol]", rRng, 0))
+
+Dim sWb As String: sWb = sData(2)
+Dim sWs As String: sWs = sData(3)
+Dim sKeyCol As String: sKeyCol = sData(4)
+Dim sRtnCol As String: sRtnCol = sData(5)
 
 sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
 fKey2Val = sResult
 
 End Function
+
+
+Function fKeys2Val(inptPref As String, inptKey As String) As String
+
+Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("LinkData")
+Dim l As Long
+Dim lEnd As Long
+Dim sPrf As String: sPrf = inptPref
+Dim sKey As String: sKey = inptKey
+Dim sRslt As String: sRslt = "#N/A#"
+
+With ws
+lEnd = .Cells(Rows.Count, 1).End(xlUp).Row
+    For l = 1 To lEnd
+        If Not .Cells(l, 1).Value = "" Then
+                If Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then sRslt = fKey2Val(.Cells(l, 1).Value, sKey)
+                If Not sRslt = "#N/A#" Then fKeys2Val = sRslt: Exit Function
+            End If
+        End If
+    Next l
+End With
+    fKeys2Val = sRslt
+    
+End Function
+
 
 
 'on Target Sheet
