@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ROOT>
+<FORMROOT clid="Client" Name="Client" StartupSizeHeight="1280" DefaultFormHeight="1280" PSLoginStartup="AUTO" Product="PA-Panel" Ver="6.0" Rev="13" FileRev="3" FileSaveWithoutDefault="T">
+<OBJ clid="Folder" Name="Folder01">
+<OBJ clid="Form" Name="Form01_" Height="1280" Width="1920" VisualTheme="DEFAULT" LocaleLanguage="DEFAULT" Event="// 塗工開始
+//[1]開始, [2]ＧＰ選択, [3]1次ﾌｨﾙﾀ選択, [4]2次ﾌｨﾙﾀ選択, 
+var vTOKOU_G = c(&quot;P3M00733&quot;, &quot;P3R03180&quot;, &quot;P3R03181&quot;, &quot;P3R03182&quot;);
+var vTOKOU_H = c(&quot;P3M00783&quot;, &quot;P3R03183&quot;, &quot;P3R03184&quot;, &quot;P3R03185&quot;);
+var vTOKOU_S = c(&quot;P3M00830&quot;, &quot;P3R03186&quot;, &quot;P3R03187&quot;, &quot;P3R03188&quot;);
+//洗浄
+// [1]洗浄開始, [2]ＧＰ選択, [3]1次ﾌｨﾙﾀ選択, [4]2次ﾌｨﾙﾀ選択, [5]洗浄選択　1:通常 _:循環
+var vSEN_G = c(&quot;P3M00738&quot;, &quot;P3R03190&quot;, &quot;P3R03191&quot;, &quot;P3R03192&quot;, &quot;P3R03290&quot;);
+var vSEN_H = c(&quot;P3M00788&quot;, &quot;P3R03193&quot;, &quot;P3R03194&quot;, &quot;P3R03195&quot;, &quot;P3R03291&quot;);
+var vSEN_S = c(&quot;P3M00832&quot;, &quot;P3R03196&quot;, &quot;P3R03197&quot;, &quot;P3R03198&quot;, &quot;P3R03292&quot;);
+//作業用
+var vTOKOU_GHS = c(vTOKOU_G, vTOKOU_H, vTOKOU_S);
+var vSEN_GHS = c(vSEN_G, vSEN_H, vSEN_S);
+
+// 塗工開始 前回値 GHS
+var Prv_P3M00733 = F;
+var Prv_P3M00783 = F;
+var Prv_P3M00830 = F;
+//洗浄 前回値 GHS
+var Prv_P3M00738 = F;
+var Prv_P3M00788 = F;
+var Prv_P3M00832 = F;
+
+event OnInitialize()
+{	
+this.AddTag(vTOKOU_G);
+this.AddTag(vTOKOU_H);
+this.AddTag(vTOKOU_S);
+
+this.AddTag(vSEN_G);
+this.AddTag(vSEN_H);
+this.AddTag(vSEN_S);
+
+this.ReadRefresh(vTOKOU_G, vTOKOU_H, vTOKOU_S);
+this.ReadRefresh(vSEN_G, vSEN_H, vSEN_S);
+//this.InitTagConditions();
+
+// 塗工開始	
+var Prv_P3M00733 = this.GetVal(vTOKOU_G[1]);
+var Prv_P3M00783 = this.GetVal(vTOKOU_H[1]);
+var Prv_P3M00830 = this.GetVal(vTOKOU_S[1]);
+//洗浄
+var Prv_P3M00738 = this.GetVal(vSEN_G[1]);
+var Prv_P3M00788 = this.GetVal(vSEN_H[1]);
+var Prv_P3M00832 = this.GetVal(vSEN_S[1]);
+}
+
+
+event OnTagValueChanged(tagname,value)
+{
+var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+switch (tagname) {
+	case &quot;P3M00733&quot;: //G槽　塗工開始
+		if(Prv_P3M00733 != value){
+			vResult = this.createTokouCondition(0);	
+			this.changeLineColor(vResult);
+			Prv_P3M00733 = value;	
+		}
+		break;
+	case &quot;P3M00783&quot;: //H槽　塗工開始
+		if(Prv_P3M00783 != value){
+			vResult = this.createTokouCondition(1);	
+			this.changeLineColor(vResult);
+			Prv_P3M00783 = value;
+		}
+		break;
+	case &quot;P3M00830&quot;: //S槽　塗工開始
+		if(Prv_P3M00830 != value){
+			vResult = this.createTokouCondition(2);	
+			this.changeLineColor(vResult);
+			Prv_P3M00830 = value;
+		}
+		break;		
+	case &quot;P3M00738&quot;: //G槽　洗浄開始
+		if(Prv_P3M00738 != value){
+			vResult = this.createSenjyoCondition(0);	
+			this.changeLineColor(vResult);
+			Prv_P3M00738 = value;
+		}
+		break;
+	case &quot;P3M00788&quot;: //H槽　洗浄開始
+		if(Prv_P3M00788 != value){
+			vResult = this.createSenjyoCondition(1);	
+			this.changeLineColor(vResult);
+			Prv_P3M00788 = value;
+		}	
+		break;	
+	case &quot;P3M00832&quot;: //S槽　洗浄開始
+		if(Prv_P3M00832 != value){
+			vResult = this.createSenjyoCondition(2);	
+			this.changeLineColor(vResult);
+			Prv_P3M00832 = value;
+		}	
+		break;
+	default:
+		break;
+}
+
+//	for (var i=0; i&lt;3; i = i + 1){
+//		if(vTOKOU_GHS[ i, 0] == tagname){
+//			var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+//			vResult = this.createTokouCondition(i);	
+//			this.changeLineColor(vResult);
+//		}
+//		
+//		if(vSEN_GHS[ i, 0] == tagname){
+//			var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+//			vResult = this.createSenjyoCondition(i);	
+//			this.changeLineColor(vResult);
+//		}
+//	}
+}
+
+
+//function InitTagConditions() {
+//	for (var i=0; i&lt;3; i = i + 1){
+//		if(this.GetVal(vTOKOU_GHS[ i, 0]) == T){
+//			var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+//			vResult = this.createTokouCondition(i);	
+//			this.changeLineColor(vResult);
+//		}
+//		
+//		if(this.GetVal(vSEN_GHS[ i, 0]) == T){
+//			var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+//			vResult = this.createSenjyoCondition(i);	
+//			this.changeLineColor(vResult);
+//		}
+//	}
+//}
+//
+
+function createTokouCondition(i){
+	this.ReadRefresh(vTOKOU_G, vTOKOU_H, vTOKOU_S);
+	var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+	switch (i) { case 0: vResult[0] = &quot;G&quot;; break; case 1: vResult[0] = &quot;H&quot;; break; case 2: vResult[0] = &quot;S&quot;; break; default: break;};
+	vResult[1] = this.GetVal(vTOKOU_GHS[ i, 1]);
+	vResult[2] = this.GetVal(vTOKOU_GHS[ i, 2]);
+	vResult[3] = this.GetVal(vTOKOU_GHS[ i, 3]);		
+	vResult[4] = &quot;TOKOU&quot;;	
+	switch (this.GetVal(vTOKOU_GHS[ i, 0])) { case T: vResult[5] = &quot;#FF0000&quot;; break;  default: vResult[5] = &quot;#00FF00&quot;; break; };
+	return vResult;
+}
+
+function createSenjyoCondition(i){
+	this.ReadRefresh(vSEN_G, vSEN_H, vSEN_S);
+	var vResult[6]; //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+	switch (i) { case 0: vResult[0] = &quot;G&quot;; break; case 1: vResult[0] = &quot;H&quot;; break; case 2: vResult[0] = &quot;S&quot;; break; default: break;};
+	vResult[1] = this.GetVal(vSEN_GHS[ i, 1]);
+	vResult[2] = this.GetVal(vSEN_GHS[ i, 2]);
+	vResult[3] = this.GetVal(vSEN_GHS[ i, 3]);		
+	switch (this.GetVal(vSEN_GHS[ i, 4])) { case 1: vResult[4] = &quot;HAIEKI&quot;; break; default: vResult[4] = &quot;JYUNKAN&quot;;break;} ;
+	switch (this.GetVal(vSEN_GHS[ i, 0])) { case T: vResult[5] = &quot;#0000FF&quot;; break; default: vResult[5] = &quot;#00FF00&quot;; break;};
+	return vResult;
+}
+
+
+function changeLineColor(result){
+var vResult = result;  //c(0:SOU, 1:GP, 2:FIL1, 3:FIL2, 4:MODE, 5:COLOR)
+var vCnt = this.GetChildObjCount();
+var vVal;
+
+var vSOU = vResult[0]; 
+var vGP = &quot;GP&quot; &amp; ::CStr(vResult[1]);
+var vFIL1= &quot;F&quot; &amp; ::CStr(vResult[2]);
+var vFIL2 = &quot;F&quot; &amp; ::CStr(vResult[3]);
+var vMODE = ::CStr(vResult[4]);
+
+var vColor = ::CStr(vResult[5]);
+var vSOU2; if(vSOU==&quot;G&quot; || vSOU==&quot;H&quot; ) { vSOU2 = &quot;GH&quot;;}else{vSOU2 = vSOU;} 
+
+//SOU_ =&gt; 各層
+//P =&gt; ポンプ経由（塗工、通常戦場、循環洗浄
+//H=&gt; 配管抜出
+var vCndSou = ::CStr(&quot;SOU_&quot; &amp; vSOU);
+var vCndSouGP = ::CStr(&quot;P_&quot; &amp; vGP &amp; &quot;SOU_&quot; &amp; vSOU2);
+var vCndPCmn = ::CStr(&quot;P_&quot; &amp; vGP &amp; &quot;CMN&quot;);
+var vCndHGP = ::CStr(&quot;H_&quot; &amp; vGP);
+var vCndHCmn = ::CStr(&quot;H_&quot; &amp; &quot;CMN&quot;);
+var vCndHt = ::CStr(&quot;PH_&quot; &amp; vGP &amp; &quot;CMN&quot;);
+var vCndFil1 = ::CStr(&quot;PH_&quot; &amp; vGP &amp; &quot;S1&quot; &amp;  vFIL1);
+var vCndFil2 = ::CStr(&quot;PH_&quot; &amp; vGP &amp; &quot;S2&quot; &amp; vFIL2);
+
+	if(vMODE!=&quot;HAIKAN&quot;){
+		for (var i = 0; i &lt; vCnt;  i = i + 1){
+			var vC = this.GetChildObj(i);	
+			vC.GetProperty(&quot;Name&quot;, vVal);
+			if ( vVal == &quot;&quot; ) continue;
+		
+			if(::LeftStr(vVal, ::StrLen(vCndSou))  == vCndSou ||
+				::LeftStr(vVal, ::StrLen(vCndSouGP))  == vCndSouGP ||
+				::LeftStr(vVal, ::StrLen(vCndFil1))  == vCndFil1 ||
+				::LeftStr(vVal, ::StrLen(vCndFil2))  == vCndFil2 ||
+				::LeftStr(vVal, ::StrLen(vCndPCmn))  == vCndPCmn ||			
+				::LeftStr(vVal, ::StrLen(vCndHt))  == vCndHt
+				){
+					vC.SetProperty(&quot;LineColor&quot;, vColor);	
+				}
+			}
+		
+	switch ( vMODE )
+		{
+		case &quot;TOKOU&quot;:
+			var vC = this.GetChildObj(&quot;TOKOU_LINE&quot;);
+			vC.SetProperty(&quot;LineColor&quot;, vColor);	
+		break;
+
+		case &quot;JYUNKAN&quot;: 
+			var vC = this.GetChildObj(&quot;JYUNKAN_LINE&quot;);
+			vC.SetProperty(&quot;LineColor&quot;, vColor);	
+			vC = this.GetChildObj(&quot;SEN_LINE&quot;);
+			vC.SetProperty(&quot;LineColor&quot;, vColor);
+		break;
+
+		case &quot;HAIEKI&quot;: 
+			var vC = this.GetChildObj(&quot;HAIEKI_LINE&quot;);
+			vC.SetProperty(&quot;LineColor&quot;, vColor);	
+			vC = this.GetChildObj(&quot;SEN_LINE&quot;);
+			vC.SetProperty(&quot;LineColor&quot;, vColor);
+			vC = this.GetChildObj(&quot;HTANK_LINE&quot;);
+			vC.SetProperty(&quot;LineColor&quot;, vColor);
+		break;
+		
+		default:
+		break;
+
+		}
+			
+	}else{
+		for (var i = 0; i &lt; vCnt;  i = i + 1){
+			var vC = this.GetChildObj(i);	
+			vC.GetProperty(&quot;Name&quot;, vVal);
+			if ( vVal == &quot;&quot; ) continue;
+			
+			if(::LeftStr(vVal, ::StrLen(vCndFil1))  == vCndFil1 ||
+				::LeftStr(vVal, ::StrLen(vCndFil2))  == vCndFil2 ||
+				::LeftStr(vVal, ::StrLen(vCndHt))  == vCndHt ||
+				::LeftStr(vVal, ::StrLen(vCndHGP))  == vCndHGP ||
+				::LeftStr(vVal, ::StrLen(vCndHCmn))  == vCndHCmn ||
+				::LeftStr(vVal, ::StrLen(&quot;HTANK_LINE&quot;))  == &quot;HTANK_LINE&quot;
+				){
+					vC.SetProperty(&quot;LineColor&quot;, vColor);	
+				}
+			}
+	}
+		
+}
+
+">
+<OBJ clid="Image" EditLock="T" FileNormal="C:\Users\Owner\Documents\workspace\無題の画像.png" Alpha="0.5" RotateX="970" RotateY="630" Top="0" Left="0" Height="1280" Width="1920">
+</OBJ>
+<OBJ clid="Rectangle" EditLock="T" FillColor="#17375D" Alpha="0.5" RotateX="960" RotateY="640" Top="0" Left="0" Height="1280" Width="1920">
+</OBJ>
+<OBJ clid="Line" X1="1540" Y1="790" X2="1540" Y2="1080" LineColor="#0000FF" LineWidth="8" Top="790" Left="1540" Height="290" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="430" Y1="790" X2="1070" Y2="790" LineColor="#0000FF" LineWidth="4" Top="790" Left="430" Height="0" Width="640">
+</OBJ>
+<OBJ clid="Line" X1="430" Y1="790" X2="430" Y2="840" LineColor="#0000FF" LineWidth="4" Top="790" Left="430" Height="50" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="430" Y1="840" X2="490" Y2="840" LineColor="#0000FF" LineWidth="4" Top="840" Left="430" Height="1" Width="60">
+</OBJ>
+<OBJ clid="Line" X1="800" Y1="790" X2="800" Y2="840" LineColor="#0000FF" LineWidth="4" Top="790" Left="800" Height="50" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="800" Y1="840" X2="840" Y2="840" LineColor="#0000FF" LineWidth="4" Top="840" Left="800" Height="0" Width="40">
+</OBJ>
+<OBJ clid="Line" X1="1620" Y1="460" X2="1640" Y2="460" LineColor="#0000FF" LineWidth="8" Top="460" Left="1620" Height="0" Width="20">
+</OBJ>
+<OBJ clid="Line" X1="1640" Y1="460" X2="1640" Y2="800" LineColor="#0000FF" LineWidth="4" Top="460" Left="1640" Height="340" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1550" Y1="800" X2="1580" Y2="800" LineColor="#0000FF" LineWidth="8" Top="800" Left="1550" Height="0" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="1550" Y1="800" X2="1550" Y2="1080" LineColor="#0000FF" LineWidth="8" Top="800" Left="1550" Height="280" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1420" Y1="320" X2="1420" Y2="460" LineColor="#0000FF" LineWidth="4" Top="320" Left="1420" Height="140" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1310" Y1="320" X2="1420" Y2="320" LineColor="#0000FF" LineWidth="4" Top="320" Left="1310" Height="0" Width="110">
+</OBJ>
+<OBJ clid="Line" X1="1470" Y1="460" X2="1420" Y2="460" LineColor="#0000FF" LineWidth="4" Top="460" Left="1420" Height="0" Width="50">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FF0000" X1="1720" Y1="350" X2="1630" Y2="350" LineColor="#FF0000" LineWidth="8" Top="350" Left="1630" Height="0" Width="90">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FF0000" X1="1830" Y1="640" X2="1730" Y2="640" LineColor="#FF0000" LineWidth="8" Top="640" Left="1730" Height="0" Width="100">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FF0000" X1="1830" Y1="600" X2="1830" Y2="640" LineColor="#FF0000" LineWidth="8" Top="600" Left="1830" Height="40" Width="0">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FF0000" X1="1720" Y1="350" X2="1720" Y2="640" LineColor="#FF0000" LineWidth="8" Top="350" Left="1720" Height="290" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1620" Y1="280" X2="1620" Y2="340" LineColor="#F79646" LineWidth="8" Top="280" Left="1620" Height="60" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1540" Y1="280" X2="1540" Y2="360" LineColor="#F79646" LineWidth="8" Top="280" Left="1540" Height="80" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1620" Y1="280" X2="1540" Y2="280" LineColor="#F79646" LineWidth="8" Top="280" Left="1540" Height="0" Width="80">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#FF0000" BorderWidth="4" Fill="F" RotateX="1625" RotateY="355" Top="340" Left="1610" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FFA500" X1="1620" Y1="370" X2="1620" Y2="450" LineColor="#FFA500" LineWidth="8" Top="370" Left="1620" Height="80" Width="0">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FFA500" X1="1620" Y1="460" X2="1480" Y2="460" LineColor="#FFA500" LineWidth="8" Top="460" Left="1480" Height="0" Width="140">
+</OBJ>
+<OBJ clid="Line" X1="1540" Y1="360" X2="1390" Y2="360" LineColor="#F79646" LineWidth="8" Top="360" Left="1390" Height="0" Width="150">
+</OBJ>
+<OBJ clid="Line" X1="1370" Y1="679" X2="1050" Y2="679" LineColor="#F79646" LineWidth="8" Top="679" Left="1050" Height="0" Width="320">
+</OBJ>
+<OBJ clid="Line" X1="1050" Y1="420" X2="1050" Y2="679" LineColor="#F79646" LineWidth="8" Top="420" Left="1050" Height="259" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1050" Y1="420" X2="850" Y2="420" LineColor="#F79646" LineWidth="8" Top="420" Left="850" Height="0" Width="200">
+</OBJ>
+<OBJ clid="Line" X1="620" Y1="700" X2="830" Y2="700" LineColor="#F79646" LineWidth="8" Top="700" Left="620" Height="0" Width="210">
+</OBJ>
+<OBJ clid="Line" X1="620" Y1="420" X2="620" Y2="697" LineColor="#F79646" LineWidth="8" Top="420" Left="620" Height="277" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="620" Y1="420" X2="470" Y2="420" LineColor="#F79646" LineWidth="8" Top="420" Left="470" Height="0" Width="150">
+</OBJ>
+<OBJ clid="Line" X1="460" Y1="700" X2="360" Y2="700" LineColor="#F79646" LineWidth="8" Top="700" Left="360" Height="1" Width="100">
+</OBJ>
+<OBJ clid="Line" X1="360" Y1="660" X2="360" Y2="700" LineColor="#F79646" LineWidth="8" Top="660" Left="360" Height="40" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="360" Y1="660" X2="300" Y2="660" LineColor="#F79646" LineWidth="8" Top="660" Left="300" Height="0" Width="60">
+</OBJ>
+<OBJ clid="Line" X1="300" Y1="370" X2="300" Y2="660" LineColor="#F79646" LineWidth="8" Top="370" Left="300" Height="290" Width="0">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#00B0F0" BorderWidth="4" Fill="F" RotateX="465" RotateY="315" Top="300" Left="450" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FFA500" X1="460" Y1="1090" X2="300" Y2="1090" LineColor="#FFA500" LineWidth="8" Top="1090" Left="300" Height="0" Width="160">
+</OBJ>
+<OBJ clid="Line" X1="300" Y1="1090" X2="300" Y2="1010" LineColor="#FFA500" LineWidth="8" Top="1010" Left="300" Height="80" Width="0">
+</OBJ>
+<OBJ clid="Line" BorderWidth="8" X1="300" Y1="1010" X2="210" Y2="1010" LineColor="#FFA500" LineWidth="8" Top="1010" Left="210" Height="1" Width="90">
+</OBJ>
+<OBJ clid="Line" X1="1510" Y1="860" X2="1510" Y2="700" LineColor="#FFFF00" LineWidth="4" Top="700" Left="1510" Height="160" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="1450" Y1="840" X2="840" Y2="840" LineColor="#FFA500" LineWidth="8" Top="840" Left="840" Height="0" Width="610">
+</OBJ>
+<OBJ clid="Line" X1="1470" Y1="680" X2="1450" Y2="680" LineColor="#FFA500" LineWidth="8" Top="680" Left="1450" Height="1" Width="20">
+</OBJ>
+<OBJ clid="Line" X1="620" Y1="840" X2="490" Y2="840" LineColor="#FFA500" LineWidth="8" Top="840" Left="490" Height="0" Width="130">
+</OBJ>
+<OBJ clid="Line" X1="620" Y1="1110" X2="620" Y2="840" LineColor="#FFA500" LineWidth="8" Top="840" Left="620" Height="270" Width="0">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FFA500" X1="830" Y1="1110" X2="620" Y2="1110" LineColor="#FFA500" LineWidth="8" Top="1110" Left="620" Height="0" Width="210">
+</OBJ>
+<OBJ clid="Line" X1="1510" Y1="680" X2="1510" Y2="870" LineColor="#0000FF" LineWidth="4" Top="680" Left="1510" Height="190" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1220" Y1="870" X2="1220" Y2="1150" LineColor="#0000FF" LineWidth="8" Top="870" Left="1220" Height="280" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1510" Y1="680" X2="1490" Y2="680" LineColor="#0000FF" LineWidth="4" Top="680" Left="1490" Height="0" Width="20">
+</OBJ>
+<OBJ clid="Line" X1="1220" Y1="870" X2="1410" Y2="870" LineColor="#0000FF" LineWidth="8" Top="870" Left="1220" Height="0" Width="190">
+</OBJ>
+<OBJ clid="Line" X1="1400" Y1="1000" X2="1523" Y2="1000" LineColor="#0000FF" LineWidth="8" Top="1000" Left="1400" Height="0" Width="123">
+</OBJ>
+<OBJ clid="Line" X1="1400" Y1="1000" X2="1400" Y2="1150" LineColor="#0000FF" LineWidth="8" Top="1000" Left="1400" Height="150" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1522" Y1="1000" X2="1522" Y2="1080" LineColor="#0000FF" LineWidth="8" Top="1000" Left="1522" Height="80" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="840" Y1="1110" X2="1220" Y2="1110" LineColor="#0000FF" LineWidth="4" Top="1110" Left="840" Height="0" Width="380">
+</OBJ>
+<OBJ clid="Line" X1="500" Y1="1150" X2="1050" Y2="1150" LineColor="#0000FF" LineWidth="4" Top="1150" Left="500" Height="0" Width="550">
+</OBJ>
+<OBJ clid="Line" X1="470" Y1="1090" X2="500" Y2="1090" LineColor="#0000FF" LineWidth="4" Top="1090" Left="470" Height="0" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="500" Y1="1090" X2="500" Y2="1150" LineColor="#0000FF" LineWidth="4" Top="1090" Left="500" Height="60" Width="0">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="475" RotateY="416" Top="401" Left="460" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="465" RotateY="705" Top="690" Left="450" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="835" RotateY="416" Top="401" Left="820" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="825" RotateY="705" Top="690" Left="810" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="835" RotateY="845" Top="830" Left="820" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="835" RotateY="1120" Top="1105" Left="820" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="485" RotateY="831" Top="816" Left="470" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="465" RotateY="1095" Top="1080" Left="450" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="1475" RotateY="455" Top="440" Left="1460" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="1485" RotateY="685" Top="670" Left="1470" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" BorderColor="#FFA500" X1="1450" Y1="680" X2="1450" Y2="840" LineColor="#FFA500" LineWidth="8" Top="680" Left="1450" Height="160" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="420" Y1="390" X2="1070" Y2="390" LineColor="#0000FF" LineWidth="4" Top="390" Left="420" Height="0" Width="650">
+</OBJ>
+<OBJ clid="Line" X1="420" Y1="390" X2="420" Y2="420" LineColor="#0000FF" LineWidth="4" Top="390" Left="420" Height="30" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1370" Y1="360" X2="1350" Y2="360" LineColor="#0000FF" LineWidth="8" Top="360" Left="1350" Height="0" Width="20">
+</OBJ>
+<OBJ clid="Line" X1="1350" Y1="320" X2="1350" Y2="360" LineColor="#0000FF" LineWidth="4" Top="320" Left="1350" Height="40" Width="0">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="1375" RotateY="365" Top="350" Left="1360" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="1375" RotateY="685" Top="670" Left="1360" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="1410" Y1="860" X2="1410" Y2="700" LineColor="#FFFF00" LineWidth="4" Top="700" Left="1410" Height="160" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="1410" Y1="680" X2="1410" Y2="870" LineColor="#0000FF" LineWidth="4" Top="680" Left="1410" Height="190" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="1410" Y1="680" X2="1390" Y2="680" LineColor="#0000FF" LineWidth="4" Top="680" Left="1390" Height="1" Width="20">
+</OBJ>
+<OBJ clid="Line" X1="1050" Y1="800" X2="1050" Y2="1150" LineColor="#0000FF" LineWidth="4" Top="800" Left="1050" Height="350" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="490" Y1="750" X2="1050" Y2="750" LineColor="#0000FF" LineWidth="4" Top="750" Left="490" Height="0" Width="560">
+</OBJ>
+<OBJ clid="Line" X1="490" Y1="700" X2="490" Y2="750" LineColor="#0000FF" LineWidth="4" Top="700" Left="490" Height="50" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="480" Y1="700" X2="490" Y2="700" LineColor="#0000FF" LineWidth="4" Top="700" Left="480" Height="0" Width="10">
+</OBJ>
+<OBJ clid="Line" X1="840" Y1="700" X2="1050" Y2="700" LineColor="#0000FF" LineWidth="4" Top="700" Left="840" Height="0" Width="210">
+</OBJ>
+<OBJ clid="Line" X1="420" Y1="420" X2="470" Y2="420" LineColor="#0000FF" LineWidth="4" Top="420" Left="420" Height="0" Width="50">
+</OBJ>
+<OBJ clid="Line" X1="780" Y1="390" X2="780" Y2="420" LineColor="#0000FF" LineWidth="4" Top="390" Left="780" Height="30" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="780" Y1="420" X2="830" Y2="420" LineColor="#0000FF" LineWidth="4" Top="420" Left="780" Height="1" Width="50">
+</OBJ>
+<OBJ clid="Line" X1="1070" Y1="390" X2="1070" Y2="790" LineColor="#0000FF" LineWidth="4" Top="390" Left="1070" Height="400" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1540" Y1="360" X2="1580" Y2="360" LineColor="#0000FF" LineWidth="4" Top="360" Left="1540" Height="0" Width="40">
+</OBJ>
+<OBJ clid="Line" X1="1580" Y1="360" X2="1580" Y2="800" LineColor="#0000FF" LineWidth="4" Top="360" Left="1580" Height="440" Width="0">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="1615" RotateY="455" Top="440" Left="1600" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#E6B9B8" BorderWidth="4" Fill="F" RotateX="1535" RotateY="365" Top="350" Left="1520" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="250" Y1="250" X2="250" Y2="320" LineColor="#00B0F0" LineWidth="4" Top="250" Left="250" Height="70" Width="0">
+</OBJ>
+<OBJ clid="Line" BorderColor="#00B0F0" X1="250" Y1="320" X2="460" Y2="320" LineColor="#00B0F0" LineWidth="4" Top="320" Left="250" Height="0" Width="210">
+</OBJ>
+<OBJ clid="Line" BorderColor="#00B0F0" X1="480" Y1="320" X2="680" Y2="320" LineColor="#00B0F0" LineWidth="4" Top="320" Left="480" Height="0" Width="200">
+</OBJ>
+<OBJ clid="Line" BorderColor="#00B0F0" X1="680" Y1="250" X2="680" Y2="320" LineColor="#00B0F0" LineWidth="4" Top="250" Left="680" Height="70" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="202" Y1="1009" X2="159" Y2="1009" LineColor="#F79646" LineWidth="8" Top="1009" Left="159" Height="2" Width="43">
+</OBJ>
+<OBJ clid="Line" X1="159" Y1="381" X2="159" Y2="1009" LineColor="#F79646" LineWidth="8" Top="381" Left="159" Height="628" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="470" Y1="330" X2="470" Y2="350" LineColor="#40E0D0" LineWidth="4" Top="330" Left="470" Height="20" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="470" Y1="350" X2="270" Y2="350" LineColor="#40E0D0" LineWidth="4" Top="350" Left="270" Height="0" Width="200">
+</OBJ>
+<OBJ clid="Line" X1="270" Y1="350" X2="270" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="350" Left="270" Height="20" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="300" Y1="370" X2="270" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="370" Left="270" Height="0" Width="30">
+</OBJ>
+<OBJ clid="Line" BorderColor="#00B0F0" X1="1100" Y1="250" X2="1100" Y2="320" LineColor="#00B0F0" LineWidth="4" Top="250" Left="1100" Height="70" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="470" Y1="290" X2="130" Y2="290" LineColor="#40E0D0" LineWidth="4" Top="290" Left="130" Height="0" Width="340">
+</OBJ>
+<OBJ clid="Line" X1="160" Y1="370" X2="130" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="370" Left="130" Height="1" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="130" Y1="290" X2="130" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="290" Left="130" Height="80" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="470" Y1="290" X2="470" Y2="300" LineColor="#40E0D0" LineWidth="4" Top="290" Left="470" Height="10" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1080" Y1="340" X2="190" Y2="340" LineColor="#40E0D0" LineWidth="4" Top="340" Left="190" Height="0" Width="890">
+</OBJ>
+<OBJ clid="Line" X1="190" Y1="340" X2="190" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="340" Left="190" Height="30" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="190" Y1="370" X2="172" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="370" Left="172" Height="0" Width="18">
+</OBJ>
+<OBJ clid="Line" X1="1150" Y1="320" X2="1080" Y2="320" LineColor="#40E0D0" LineWidth="4" Top="320" Left="1080" Height="0" Width="70">
+</OBJ>
+<OBJ clid="Line" X1="1080" Y1="320" X2="1080" Y2="340" LineColor="#40E0D0" LineWidth="4" Top="320" Left="1080" Height="20" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1150" Y1="370" X2="312" Y2="370" LineColor="#40E0D0" LineWidth="4" Top="370" Left="312" Height="0" Width="838">
+</OBJ>
+<OBJ clid="Line" X1="1150" Y1="320" X2="1150" Y2="371" LineColor="#40E0D0" LineWidth="4" Top="320" Left="1150" Height="51" Width="0">
+</OBJ>
+<OBJ clid="Label" Text="抜出" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#0000FF" Top="290" Left="1230" Height="60" Width="90">
+</OBJ>
+<OBJ clid="Label" Text="塗工" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#FF0000" Top="290" Left="1750" Height="60" Width="73">
+</OBJ>
+<OBJ clid="Line" X1="1550" Y1="440" X2="1550" Y2="800" LineColor="#00FF00" LineWidth="4" Top="440" Left="1550" Height="360" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1550" Y1="400" X2="1520" Y2="400" LineColor="#FFFF00" LineWidth="4" Top="400" Left="1520" Height="0" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="1550" Y1="400" X2="1550" Y2="410" LineColor="#FFFF00" LineWidth="4" Top="400" Left="1550" Height="10" Width="0">
+</OBJ>
+<OBJ clid="Label" Text="廃液" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#00FF00" Top="290" Left="1680" Height="60" Width="92">
+</OBJ>
+<OBJ clid="Label" Text="循環" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#FFFF00" Top="290" Left="1620" Height="60" Width="92">
+</OBJ>
+<OBJ clid="Label" Text="[PUMP]" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#FFA500" Top="220" Left="1520" Height="60" Width="112">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#00B0F0" BorderWidth="4" Fill="F" RotateX="1105" RotateY="315" Top="300" Left="1090" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" X1="840" Y1="431" X2="840" Y2="470" LineColor="#F79646" LineWidth="4" Top="431" Left="840" Height="39" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="830" Y1="640" X2="830" Y2="690" LineColor="#F79646" LineWidth="4" Top="640" Left="830" Height="50" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="460" Y1="640" X2="460" Y2="690" LineColor="#F79646" LineWidth="4" Top="640" Left="460" Height="50" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="470" Y1="431" X2="470" Y2="470" LineColor="#F79646" LineWidth="4" Top="431" Left="470" Height="39" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="460" Y1="1051" X2="460" Y2="1090" LineColor="#F79646" LineWidth="4" Top="1051" Left="460" Height="39" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="490" Y1="840" X2="490" Y2="879" LineColor="#F79646" LineWidth="4" Top="840" Left="490" Height="39" Width="1">
+</OBJ>
+<OBJ clid="Line" X1="830" Y1="1050" X2="830" Y2="1110" LineColor="#F79646" LineWidth="4" Top="1050" Left="830" Height="60" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="840" Y1="860" X2="840" Y2="881" LineColor="#F79646" LineWidth="4" Top="860" Left="840" Height="21" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1380" Y1="380" X2="1380" Y2="670" LineColor="#F79646" LineWidth="4" Top="380" Left="1380" Height="290" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1480" Y1="470" X2="1480" Y2="670" LineColor="#F79646" LineWidth="4" Top="470" Left="1480" Height="200" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1310" Y1="1060" X2="1310" Y2="1150" LineColor="#0000FF" LineWidth="8" Top="1060" Left="1310" Height="90" Width="0">
+</OBJ>
+<OBJ clid="Rectangle" BorderColor="#FFA500" BorderWidth="4" Fill="F" FillColor="#FFA500" RotateX="450" RotateY="555" Top="470" Left="370" Height="170" Width="160">
+</OBJ>
+<OBJ clid="Rectangle" BorderColor="#FFA500" BorderWidth="4" Fill="F" FillColor="#FFA500" RotateX="830" RotateY="555" Top="470" Left="750" Height="170" Width="160">
+</OBJ>
+<OBJ clid="Rectangle" BorderColor="#FFA500" BorderWidth="4" Fill="F" FillColor="#FFA500" RotateX="840" RotateY="966" Top="881" Left="760" Height="170" Width="160">
+</OBJ>
+<OBJ clid="Rectangle" BorderColor="#FFA500" BorderWidth="4" Fill="F" FillColor="#FFA500" RotateX="460" RotateY="966" Top="881" Left="380" Height="170" Width="160">
+</OBJ>
+<OBJ clid="Rectangle" Border="F" FillColor="#0000FF" Alpha="0.5" RotateX="1375" RotateY="525" Top="380" Left="1350" Height="290" Width="50">
+</OBJ>
+<OBJ clid="Rectangle" Border="F" FillColor="#0000FF" Alpha="0.5" RotateX="1485" RotateY="570" Top="470" Left="1460" Height="200" Width="50">
+</OBJ>
+<OBJ clid="Rectangle" Border="F" FillColor="#0000FF" Alpha="0.5" RotateX="825" RotateY="565" Top="440" Left="710" Height="250" Width="230">
+</OBJ>
+<OBJ clid="Rectangle" Border="F" FillColor="#0000FF" Alpha="0.5" RotateX="455" RotateY="555" Top="430" Left="340" Height="250" Width="230">
+</OBJ>
+<OBJ clid="Rectangle" Border="F" FillColor="#0000FF" Alpha="0.5" RotateX="465" RotateY="966" Top="849" Left="350" Height="234" Width="230">
+</OBJ>
+<OBJ clid="Rectangle" Border="F" FillColor="#0000FF" Alpha="0.5" RotateX="835" RotateY="979" Top="859" Left="720" Height="241" Width="230">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#0000FF" BorderWidth="4" Fill="F" RotateX="1075" RotateY="785" Top="770" Left="1060" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#0000FF" BorderWidth="4" Fill="F" RotateX="1045" RotateY="1145" Top="1130" Left="1030" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#0000FF" BorderWidth="4" Fill="F" RotateX="1405" RotateY="866" Top="851" Left="1390" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Ellipse" BorderColor="#0000FF" BorderWidth="4" Fill="F" RotateX="1585" RotateY="795" Top="780" Left="1570" Height="30" Width="30">
+</OBJ>
+<OBJ clid="Line" BorderWidth="4" X1="1050" Y1="1150" X2="1400" Y2="1150" LineColor="#0000FF" LineWidth="8" Top="1150" Left="1050" Height="0" Width="350">
+</OBJ>
+<OBJ clid="Line" X1="1410" Y1="870" X2="1510" Y2="870" LineColor="#0000FF" LineWidth="4" Top="870" Left="1410" Height="0" Width="100">
+</OBJ>
+<OBJ clid="Line" X1="1070" Y1="790" X2="1540" Y2="790" LineColor="#0000FF" LineWidth="8" Top="790" Left="1070" Height="0" Width="470">
+</OBJ>
+<OBJ clid="Line" X1="1580" Y1="800" X2="1640" Y2="800" LineColor="#0000FF" LineWidth="4" Top="800" Left="1580" Height="0" Width="60">
+</OBJ>
+<OBJ clid="Line" X1="1050" Y1="700" X2="1050" Y2="780" LineColor="#0000FF" LineWidth="4" Top="700" Left="1050" Height="80" Width="0">
+</OBJ>
+<OBJ clid="Label" Text="H_GP2" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="370" Left="630" Height="60" Width="100">
+</OBJ>
+<OBJ clid="Label" Text="H_CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="740" Left="1180" Height="60" Width="100">
+</OBJ>
+<OBJ clid="Label" Text="HAIKAN SG+FALL" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="870" Left="1610" Height="40" Width="230">
+</OBJ>
+<OBJ clid="Label" Text="H_GP1" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="770" Left="610" Height="60" Width="90">
+</OBJ>
+<OBJ clid="Label" Text="SOUG_n" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#00B0F0" BorderColor="#00B0F0" TextBorderColor2="#00B0F0" Top="220" Left="340" Height="60" Width="110">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1SOU_GH" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#40E0D0" Top="240" Left="20" Height="60" Width="260">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2SOU_S" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#40E0D0" Top="340" Left="820" Height="40" Width="230">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1SOU_S" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#40E0D0" Top="300" Left="470" Height="60" Width="260">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="960" Left="170" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="690" Left="312" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="690" Left="670" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="1060" Left="630" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="790" Left="1100" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="630" Left="1160" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="310" Left="1400" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="450" Left="1510" Height="60" Width="130">
+</OBJ>
+<OBJ clid="Label" Text="H_GP1" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="1130" Left="630" Height="60" Width="90">
+</OBJ>
+<OBJ clid="Label" Text="H_GP2" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="730" Left="650" Height="60" Width="100">
+</OBJ>
+<OBJ clid="Label" Text="H_GP2" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="450" Left="1340" Height="60" Width="100">
+</OBJ>
+<OBJ clid="Label" Text="H_GP1" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="500" Left="1450" Height="60" Width="90">
+</OBJ>
+<OBJ clid="Label" Text="H_GP2" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="580" Left="1530" Height="60" Width="100">
+</OBJ>
+<OBJ clid="Label" Text="H_GP1" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="660" Left="1600" Height="60" Width="90">
+</OBJ>
+<OBJ clid="Label" Text="TOKOU_LINE" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FF0000" Top="630" Left="1720" Height="60" Width="170">
+</OBJ>
+<OBJ clid="Label" Text="JYUNKAN_LINE" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFFF00" Top="350" Left="1440" Height="60" Width="170">
+</OBJ>
+<OBJ clid="Label" Text="HAIEKI_LINE" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#00FF00" Top="710" Left="1480" Height="60" Width="170">
+</OBJ>
+<OBJ clid="Label" Text="[HAIKAN]" TextFont="Meiryo UI,-27,0,400,0,0,0,0,0" TextColor="#0000FF" Top="930" Left="1558" Height="60" Width="162">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2S1F1" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="500" Left="310" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2S2F1" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="500" Left="670" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1S2F3" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="910" Left="680" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1S1F3" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="910" Left="300" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2S1F2" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="500" Left="470" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2S2F2" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="500" Left="840" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1S1F4" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="910" Left="470" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="P_GP1S2F4" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="910" Left="850" Height="60" Width="140">
+</OBJ>
+<OBJ clid="Label" Text="PH_GP2CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="480" Left="1281" Height="60" Width="146">
+</OBJ>
+<OBJ clid="Label" Text="PH_GP1CMN" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#FFA500" Top="540" Left="1393" Height="60" Width="147">
+</OBJ>
+<OBJ clid="Label" Text="HTANK_LINE" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#0000FF" Top="1010" Left="1550" Height="60" Width="170">
+</OBJ>
+<OBJ clid="Label" Text="SEN_LINE" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#7030A0" Top="370" Left="1570" Height="60" Width="170">
+</OBJ>
+<OBJ clid="Line" X1="1600" Y1="350" X2="1600" Y2="420" LineColor="#7030A0" LineWidth="4" Top="350" Left="1600" Height="70" Width="0">
+</OBJ>
+<OBJ clid="Line" X1="1620" Y1="350" X2="1600" Y2="350" LineColor="#7030A0" LineWidth="4" Top="350" Left="1600" Height="0" Width="20">
+</OBJ>
+<OBJ clid="Line" X1="1600" Y1="420" X2="1560" Y2="420" LineColor="#7030A0" LineWidth="4" Top="420" Left="1560" Height="0" Width="40">
+</OBJ>
+<OBJ clid="Label" Text="P_GP2SOU_GH" TextFont="Microsoft Yi Baiti,-27,0,700,0,0,0,0,0" TextColor="#40E0D0" Top="360" Left="140" Height="60" Width="260">
+</OBJ>
+</OBJ>
+</OBJ>
+</FORMROOT>
+</ROOT>
