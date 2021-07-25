@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDITOR</title>
+
+    <style>
+      #container {
+        display: flex;
+        height: 600Px;
+        width: 800px;
+        margin: 0px;
+        flex-direction: column;
+        background-color: gray;
+      }
+
+      .Layer {
+        position: absolute;
+        background-color: silver;
+        width: 800px;
+        height: 600px;
+      }
+
+    .obj {
+      position: absolute;
+      height: 100px;
+      width: 100px;
+      background-color: brown; 
+    }
+
+    </style>
+
+    <script>
+      function toggleVisible(part){
+        let d = document.querySelector(`#${part}`);
+        if (d.style.visibility=="hidden") {
+            d.style.visibility="visible";
+          }else{
+            d.style.visibility="hidden";
+        }
+      }
+    </script>
+
+</head>   
+
+<body>
+  
+  <div class="obj" style="top: 100px; left: 100px;"></div>
+  <div class="obj" style="top: 200px; left: 200px;"></div>
+  
+  <div id="container">
+    <div>
+      <input type="button" value="TOKOU" onclick="toggleVisible('TOKOU')">
+      <input type="button" value="HAIEKI" onclick="toggleVisible('HAIEKI')">
+      <input type="button" value="SENJYO" onclick="toggleVisible('SENJYO')">
+      <input type="button" value="HAIKAN" onclick="toggleVisible('HAIKAN')">
+    </div>
+
+    <div>  
+      <div class="Layer" style="visibility: hidden;" id="TOKOU" contenteditable="true"></div>
+      <div class="Layer" style="visibility: hidden;" id="HAIEKI" contenteditable="true"></div>
+      <div class="Layer" style="visibility: hidden;" id="SENJYO" contenteditable="true"></div>
+      <div class="Layer" style="visibility: hidden;" id="HAIKAN" contenteditable="true"></div>
+    </div>
+
+  </div>
+
+
+  <div id="hdn" style='display: none;'>
+  <input type="file" id="file-input">
+  </div>    
+</body>
+
+ 
+<style>
+
+</style>
+  
+<script src="script1.js"></script>
+<!-- <script src="sc_blob.js"></script> -->
+<script src="sc_fileIO.js"></script>
+
+  </html>
