@@ -1,0 +1,120 @@
+Option Explicit
+Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+Public Function PutInClipboard(S As String, Optional FormatID As Variant) As Boolean
+End Function
+'Microsoft ActiveX Data Objects 6.0 Library
+
+'Private Sub tbxQuery_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+'   'sft + q
+'    If KeyCode = 81 And Shift = 1 Then Stop
+'End Sub
+
+Sub ShowQueryForm()
+    SqlQuery.Show (0)
+End Sub
+
+Sub ExecuteQuery(S As String)
+    Call QueryExcel(S)
+End Sub
+
+
+Sub QueryExcel(ByVal SQL_Statment As String)
+On Error GoTo Errhandle
+Dim conn As ADODB.Connection
+Dim rst As ADODB.Recordset
+
+Dim sConnection As String, sSQL As String
+Dim ws As Worksheet
+Dim i As Integer, iCheck As Integer
+Dim run_records As Long
+Dim dSource As String
+
+dSource = ActiveWorkbook.FullName
+sConnection = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source = """ & dSource & """;Extended Properties=""Excel 12.0 Xml;HDR=YES;IMEX=0;ReadOnly=False"";"
+
+Set conn = CreateObject("ADODB.Connection")
+Set rst = CreateObject("ADODB.Recordset")
+
+sSQL = UCase(SQL_Statment)
+
+conn.Open sConnection
+
+If Left(sSQL, 6) = "UPDATE" Or InStr(sSQL, "INSERT INTO") > 0 Then
+    conn.Execute sSQL, run_records
+    MsgBox run_records & "records affected", vbInformation
+Else
+
+    rst.Open sSQL, conn, adOpenDynamic, adLockOptimistic
+    
+    Set ws = Worksheets.Add
+    With ws
+        .Move ThisWorkbook.Worksheets(Sheets.Count)
+        
+        'Paste Record Set
+        Range("A2").CopyFromRecordset rst
+        
+        For i = 0 To rst.Fields.Count - 1
+            .Cells(1, i + 1) = rst.Fields(i).Name
+        Next i
+        
+    End With
+    End If
+    
+Door:
+If rst.State <> 0 Then rst.Close
+If conn.State <> 0 Then conn.Close
+
+ Set rst = Nothing
+ Set conn = Nothing
+ Set ws = Nothing
+ 
+Exit Sub
+
+Errhandle:
+MsgBox "Error" & Err.Description, vbInformation, "JJ Excel SQL Application"
+GoTo Door
+
+End Sub
+
+
+
+Sub StringExecute()
+'Dim VBAEditor As VBIDE.VBE
+'Dim VBProj As VBIDE.VBProject
+'Dim VBComp As VBIDE.VBComponent
+'Dim CodeMod As VBIDE.CodeModule
+'
+'Set VBAEditor = Application.VBE
+'Set VBProj = VBAEditor.ActiveVBProject
+'Set VBComp = ActiveWorkbook.VBProject.VBComponents("Module1")
+'
+'Stop
+'    vbComp.CodeModule.AddFromString "Sub foo()" & vbCrLf & s & vbCrLf & "End Sub"
+'    Application.Run vbComp.Name & ".foo"
+'    ThisWorkbook.VBProject.VBComponents.Remove vbComp
+
+'
+'Dim strMacro As String
+'Dim prrf_Module As VBComponent
+'
+'With Workbooks.Add
+'    Set prrf_Module = .VBProject.VBComponents(.Worksheets(1).Name)
+'       strMacro = "Private Sub prrf_Workbook_setPage()" & vbCr
+'    strMacro = strMacro & "end sub"
+'    prrf_Module.CodeModule.AddFromString strMacro
+'End With
+'
+End Sub
+
+'Sub CopyActiveShtName()
+'Dim obj As New DataObject
+'Dim txt As String
+'
+''txt = "[" & ActiveSheet.Name & "$]"
+'
+'txt = "new text"
+'
+'obj.SetText txt
+'obj.PutInClipboard
+'
+'End Sub
