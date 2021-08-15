@@ -4,11 +4,6 @@ Public Function PutInClipboard(S As String, Optional FormatID As Variant) As Boo
 End Function
 'Microsoft ActiveX Data Objects 6.0 Library
 
-'Private Sub tbxQuery_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-'   'sft + q
-'    If KeyCode = 81 And Shift = 1 Then Stop
-'End Sub
-
 Sub ShowQueryForm()
     SqlQuery.Show (0)
 End Sub
@@ -77,44 +72,15 @@ GoTo Door
 End Sub
 
 
-
-Sub StringExecute()
-'Dim VBAEditor As VBIDE.VBE
-'Dim VBProj As VBIDE.VBProject
-'Dim VBComp As VBIDE.VBComponent
-'Dim CodeMod As VBIDE.CodeModule
-'
-'Set VBAEditor = Application.VBE
-'Set VBProj = VBAEditor.ActiveVBProject
-'Set VBComp = ActiveWorkbook.VBProject.VBComponents("Module1")
-'
-'Stop
-'    vbComp.CodeModule.AddFromString "Sub foo()" & vbCrLf & s & vbCrLf & "End Sub"
-'    Application.Run vbComp.Name & ".foo"
-'    ThisWorkbook.VBProject.VBComponents.Remove vbComp
-
-'
-'Dim strMacro As String
-'Dim prrf_Module As VBComponent
-'
-'With Workbooks.Add
-'    Set prrf_Module = .VBProject.VBComponents(.Worksheets(1).Name)
-'       strMacro = "Private Sub prrf_Workbook_setPage()" & vbCr
-'    strMacro = strMacro & "end sub"
-'    prrf_Module.CodeModule.AddFromString strMacro
-'End With
-'
+Sub setBind()
+    Application.OnKey "+^%Q", "ShowQueryForm"
 End Sub
 
-'Sub CopyActiveShtName()
-'Dim obj As New DataObject
-'Dim txt As String
-'
-''txt = "[" & ActiveSheet.Name & "$]"
-'
-'txt = "new text"
-'
-'obj.SetText txt
-'obj.PutInClipboard
-'
-'End Sub
+Sub PrevSht()
+    If Not ActiveSheet.Index = 1 Then Sheets(ActiveSheet.Index - 1).Activate
+End Sub
+
+Sub NextSht()
+    If Not ActiveSheet.Index = ActiveWorkbook.Sheets.Count Then Sheets(ActiveSheet.Index + 1).Activate
+End Sub
+
