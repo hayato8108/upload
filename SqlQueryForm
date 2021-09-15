@@ -1,5 +1,4 @@
 
-
 Private Sub tbxQuery_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
 Const VK_CONTROL = &H11
 Const VK_SHIFT = &H10
@@ -10,9 +9,15 @@ Const VK_ALT = &H12
     'D delete
     If KeyCode = 68 And GetKeyState(VK_CONTROL) < 0 And GetKeyState(VK_ALT) < 0 Then ActiveSheet.Delete
     'E execute
-    If KeyCode = 69 And GetKeyState(VK_CONTROL) < 0 And GetKeyState(VK_ALT) < 0 Then ExecuteQuery tbxQuery.Text
+    If KeyCode = 69 And GetKeyState(VK_CONTROL) < 0 And GetKeyState(VK_ALT) < 0 Then
+        ThisWorkbook.Sheets(tbxSht.Text).Cells.Clear
+        Call QueryExcel(tbxQuery.Text, tbxPath.Text, tbxSht.Text)
+    End If
     'L execute
-    If KeyCode = 76 And GetKeyState(VK_CONTROL) < 0 And GetKeyState(VK_ALT) < 0 Then ExecuteQuery tbxQuery.SelText
+    If KeyCode = 76 And GetKeyState(VK_CONTROL) < 0 And GetKeyState(VK_ALT) < 0 Then
+        ThisWorkbook.Sheets(tbxSht.Text).Cells.Clear
+        Call QueryExcel(tbxQuery.SelText, tbxPath.Text, tbxSht.Text)
+    End If
     'N GetActiveShtName
     If KeyCode = 78 And GetKeyState(VK_CONTROL) < 0 And GetKeyState(VK_ALT) < 0 Then tbxQuery.Text = tbxQuery.Value & "[" & ActiveSheet.Name & "$]"
     'G
@@ -28,69 +33,56 @@ Const VK_ALT = &H12
 End Sub
 
 
-
-
 'QUERY MEMO =============================================================
 'SELECT first_name & " " & last_name as [new_column]
 'FROM [au-500$]
 
+'SELECT
+'S1.COL1,
+'S1.COL1 & " " & S1.COL2 as [NEW_COL]
+'FROM [SAMPLE1$] as S1
+'WHERE S1.COL1 = "1-ROW9-1"
 
-'SELECT first_name & " " & last_name as [full_name],
-'address,
-'city,
-'zip
-'FROM [us-500$]
-'where city = "New Orleans"
+'COL A, B ONLY
+'SELECT *
+'FROM [SAMPLE1$A1:B12] as S1
 
-'strQuery = "SELECT * FROM [Sheet1$A1:B10]"
+'Row 2 ~
+'SELECT *
+'FROM [SAMPLE1$A2:B12] as S1
 
-'strQuery = "SELECT * FROM MyRange"
+''NG
+'SELECT
+'S1.COL1,
+'S1.COL2 & " " & S1.COL3 as [COL2_COL3],
+'S1.COL4 as [C4]
+'FROM [SAMPLE1$] as S1
+'LEFT JOIN [SAMPLE2$] as S2 ON S2.[CLO5] = S1.COL5
+'WHERE S1.[COL5] = "AAA"
 
-'sql = "SELECT     Customer.CustomerCode, Customer.Name, " & _
-'    "OrderHeader.OrderType , OrderHeader.OrderNumber " & _
-'    "FROM       Customer " & _
-'    "INNER Join  OrderHeader ON Customer.CustomerID = OrderHeader.CustomerID " & _
-'    "WHERE (OrderHeader.OrderType = 2) And (OrderHeader.OrderNumber = " & OrderNo & ") "
+'UNION => NEED SAME TABLE COLUMN FIELD,
+'SELECT *
+'FROM [SAMPLE1$]
+'Union ALL
+'SELECT *
+'FROM [SAMPLE2$]
 
-'Update [us-500 (2)$]
-'Set city = "New Orieans City"
-'where first_name = "James" And last_name = "Butt"
+'SELECT DISTINCT *
+'FROM [SAMPLE1$]
 
-'WHERE Country ='Germany'
-'WHERE Country IN ('Germany', 'France', 'UK');
-'WHERE Country NOT IN ('Germany', 'France', 'UK');
-'WHERE Country IN (SELECT Country FROM Suppliers);
+'INSERT INTO [SAMPLE1$] (COL1, COL2)
+'VALUES("NEW_COL1","NEW_COL2")
 
-'WHERE condition1 AND condition2 AND condition3 ...;
-'WHERE condition1 OR condition2 OR condition3 ...;
-'WHERE NOT condition;
-'WHERE column_name IS NULL;
-'WHERE column_name IS NOT NULL;
+'Update [SAMPLE1$]
+'Set COL2 = "UPDATE_COL2"
+'WHERE COL1 = "NEW_COL1"
 
-'WHERE Price BETWEEN 10 AND 20;
+'SELECT *
+'FROM [SAMPLE1$] as S1
+'WHERE S1.COL5 Is Not Null
 
-'WHERE columnN LIKE pattern;
-'WHERE CustomerName LIKE 'a%'    Finds any values that start with "a"
-'WHERE CustomerName LIKE '%a'    Finds any values that end with "a"
-'WHERE CustomerName LIKE '%or%'  Finds any values that have "or" in any position
-'WHERE CustomerName LIKE '_r%'   Finds any values that have "r" in the second position
-'WHERE CustomerName LIKE 'a_%'   Finds any values that start with "a" and are at least 2 characters in length
-'WHERE CustomerName LIKE 'a__%'  Finds any values that start with "a" and are at least 3 characters in length
-'WHERE ContactName LIKE 'a%o'    Finds any values that start with "a" and ends with "o"
-
-'ORDER BY column1, column2, ... ASC|DESC;
-
-'DELETE FROM table_name WHERE condition;
-
-'SELECT MIN(column_name)
-'SELECT MAX(column_name)
-'SELECT COUNT(column_name)
-'SELECT AVG(column_name)
-'SELECT SUM(column_name)
-
-'SELECT [Orders$].OrderID, [Customers$].CustomerName
-'FROM [Orders$]
-'INNER JOIN [Customers$] ON [Orders$].CustomerID = [Customers$].CustomerID
-'
-
-
+'SELECT
+'ONCONDITION,
+'CM0 , CM6
+'FROM [alarm_master$] as AM
+'WHERE AM.ONCONDITION Is Not Null
