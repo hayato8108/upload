@@ -2,6 +2,14 @@
 '[KEY]   [WorkBookName]  [WorkSheetName] [KeyCol]    [RtnCol]
 
 
+Sub setSql()
+    Application.OnKey "+^%Q", "ShowQueryForm"
+End Sub
+
+Sub setRefreshDBWS()
+    Application.OnKey "+^%R", "Xml2DbShtRefresh"
+End Sub
+
 Sub reload()
     Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
         :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
@@ -137,11 +145,6 @@ sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A") 'single
 
 If UBound(sData) = -1 Then fKey2Val = "#N/A#": Exit Function
 
-'Dim sWb As String: sWb = sData(Application.WorksheetFunction.Match("[WorkBookName]", rRng, 0))
-'Dim sWs As String: sWs = sData(Application.WorksheetFunction.Match("[WorkSheetName]", rRng, 0))
-'Dim sKeyCol As String: sKeyCol = sData(Application.WorksheetFunction.Match("[KeyCol]", rRng, 0))
-'Dim sRtnCol As String: sRtnCol = sData(Application.WorksheetFunction.Match("[RtnCol]", rRng, 0))
-
 Dim sWb As String: sWb = sData(2)
 Dim sWs As String: sWs = sData(3)
 Dim sKeyCol As String: sKeyCol = sData(4)
@@ -176,6 +179,49 @@ End With
     
 End Function
 
+
+Sub BatchXml2DbShtRefresh()
+
+
+End Sub
+
+
+Sub Xml2DbShtRefresh()
+If Not ActiveSheet.Tab.ColorIndex = -4142 Then Debug.Print "Locked": Exit Sub
+Application.ScreenUpdating = False
+
+Dim sData As Variant
+Dim wsDst As Worksheet: Set wsDst = ActiveSheet
+Dim wsLNK As Worksheet: Set wsLNK = ThisWorkbook.Sheets("LinkData")
+Dim l As Long
+Dim lEnd As Long
+Dim sPrf As String: sPrf = ActiveSheet.Name  'DB_PLC00_M
+
+wsDst.Rows("2:" & Rows.Count).Clear
+wsDst.Rows("2:" & Rows.Count).NumberFormat = "@"
+
+With wsLNK
+lEnd = .Cells(Rows.Count, 1).End(xlUp).Row
+    For l = 1 To lEnd
+        If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then
+            'append range
+            sData = fGetRowData(ThisWorkbook.Name, .Name, .Cells(l, 1).Value, "A")  'single row, get link parameters
+            If UBound(sData) = -1 Then Debug.Print "does not match": Exit Sub
+                Dim sWb As String: sWb = sData(2)
+                Dim sWs As String: sWs = sData(3)
+                Dim sStCell As String: sStCell = sData(4)
+                Dim sEndCell As String: sEndCell = sData(5)
+                Dim lEndDst As Long: lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
+                wsDst.Cells(lEndDst, 1).Activate
+                Workbooks(sWb).Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
+                wsDst.PasteSpecial
+        End If
+    Next l
+End With
+ 
+ wsDst.Range("A1").Activate
+ Application.ScreenUpdating = True
+End Sub
 
 
 'on Target Sheet
@@ -358,6 +404,8 @@ Function fSplitByDelimiter(ByVal inptStr As String, ByVal inptSplt As String, By
 fSplitByDelimiter = fSplit(inptStr, inptCol, inptSplt)
 
 End Function
+
+
 
 Function fSplit(ByVal inptStr As String, ByVal inptCol As Integer, Optional ByVal inptSplt As String = ",") As String
 
@@ -564,10 +612,10 @@ Private Function fFilter(ByVal inptArray As Variant, ByVal inptOperator As Strin
                     sResult = fAddToArray(sResult, vArr(lCnt))
                 End If
 
-            Case "Rgx"
-                If fRegx2Bool(vArr(lCnt), sCnd) Then
-                    sResult = fAddToArray(sResult, vArr(lCnt))
-                End If
+'            Case "Rgx"
+'                If fRegx2Bool(vArr(lCnt), sCnd) Then
+'                    sResult = fAddToArray(sResult, vArr(lCnt))
+'                End If
 
         End Select
 
