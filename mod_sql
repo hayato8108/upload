@@ -1,0 +1,224 @@
+Option Explicit
+Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+Public Function PutInClipboard(S As String, Optional FormatID As Variant) As Boolean
+End Function
+'Microsoft ActiveX Data Objects 6.0 Library
+
+Sub ShowQueryForm()
+    SqlQuery.Show (0)
+End Sub
+
+Sub QueryExcel(ByVal SQL_Statment As String, ByVal File_Path As String, ByVal Work_Sheet As String)
+On Error GoTo Errhandle
+Dim conn As ADODB.Connection
+Dim rst As ADODB.Recordset
+
+Dim sConnection As String, sSql As String, sPath As String, sSht As String
+Dim ws As Worksheet
+Dim i As Integer, iCheck As Integer
+Dim run_records As Long
+
+'File, sheet
+If (File_Path = "") Then Exit Sub Else sPath = File_Path
+If (Work_Sheet = "") Then Set ws = Workbooks.Add Else Set ws = Sheets("SQL_OUT")
+
+sConnection = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sPath & _
+                        ";Extended Properties=""Excel 12.0 Xml;HDR=YES;IMEX=0;ReadOnly=False"";"
+
+Set conn = CreateObject("ADODB.Connection")
+Set rst = CreateObject("ADODB.Recordset")
+
+sSql = SQL_Statment
+'sSql = UCase(SQL_Statment)
+
+'sSql = "SELECT T2.COL2 FROM [tst2$] AS T2 "
+'sSql = sSql & "LEFT JOIN [tst1$] AS T1 ON T2.COL2 <> T1.COL2"
+
+conn.Open sConnection
+
+If Left(sSql, 6) = "UPDATE" Or InStr(sSql, "INSERT INTO") > 0 Then
+    conn.Execute sSql, run_records
+    MsgBox run_records & "records affected", vbInformation
+Else
+
+    rst.Open sSql, conn, adOpenDynamic, adLockOptimistic
+
+    With ws
+        .Range("A:XFB").Clear
+        .Range("A2").CopyFromRecordset rst 'Paste Record Set
+
+        For i = 0 To rst.Fields.Count - 1
+            .Cells(1, i + 1) = rst.Fields(i).Name
+        Next i
+    End With
+    End If
+
+Door:
+If rst.State <> 0 Then rst.Close
+If conn.State <> 0 Then conn.Close
+
+ Set rst = Nothing
+ Set conn = Nothing
+ Set ws = Nothing
+
+Exit Sub
+
+Errhandle:
+MsgBox "Error" & Err.Description, vbInformation, "JJ Excel SQL Application"
+GoTo Door
+
+End Sub
+
+'Private Function Query2Array(inptStr As String) As Object
+'Dim vArr As Variant: vArr = Split(inptStr, vbCrLf)
+'Dim sSql As String
+'Dim vSqls As Object: Set vSqls = CreateObject("System.Collections.ArrayList")
+'Dim i As Long
+'Dim index As Long: index = -1
+'
+'For i = 0 To UBound(vArr)
+'    If Left(vArr(i), Len("SELECT")) = "SELECT" Then
+'        If index <> -1 Then vSqls.Add sSql
+'            index = index + 1
+'            sSql = vArr(i)
+'    Else
+'        sSql = sSql & " " & vArr(i)
+'    End If
+'Next i
+'
+'vSqls.Add sSql
+'Query2Array = vSqls
+'
+'End Function
+
+Sub RunSELECT(ByVal SQL_Statment As String, ByVal File_Path As String, ByVal Work_Sheet As String)
+
+    Dim cn As Object, rs As Object, output As String, sql As String
+    Dim ws As Worksheet: Set ws = Sheets(Work_Sheet)
+    '---Connecting to the Data Source---
+    Set cn = CreateObject("ADODB.Connection")
+    
+    With cn
+        .Provider = "Microsoft.ACE.OLEDB.12.0"
+        .ConnectionString = "Data Source=" & File_Path & ";" & "Extended Properties=""Excel 12.0 Xml;HDR=YES"";"
+'        .ConnectionString = "Data Source=" & ThisWorkbook.path & "\" & ThisWorkbook.Name & ";" & "Extended Properties=""Excel 12.0 Xml;HDR=YES"";"
+        .Open
+    End With
+
+    '---Run the SQL SELECT Query---
+    sql = SQL_Statment
+    Set rs = cn.Execute(sql)
+    
+    Dim i As Long: i = 2
+    
+    With ws
+    .Range("A:XFB").Clear
+    Do
+       'output = output & """" & rs(0) & """" & ";" & """" & rs(1) & """" & ";" & """" & rs(2) & """" & vbNewLine
+       'Debug.Print rs(0); ";" & rs(1) & ";" & rs(2)
+        .Cells(i, 1).Value = rs(0)
+        .Cells(i, 2).Value = rs(1)
+        .Cells(i, 3).Value = rs(2)
+        i = i + 1
+        Debug.Print i
+       rs.Movenext
+    Loop Until rs.EOF
+    'MsgBox output
+    End With
+    
+    '---Clean up---
+    rs.Close
+    cn.Close
+    Set cn = Nothing
+    Set rs = Nothing
+End Sub
+
+Sub PrevSht()
+    If Not ActiveSheet.index = 1 Then Sheets(ActiveSheet.index - 1).Activate
+End Sub
+
+Sub NextSht()
+    If Not ActiveSheet.index = ActiveWorkbook.Sheets.Count Then Sheets(ActiveSheet.index + 1).Activate
+End Sub
+
+'MEMO===============================================
+'Call QueryExcel(sql, path, SHT)
+'path = ThisWorkbook.path & "\" & ThisWorkbook.Name
+'SHT = "SQL_OUT"
+
+'sql = "SELECT * FROM [tst2$] WHERE COL1 = 'AAA'"
+'sql = "SELECT * FROM [tst2$] WHERE [COL1] >= 'C' ORDER BY [COL1] DESC" 'ASC/DESC
+'sql = "SELECT * FROM [tst2$] WHERE [COL1] BETWEEN 'C' AND 'E' ORDER BY [COL1] DESC"
+'SQL = "SELECT * FROM [tst2$] WHERE [COL1] NOT IN ('CCC', 'EEE') ORDER BY [COL1] DESC"
+'SQL = "SELECT * FROM [tst2$] WHERE [COL1] NOT LIKE 'C%' ORDER BY [COL1] DESC"
+
+'path = ThisWorkbook.path & "\" & ThisWorkbook.Name: _
+'SHT = "SQL_OUT": _
+'SQL1 = "SELECT * ": _
+'SQL2 = "FROM [tst2$] ": _
+'SQL3 = "WHERE [COL1] NOT LIKE 'C%' ": _
+'SQL4 = "ORDER BY [COL1] ASC": _
+'sql = SQL1 & SQL2 & SQL3 & SQL4: _
+'Call QueryExcel(sql, path, SHT)
+
+'SELECT first_name & " " & last_name as [new_column]
+'FROM [au-500$]
+
+'SELECT
+'S1.COL1,
+'S1.COL1 & " " & S1.COL2 as [NEW_COL]
+'FROM [SAMPLE1$] as S1
+'WHERE S1.COL1 = "1-ROW9-1"
+
+'COL A, B ONLY
+'SELECT *
+'FROM [SAMPLE1$A1:B12] as S1
+
+'Row 2 ~
+'SELECT *
+'FROM [SAMPLE1$A2:B12] as S1
+
+'UNION => NEED SAME TABLE COLUMN FIELD,
+'SELECT *
+'FROM [SAMPLE1$]
+'Union ALL
+'SELECT *
+'FROM [SAMPLE2$]
+
+'SELECT DISTINCT *
+'FROM [SAMPLE1$]
+
+'INSERT INTO [SAMPLE1$] (COL1, COL2)
+'VALUES("NEW_COL1","NEW_COL2")
+
+'SELECT *
+'FROM [SAMPLE1$] as S1
+'WHERE S1.COL5 Is Not Null
+
+'SELECT  *
+'FROM [SAMPLE1$] AS S1
+'WHERE Not S1.COL1 = "FUNC"
+
+'UPDATEW [SHEET$]
+'SET COLUMN = "NEW_ VAL"
+'WHERE TARGET_COL = "TARGET_VAL"
+
+'SELECT
+'CLUMN
+'FROM [SHEET$] as TABLE
+'WHERE TABLE.CLUMN Is Not Null
+
+'SELECT RIGHT AS ExtractString
+'FROM [SHEET$]
+
+'SELECT T1.CODE AS [T1_CODE], T1.PVMAX AS [T1_PVMAX], T1.PV_TRENDMAX AS [T1_TREND]
+'FROM [DB_FP_AL4$] AS T1
+'WHERE T1.PVMAX <> T1.PV_TRENDMAX
+
+'SELECT T1.Code
+'FROM [DB_FP_AL4$] as T1
+'ORDER BY T1.CODE DESC
+
+
+
+
