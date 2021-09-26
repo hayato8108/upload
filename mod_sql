@@ -1,224 +1,289 @@
 Option Explicit
-Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
-Public Function PutInClipboard(S As String, Optional FormatID As Variant) As Boolean
-End Function
-'Microsoft ActiveX Data Objects 6.0 Library
 
-Sub ShowQueryForm()
-    SqlQuery.Show (0)
+'CreateSQLQuery
+'UnionAnalogTable
+'UnionFPTable
+'
+'CSV1    CSV2    CSV3    UNIT    FOLDER  NAME    EU  COMMENT DEC1    DEC2    DEC3    BINALY
+'[FUNC]          =IF(A2'="*",D1,fSplit(A2,1,"#"))    =IF(B2'="*",E1,fSplit(B2,1,"#"))    =fSplit(C2,1,"#")   =fSplitBetween($C2,2,"+EU'=","+C'=")    =fSplit($C2,2,"+C'=")   =fSplitBetween($C2,2,"DEC:","|","TRUE") =fSplitBetween($C2,2,"|","|","TRUE")    =IF(fSplit(C2,1,"DEC")'=C2,"",fSplitBetween($C2,3,"|","+EU",TRUE))  =fReplaceRegx(C2,".*(BIN-?\d+).*","$1")
+
+
+Sub CreateSQLQuery()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    
+    'QUERY ===========================================
+    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT]"
+    'SQLQuery = _
+        "SELECT " & Headers & _
+    "FROM [DB_AI_SV $]" & _
+         "UNION ALL SELECT " & Headers & "FROM [DB_AI_AL4$]"
+    
+'    SQLQuery = _
+'        "SELECT " & Headers1 & "," & Headers2 & _
+'        "FROM [DB_AI_SV $]" & _
+'        "INNER JOIN [DB_PLC00_A$] ON [DB_AI_SV $].[Code] = [DB_PLC00_A$].[TAG_NO]" '& _
+'        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]" & _
+
+    SQLQuery = _
+        "SELECT " & _
+            "[FP_TABLE$].[Code], " & _
+            "[FP_TABLE$].[PVMax], " & _
+            "[A_TABLE$].[MAX], " & _
+            "IIF([FP_TABLE$].[PVMax] = [A_TABLE$].[MAX], 'OK', 'NG') AS [PV_CHK]," & _
+            "[FP_TABLE$].[DecimalPlace], " & _
+            "[A_TABLE$].[DECIMAL], " & _
+            "IIF([FP_TABLE$].[DecimalPlace] = [A_TABLE$].[DECIMAL], 'OK', 'NG') AS [DEC_CHK]" & _
+        "FROM [FP_TABLE$] " & _
+        "RIGHT JOIN [A_TABLE$] ON [FP_TABLE$].[Code] = [A_TABLE$].[TAG_NO] " '& _
+        "LEFT JOIN [DB_TREND_PENINFO$] ON [FP_TABLE$].[Code] = [DB_TREND_PENINFO$].[TAG_NO]" '& _
+
+    'Out Setting
+    WorkSheetName = "SQL_OUT"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
 End Sub
 
-Sub QueryExcel(ByVal SQL_Statment As String, ByVal File_Path As String, ByVal Work_Sheet As String)
-On Error GoTo Errhandle
-Dim conn As ADODB.Connection
-Dim rst As ADODB.Recordset
 
-Dim sConnection As String, sSql As String, sPath As String, sSht As String
-Dim ws As Worksheet
-Dim i As Integer, iCheck As Integer
-Dim run_records As Long
+Sub UnionAnalogTable()
 
-'File, sheet
-If (File_Path = "") Then Exit Sub Else sPath = File_Path
-If (Work_Sheet = "") Then Set ws = Workbooks.Add Else Set ws = Sheets("SQL_OUT")
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    
+    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT], [DECIMAL], [PLC] & '.R.' & [PV]"
+    
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_PLC00_A$]" & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_A$]"
+        
+    'Out Setting
+    WorkSheetName = "A_TABLE"
 
-sConnection = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & sPath & _
-                        ";Extended Properties=""Excel 12.0 Xml;HDR=YES;IMEX=0;ReadOnly=False"";"
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
 
-Set conn = CreateObject("ADODB.Connection")
-Set rst = CreateObject("ADODB.Recordset")
+Sub UnionFPTable()
 
-sSql = SQL_Statment
-'sSql = UCase(SQL_Statment)
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    Headers1 = "[Code], [ClassID],  [PVMax], [PVMin],  [PVTrendMax], [PVTrendMin], [Units], [DecimalPlace] "
+    
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_AI_SV $]" & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]"
+    
+    'Out Setting
+    WorkSheetName = "FP_TABLE"
 
-'sSql = "SELECT T2.COL2 FROM [tst2$] AS T2 "
-'sSql = sSql & "LEFT JOIN [tst1$] AS T1 ON T2.COL2 <> T1.COL2"
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
 
-conn.Open sConnection
+Sub GetQueryResults(SQLQuery As String, WorkBookName As String, WorkSheetName As String)
 
-If Left(sSql, 6) = "UPDATE" Or InStr(sSql, "INSERT INTO") > 0 Then
-    conn.Execute sSql, run_records
-    MsgBox run_records & "records affected", vbInformation
-Else
-
-    rst.Open sSql, conn, adOpenDynamic, adLockOptimistic
-
-    With ws
-        .Range("A:XFB").Clear
-        .Range("A2").CopyFromRecordset rst 'Paste Record Set
-
-        For i = 0 To rst.Fields.Count - 1
-            .Cells(1, i + 1) = rst.Fields(i).Name
-        Next i
-    End With
+    Dim DataFilePath As String
+    Dim cn As ADODB.Connection
+    Dim rs As ADODB.Recordset
+    Dim ws As Worksheet
+    Dim i As Integer
+    Dim RowCount As Long, ColCount As Long
+    
+    'Exit the procedure if no query was passed in
+    If SQLQuery = "" Then
+        MsgBox _
+            Prompt:="You didn't enter a query", _
+            Buttons:=vbCritical, _
+            Title:="Query string missing"
+        Exit Sub
     End If
-
-Door:
-If rst.State <> 0 Then rst.Close
-If conn.State <> 0 Then conn.Close
-
- Set rst = Nothing
- Set conn = Nothing
- Set ws = Nothing
-
-Exit Sub
-
-Errhandle:
-MsgBox "Error" & Err.Description, vbInformation, "JJ Excel SQL Application"
-GoTo Door
-
-End Sub
-
-'Private Function Query2Array(inptStr As String) As Object
-'Dim vArr As Variant: vArr = Split(inptStr, vbCrLf)
-'Dim sSql As String
-'Dim vSqls As Object: Set vSqls = CreateObject("System.Collections.ArrayList")
-'Dim i As Long
-'Dim index As Long: index = -1
-'
-'For i = 0 To UBound(vArr)
-'    If Left(vArr(i), Len("SELECT")) = "SELECT" Then
-'        If index <> -1 Then vSqls.Add sSql
-'            index = index + 1
-'            sSql = vArr(i)
-'    Else
-'        sSql = sSql & " " & vArr(i)
-'    End If
-'Next i
-'
-'vSqls.Add sSql
-'Query2Array = vSqls
-'
-'End Function
-
-Sub RunSELECT(ByVal SQL_Statment As String, ByVal File_Path As String, ByVal Work_Sheet As String)
-
-    Dim cn As Object, rs As Object, output As String, sql As String
-    Dim ws As Worksheet: Set ws = Sheets(Work_Sheet)
-    '---Connecting to the Data Source---
-    Set cn = CreateObject("ADODB.Connection")
     
-    With cn
-        .Provider = "Microsoft.ACE.OLEDB.12.0"
-        .ConnectionString = "Data Source=" & File_Path & ";" & "Extended Properties=""Excel 12.0 Xml;HDR=YES"";"
-'        .ConnectionString = "Data Source=" & ThisWorkbook.path & "\" & ThisWorkbook.Name & ";" & "Extended Properties=""Excel 12.0 Xml;HDR=YES"";"
-        .Open
-    End With
-
-    '---Run the SQL SELECT Query---
-    sql = SQL_Statment
-    Set rs = cn.Execute(sql)
+    'Check that the Movies workbook exists in the same folder as this workbook
+    DataFilePath = WorkBookName
     
-    Dim i As Long: i = 2
+    If Dir(DataFilePath) = "" Then
+        MsgBox _
+            Prompt:="Could not find Movies.xlsx", _
+            Buttons:=vbCritical, _
+            Title:="File not found"
+        Exit Sub
+    End If
     
-    With ws
-    .Range("A:XFB").Clear
-    Do
-       'output = output & """" & rs(0) & """" & ";" & """" & rs(1) & """" & ";" & """" & rs(2) & """" & vbNewLine
-       'Debug.Print rs(0); ";" & rs(1) & ";" & rs(2)
-        .Cells(i, 1).Value = rs(0)
-        .Cells(i, 2).Value = rs(1)
-        .Cells(i, 3).Value = rs(2)
-        i = i + 1
-        Debug.Print i
-       rs.Movenext
-    Loop Until rs.EOF
-    'MsgBox output
+    'Create and open a connection to the Movies workbook
+    Set cn = New ADODB.Connection
+    cn.ConnectionString = _
+        "Provider=Microsoft.ACE.OLEDB.12.0;" & _
+        "Data Source=" & DataFilePath & ";" & _
+        "Extended Properties='Excel 12.0 Xml;HDR=YES';"
+    
+    'Try to open the connection, exit the subroutine if this fails
+    On Error GoTo EndPoint
+    cn.Open
+    
+    'If anything fails after this point, close the connection before exiting
+    On Error GoTo CloseConnection
+    
+    'Create and populate the recordset using the SQLQuery
+    Set rs = New ADODB.Recordset
+    rs.ActiveConnection = cn
+    rs.CursorType = adOpenStatic
+    
+    rs.Source = SQLQuery    'Use the query string that we passed into the procedure
+    
+    'Try to open the recordset to return the results of the query
+    rs.Open
+    
+    'If anything fails after this point, close the recordset and connection before exiting
+    On Error GoTo CloseRecordset
+    
+    'Get count of rows returned by the query
+    RowCount = rs.RecordCount
+    
+    'Debug.Print RowCount & " row(s)", SQLQuery
+    
+    'Exit the procedure if no rows returned
+    If RowCount = 0 Then
+        MsgBox _
+            Prompt:="The query returned no results", _
+            Buttons:=vbExclamation, _
+            Title:="No Results"
+        Exit Sub
+    End If
+    
+    'Get the count of columns returned by the query
+    ColCount = rs.Fields.Count
+    
+    'Create a new worksheet
+    'Set ws = ThisWorkbook.Worksheets.Add
+    Set ws = ThisWorkbook.Worksheets(WorkSheetName)
+    
+    'Select the worksheet to avoid the formatting bug with CopyFromRecordset
+    Workbooks(Dir(DataFilePath)).Activate
+    ws.Select
+    ws.Cells.Clear
+    
+    'Format the header row of the worksheet
+    With ws.Range("A1").Resize(1, ColCount)
+        .Interior.Color = rgbCornflowerBlue
+        .Font.Color = rgbWhite
+        .Font.Bold = True
     End With
     
-    '---Clean up---
+    'Copy values from the recordset into the worksheet
+    ws.Range("A2").CopyFromRecordset rs
+    
+    'Write column names into row 1 of the worksheet
+    For i = 0 To ColCount - 1
+        With rs.Fields(i)
+            ws.Range("A1").Offset(0, i).Value = .Name
+            
+            'Apply a custom date format to date columns
+            If .Type = adDate Then
+                ws.Range("A1").Offset(1, i).Resize(RowCount, 1).NumberFormat = "dd mmm yyyy"
+            End If
+        End With
+    Next i
+    
+    'Change the column widths on the worksheet
+    ws.Range("A1").CurrentRegion.EntireColumn.AutoFit
+    
+    'Close the recordset and connection
+    'This will happen anyway when the local variables go out of scope at the end of the subroutine
     rs.Close
     cn.Close
-    Set cn = Nothing
+    
+    'Free resources used by the recordset and connection
+    'This will happen anyway when the local variables go out of scope at the end of the subroutine
     Set rs = Nothing
+    Set cn = Nothing
+    
+    'Exit here to make sure that the error handling code does not run
+    Exit Sub
+    
+'========================================================================
+'ERROR HANDLERS
+'========================================================================
+CloseRecordset:
+'If the recordset is opened successfully but a runtime error occurs later we end up here
+    rs.Close
+    cn.Close
+    
+    Set rs = Nothing
+    Set cn = Nothing
+    
+'    Debug.Print SQLQuery
+    
+    MsgBox _
+        Prompt:="An error occurred after the recordset was opened." & vbNewLine _
+            & vbNewLine & "Error number: " & Err.Number _
+            & vbNewLine & "Error description: " & Err.Description, _
+        Buttons:=vbCritical, _
+        Title:="Error After Recordset Open"
+    
+    Exit Sub
+
+CloseConnection:
+'If the connection is opened successfully but a runtime error occurs later we end up here
+    cn.Close
+    
+    Set cn = Nothing
+    
+   ' Debug.Print SQLQuery
+    
+    MsgBox _
+        Prompt:="An error occurred after the connection was established." & vbNewLine _
+            & vbNewLine & "Error number: " & Err.Number _
+            & vbNewLine & "Error description: " & Err.Description, _
+        Buttons:=vbCritical, _
+        Title:="Error After Connection Open"
+    
+    Exit Sub
+    
+'If the connection failed to open we end up here
+EndPoint:
+    MsgBox _
+        Prompt:="The connection failed to open." & vbNewLine _
+            & vbNewLine & "Error number: " & Err.Number _
+            & vbNewLine & "Error description: " & Err.Description, _
+        Buttons:=vbCritical, _
+        Title:="Connection Error"
+    
 End Sub
 
-Sub PrevSht()
-    If Not ActiveSheet.index = 1 Then Sheets(ActiveSheet.index - 1).Activate
+Sub DeleteAllButMenuSheet()
+
+    Dim ws As Worksheet
+    
+    Application.DisplayAlerts = False
+    
+    For Each ws In ThisWorkbook.Worksheets
+        If Not ws Is MenuSheet Then ws.Delete
+    Next ws
+    
+    Application.DisplayAlerts = True
+    
 End Sub
-
-Sub NextSht()
-    If Not ActiveSheet.index = ActiveWorkbook.Sheets.Count Then Sheets(ActiveSheet.index + 1).Activate
-End Sub
-
-'MEMO===============================================
-'Call QueryExcel(sql, path, SHT)
-'path = ThisWorkbook.path & "\" & ThisWorkbook.Name
-'SHT = "SQL_OUT"
-
-'sql = "SELECT * FROM [tst2$] WHERE COL1 = 'AAA'"
-'sql = "SELECT * FROM [tst2$] WHERE [COL1] >= 'C' ORDER BY [COL1] DESC" 'ASC/DESC
-'sql = "SELECT * FROM [tst2$] WHERE [COL1] BETWEEN 'C' AND 'E' ORDER BY [COL1] DESC"
-'SQL = "SELECT * FROM [tst2$] WHERE [COL1] NOT IN ('CCC', 'EEE') ORDER BY [COL1] DESC"
-'SQL = "SELECT * FROM [tst2$] WHERE [COL1] NOT LIKE 'C%' ORDER BY [COL1] DESC"
-
-'path = ThisWorkbook.path & "\" & ThisWorkbook.Name: _
-'SHT = "SQL_OUT": _
-'SQL1 = "SELECT * ": _
-'SQL2 = "FROM [tst2$] ": _
-'SQL3 = "WHERE [COL1] NOT LIKE 'C%' ": _
-'SQL4 = "ORDER BY [COL1] ASC": _
-'sql = SQL1 & SQL2 & SQL3 & SQL4: _
-'Call QueryExcel(sql, path, SHT)
-
-'SELECT first_name & " " & last_name as [new_column]
-'FROM [au-500$]
-
-'SELECT
-'S1.COL1,
-'S1.COL1 & " " & S1.COL2 as [NEW_COL]
-'FROM [SAMPLE1$] as S1
-'WHERE S1.COL1 = "1-ROW9-1"
-
-'COL A, B ONLY
-'SELECT *
-'FROM [SAMPLE1$A1:B12] as S1
-
-'Row 2 ~
-'SELECT *
-'FROM [SAMPLE1$A2:B12] as S1
-
-'UNION => NEED SAME TABLE COLUMN FIELD,
-'SELECT *
-'FROM [SAMPLE1$]
-'Union ALL
-'SELECT *
-'FROM [SAMPLE2$]
-
-'SELECT DISTINCT *
-'FROM [SAMPLE1$]
-
-'INSERT INTO [SAMPLE1$] (COL1, COL2)
-'VALUES("NEW_COL1","NEW_COL2")
-
-'SELECT *
-'FROM [SAMPLE1$] as S1
-'WHERE S1.COL5 Is Not Null
-
-'SELECT  *
-'FROM [SAMPLE1$] AS S1
-'WHERE Not S1.COL1 = "FUNC"
-
-'UPDATEW [SHEET$]
-'SET COLUMN = "NEW_ VAL"
-'WHERE TARGET_COL = "TARGET_VAL"
-
-'SELECT
-'CLUMN
-'FROM [SHEET$] as TABLE
-'WHERE TABLE.CLUMN Is Not Null
-
-'SELECT RIGHT AS ExtractString
-'FROM [SHEET$]
-
-'SELECT T1.CODE AS [T1_CODE], T1.PVMAX AS [T1_PVMAX], T1.PV_TRENDMAX AS [T1_TREND]
-'FROM [DB_FP_AL4$] AS T1
-'WHERE T1.PVMAX <> T1.PV_TRENDMAX
-
-'SELECT T1.Code
-'FROM [DB_FP_AL4$] as T1
-'ORDER BY T1.CODE DESC
-
-
 
 
