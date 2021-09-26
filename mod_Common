@@ -1,14 +1,17 @@
 'c20210706 common
 '[KEY]   [WorkBookName]  [WorkSheetName] [KeyCol]    [RtnCol]
 
+'Note
 
-Sub setSql()
+
+
+
+Sub setDBKeyBInd()
     Application.OnKey "+^%Q", "ShowQueryForm"
+    Application.OnKey "+^%R", "Xml2DbShtRefresh"
+    Application.OnKey "+^%A", "BatchXml2DbShtRefresh"
 End Sub
 
-Sub setRefreshDBWS()
-    Application.OnKey "+^%R", "Xml2DbShtRefresh"
-End Sub
 
 Sub reload()
     Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
@@ -17,17 +20,17 @@ End Sub
 
 
 'PRJ PARAM===============================================================
-Sub LoadKeyBind()
-Dim r As Range
-    Worksheets("KEY_BIND").Select
-    For Each r In Range("A:A")
-        If r.Value = "s" Then
-            Call Application.OnKey(r.Offset(0, 1).Value, r.Offset(0, 2).Value)
-        ElseIf r.Value = "d" Then
-            Call Application.OnKey(r.Offset(0, 1).Value, "")
-        End If
-    Next r
-End Sub
+'Sub LoadKeyBind()
+'Dim r As Range
+'    Worksheets("KEY_BIND").Select
+'    For Each r In Range("A:A")
+'        If r.Value = "s" Then
+'            Call Application.OnKey(r.Offset(0, 1).Value, r.Offset(0, 2).Value)
+'        ElseIf r.Value = "d" Then
+'            Call Application.OnKey(r.Offset(0, 1).Value, "")
+'        End If
+'    Next r
+'End Sub
 
 'PRJ PARAM===============================================================
 Function fGetDsWb() As String
@@ -181,47 +184,72 @@ End Function
 
 
 Sub BatchXml2DbShtRefresh()
-
-
+Dim sTabColor As Integer: sTabColor = 49 ' # 123456
+Dim ws As Worksheet
+For Each ws In ThisWorkbook.Worksheets
+    If ws.Tab.ColorIndex = sTabColor Then
+        ws.Activate
+        Xml2DbShtRefresh
+    End If
+Next ws
 End Sub
 
 
 Sub Xml2DbShtRefresh()
-If Not ActiveSheet.Tab.ColorIndex = -4142 Then Debug.Print "Locked": Exit Sub
+If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
 Application.ScreenUpdating = False
 
+Dim wbSRC As Workbook
+Dim wsDst As Worksheet: Set wsDst = ThisWorkbook.ActiveSheet
 Dim sData As Variant
-Dim wsDst As Worksheet: Set wsDst = ActiveSheet
-Dim wsLNK As Worksheet: Set wsLNK = ThisWorkbook.Sheets("LinkData")
 Dim l As Long
 Dim lEnd As Long
 Dim sPrf As String: sPrf = ActiveSheet.Name  'DB_PLC00_M
+Dim sWb As String
+Dim sWs As String
+Dim sStCell As String
+Dim sEndCell As String
+Dim lEndDst As Integer
+                
+wsDst.Rows("3:" & Rows.Count).Clear
+wsDst.Rows("3:" & Rows.Count).NumberFormat = "@"
 
-wsDst.Rows("2:" & Rows.Count).Clear
-wsDst.Rows("2:" & Rows.Count).NumberFormat = "@"
-
-With wsLNK
+With ThisWorkbook.Sheets("LinkData")
 lEnd = .Cells(Rows.Count, 1).End(xlUp).Row
     For l = 1 To lEnd
+        'search link key
         If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then
             'append range
             sData = fGetRowData(ThisWorkbook.Name, .Name, .Cells(l, 1).Value, "A")  'single row, get link parameters
             If UBound(sData) = -1 Then Debug.Print "does not match": Exit Sub
-                Dim sWb As String: sWb = sData(2)
-                Dim sWs As String: sWs = sData(3)
-                Dim sStCell As String: sStCell = sData(4)
-                Dim sEndCell As String: sEndCell = sData(5)
-                Dim lEndDst As Long: lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
-                wsDst.Cells(lEndDst, 1).Activate
-                Workbooks(sWb).Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
-                wsDst.PasteSpecial
+                sWb = sData(2)
+                sWs = sData(3)
+                sStCell = sData(4)
+                sEndCell = sData(5)
+                Stop
+                If fSplit(sWb, 2, ".") = "txt" Then
+                    Set wbSRC = OpenTxt2Wb(sWb)
+                Else
+                    Set wbSRC = Workbooks.Open(sWb)
+                End If
+                    lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
+                    wbSRC.Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
+                    wsDst.Activate
+                    wsDst.Cells(lEndDst, 1).Activate
+                    wsDst.PasteSpecial
+                    wbSRC.Sheets(sWs).Range("A1").Copy
+                    wbSRC.Close False
+                    Exit For
+
         End If
     Next l
 End With
- 
- wsDst.Range("A1").Activate
- Application.ScreenUpdating = True
+
+
+wsDst.Range("A1").Activate
+Application.ScreenUpdating = True
 End Sub
+
 
 
 'on Target Sheet
@@ -407,11 +435,12 @@ End Function
 
 
 
-Function fSplit(ByVal inptStr As String, ByVal inptCol As Integer, Optional ByVal inptSplt As String = ",") As String
+Function fSplit(ByVal inptStr As String, ByVal inptCol As Integer, Optional ByVal inptSplt As String = ",", Optional inptMatch As Boolean = False) As String
 
 Dim sStr As String: sStr = inptStr
 Dim lCol As Integer: lCol = inptCol
 Dim sSplt As String: sSplt = inptSplt
+Dim sRslt As String
 Dim aStr() As String
 
 aStr = Split(sStr, sSplt)
@@ -426,10 +455,24 @@ Else
     sRslt = aStr(lCol - 1)
 End If
 
+If inptMatch = True And sResult = inptStr Then sResult = ""
+
 fSplit = sRslt
 
 End Function
 
+
+Function fSplitBetween(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptMatch As Boolean = False) As String
+Dim sResult As String
+
+sResult = fSplit(inptStr, inptCol, inptLeft)
+sResult = fSplit(sResult, 1, inptRight)
+
+If inptMatch = True And sResult = inptStr Then sResult = ""
+
+fSplitBetween = sResult
+
+End Function
 
 Function fLenOfSplited(inptStr As String, inptSplt As String, inptCol As Long) As String
 'for Decimal
