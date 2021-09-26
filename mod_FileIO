@@ -1,0 +1,157 @@
+
+Function readText(sPath As String) As String
+
+Dim sTxt, sLine As String
+
+Open sPath For Input As #1
+    Do Until EOF(1)
+    Line Input #1, sLine
+    sTxt = sTxt & sLine & vbCrLf
+    Loop
+Close #1
+ 
+readText = sTxt
+
+End Function
+
+Function getTxtNotForJp(sPath As String) As String
+
+Dim sTxt, sLine As String
+
+Open sPath For Input As #1
+    Do Until EOF(1)
+    Line Input #1, sLine
+    sTxt = sTxt & sLine & vbCrLf
+    Loop
+Close #1
+ 
+getTxtNotForJp = Replace(sTxt, "・ｿ", "")
+
+End Function
+
+Function textFile2textWithIndex(inptFilePath As String) As String
+
+textFile2textWithIndex = cnvTextFile2Text(inptFilePath, True)
+
+End Function
+
+
+Function cnvTextFile2Text(inptFilePath As String, inptIndex As Boolean) As String 'inport text File => sText
+
+Dim sFilePath As String: sFilePath = inptFilePath
+Dim sLine As String
+Dim sText As String
+Dim sIndex As String: sIndex = 1
+
+Open sFilePath For Input As #1
+Do Until EOF(1)
+Line Input #1, sLine
+
+If inptIndex = True Then
+    sText = sText & Format(sIndex, "0000") & " _:_ "
+    sIndex = sIndex + 1
+End If
+sText = sText & sLine & vbLf
+Loop
+
+Close #1
+
+cnvTextFile2Text = sText
+
+End Function
+Function fSaveFile(inputText As String, inptFilePath As String)
+
+Dim sText As String: sText = inputText
+Dim sFilePath As String: sFilePath = inptFilePath
+
+Dim a As Object
+
+With CreateObject("Scripting.FileSystemObject")
+    Set a = .CreateTextFile(sFilePath, True, True)
+    a.writeline (sText)
+    a.Close
+End With
+
+End Function
+
+Function SaveTextNonUtf8(ByVal inptStr As String, ByVal inptPath) 'UTF 16?
+
+Dim fso As Object
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set out = fso.CreateTextFile(inptPath, True, True)
+out.writeline (inptStr)
+out.Close
+
+End Function
+
+
+Sub SaveTextWithUtf8(ByVal inptStr As String, ByVal inptPath As String)
+
+Dim fst As Object
+
+Set fst = CreateObject("ADODB.Stream")
+fst.Type = 2 'Specify stream type - we want To save text/string data.
+fst.Charset = "utf-8" 'Specify charset For the source text data.
+fst.Open 'Open the stream And write binary data To the objectg
+fst.WriteText inptStr
+fst.SaveToFile inptPath, 2
+fst.Close
+
+Set fst = Nothing
+
+End Sub
+
+
+Function OpenTxt2Wb(inptPath As String) As Workbook
+        Workbooks.OpenText Filename:=inptPath _
+        , DataType:=xlFixedWidth, FieldInfo:=Array( _
+        0, 2), TrailingMinusNumbers:=True
+        Set OpenTxt2Wb = Workbooks(Dir(inptPath))
+End Function
+        
+        
+        'Function mReadXmlFile2sText(inptFilePath As String) As String 'inport text File => sText
+        '
+        'End Function
+        '
+        '
+        '
+        'Sub writeOutNonUtf8(ByVal sTxt As String)
+        '
+        'Dim fso As Object
+        '
+        'Set fso = CreateObject("Scripting.FileSystemObject")
+        'Set out = fso.CreateTextFile("C:\Users\t7122442\Documents\DOC_FAP\partsGen\partsData\XMLTestOtpt.xml", True, True)
+        'out.writeline (sTxt)
+        'out.Close
+        '
+        'End Sub
+        '
+
+
+
+'        Function irWriteOutUtf8(sTxt As String, sOtptPath As String) As String
+'
+'        On Error GoTo errHandler
+'        Dim fsT As Variant
+'
+'        Set fsT = CreateObject("ADOBE.Stream")
+'            With fsT
+'                .Type = 2
+'                .Charset = "utf-8"
+'                .Open
+'                .writetext sTxt
+'                .savetofile sOtptPath, 2
+'            End With
+'        GoTo finish
+'
+'errHandler:
+'        MsgBox (Err.Description)
+'        irWriteOutUtf8 = "False"
+'        Exit Function
+'
+'finish:
+'        irWriteOutUtf8 = "True"
+'        End Function
+
