@@ -111,6 +111,20 @@ Function OpenTxt2Wb(inptPath As String) As Workbook
 End Function
         
         
+Sub OpenFileAsWb(inptWbPath As String)
+    Dim sWb As String: sWb = inptWbPath
+    
+    Select Case fSplit(sWb, 2, ".")
+        Case "txt"
+         'open as text
+            OpenTxt2Wb (sWb)
+        Case Else
+         'open as workbook
+            Workbooks.Open (sWb)
+    End Select
+      
+End Sub
+        
         'Function mReadXmlFile2sText(inptFilePath As String) As String 'inport text File => sText
         '
         'End Function
