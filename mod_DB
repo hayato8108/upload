@@ -1,0 +1,1116 @@
+Option Explicit
+
+'    "SELECT * , " & _
+"IIF(F1 < 100, 'YES', 'NO') As [NewCol] " & _
+"LEN(F1) As [NewCol] " & _
+"F1 +  F2 As [NewCol] " & _
+"LEN(F1 + F2) As [NewCol] " & _
+"LEFT(F1, '5') As [NewCol] " & _
+"REPLACE(F1, 'TREND', '_') As [NewCol] " & _
+
+
+Sub AAA_BKM_BOOK()
+End Sub
+
+
+Sub CheckDFR3DB()
+Application.ScreenUpdating = False
+Dim oWbDB As Workbook
+Dim oWbTABLE As Workbook
+
+Set oWbDB = Workbooks.Add
+Call CreateDFR3DBBook(oWbDB)
+
+Stop
+Set oWbDB = Workbooks("Book24")
+'call CreateDFR3DBBook (oWbDB)
+
+Stop
+Set oWbTABLE = Workbooks.Add
+Call CreateDFR3DBTable(oWbDB, oWbDB)
+
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub CreateDFR3DBBook(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+'Dim oWbTmp As Workbook
+Dim rRng As Range
+
+Debug.Print "CreateDFR3DBBook START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'    Call ADD_FACEPLATE(oWb)
+'    Call ADD_FIELDMASTER_TAG(oWb)
+'    Call ADD_ALIAS(oWb)
+'    Call ADD_OP(oWb)
+'    Call ADD_KONDO(oWb)
+    Call ADD_IO(oWb)
+'    Call ADD_TYOUGOU(oWb)
+'    Call ADD_HIRANO(oWb)
+'    Call ADD_WARITUKE(oWb)
+'    Call ADD_SERVER_CSV(oWb)
+'    Call ADD_TREND_PENINFO(oWb)
+'    Call ADD_ALM_MASTER(oWb)
+
+ '   Call ADD_ALM_MASTER(oWb) DB_PLC00_R HYOUJITOU_FLG_LIST
+        
+'.Sheets("Sheet1").Delete
+
+Debug.Print "CreateDFR3DBBook END : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+End Sub
+
+
+Sub ADD_FACEPLATE(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+
+   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FACEPLATE_MASTER")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FACEPLATE_MASTER"
+        .Name = sWs
+        .Range("A1:B1").Value2 = Array("GROUP_NAME", "STRUCT_TAG_ADR")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI ")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_AI "
+        .Name = sWs
+        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_AL4")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_AI_AL4"
+        .Name = sWs
+        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+        sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_Q")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_AI_Q"
+        .Name = sWs
+        Debug.Print "※※※ TMP ※※※"
+        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+       
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_SV ")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_AI_SV "
+        .Name = sWs
+        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+           
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_SV2")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_AI_SV2"
+        .Name = sWs
+        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+           
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_SV3")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_AI_SV3"
+        .Name = sWs
+        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "SV_MAX", "_", "SV_MIN", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+            
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PID")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_PID"
+        .Name = sWs
+        .Range("A1:EC1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+                
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PR_B")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FP_PR_B"
+        .Name = sWs
+        .Range("A1:DC1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+'    NOT USE
+'    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PVI_D")
+'    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_SI")
+'    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_SW_A")
+
+End With
+End Sub
+
+
+
+Sub ADD_FIELDMASTER_TAG(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+   Debug.Print "FIELDMASTER_TAG START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG ")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FIELDMASTER_TAG "
+        .Name = sWs
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG_PV")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FIELDMASTER_TAG_PV"
+        .Name = sWs
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG_SV")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FIELDMASTER_TAG_SV"
+        .Name = sWs
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+        
+    
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG_PRT")
+    OpenFileAsWb (sWb)
+    With .Worksheets.Add
+        sWs = "DB_FIELDMASTER_TAG_PRT"
+        .Name = sWs
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+End With
+End Sub
+
+
+Sub ADD_ALIAS(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+
+   Debug.Print "ALIST START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_ALIAS")
+    OpenFileAsWb (sWb)
+
+    With .Worksheets.Add
+        sWs = "DB_ALIAS"
+        .Name = sWs
+        .Range("A1:B1").Value2 = Array("ALIAS", "FULL_ADR")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+End With
+End Sub
+
+
+Sub ADD_OP(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+
+    Debug.Print "PLC00 OP START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_OP")
+    OpenFileAsWb (sWb)
+
+    With ThisWorkbook.Worksheets.Add
+        sWs = "DB_OP_X"
+        .Name = sWs
+        .Range("A1:E1").Value2 = Array("DEVICE", "_", "COMMENT1", "COMMENT2", "CATEGORY")
+
+        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+        Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")") 'CATEGORY
+
+        .Move before:=oWb.Sheets(oWb.Sheets.Count)
+    End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+End Sub
+
+
+Sub ADD_KONDO(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+    Debug.Print "PLC03 KONDO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_KONDO")
+    OpenFileAsWb (sWb)
+
+    With .Worksheets.Add
+        sWs = "DB_KONDO_K2A_B"
+        .Name = sWs
+        .Range("A1:M1").Value2 = Array("Index", "_", "_", "_", "CATEGORY", "_", "COMMENT", "Device", "_", "_", "_", "_", "FULL_ADR")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 12), "=""PLC03.B."" & SUBSTITUTE(RC8,""B"",""B0"")") 'FULL_ADR
+    End With
+
+    With .Worksheets.Add
+        sWs = "DB_KONDO_A2K_B"
+        .Name = sWs
+        .Range("A1:H1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_", "FULL_ADR")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 7), "=""PLC03.B."" & SUBSTITUTE(RC5,""B"",""B0"")") 'FULL_ADR
+    End With
+
+    With .Worksheets.Add
+        sWs = "DB_KONDO_K2A_W"
+        .Name = sWs
+        .Range("A1:J1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_", "_", "_", "FULL_ADR")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 9), "=""PLC03.B."" & SUBSTITUTE(RC5,""B"",""B0"")") 'FULL_ADR
+    End With
+
+    '?? 1C701
+    With .Worksheets.Add
+        sWs = "DB_KONDO_A2K_W"
+        .Name = sWs
+        .Range("A1:J1").Value2 = Array("Index", "???", "_", "COMMENT", "Device", "_", "Min", "Max", "Unit", "_")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 10), "=""PLC03.B."" & SUBSTITUTE(RC5,""B"",""B0"")") 'FULL_ADR
+    End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+End Sub
+
+
+Sub ADD_IO(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+
+    Debug.Print "PLC00 PLC03 IO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_IO")
+    OpenFileAsWb (sWb)
+
+    With ThisWorkbook.Worksheets.Add
+        sWs = "DB_PLC00_X"
+        .Name = sWs
+        .Range("A1:F1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY", "FULL_ADR")
+        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
+        Call FixFormula(rRng.Offset(0, 5), "=""PLC00.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
+        .Move before:=oWb.Sheets(oWb.Sheets.Count)
+   End With
+
+       With .Worksheets.Add
+        sWs = "DB_PLC00_Y"
+        .Name = sWs
+        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "FULL_ADR")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 4), "=""PLC00.Y."" & SUBSTITUTE(RC1,""Y"",""Y00"")") 'FULL_ADR
+   End With
+
+    With ThisWorkbook.Worksheets.Add
+        sWs = "DB_PLC03_X"
+        .Name = sWs
+        .Range("A1:F1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY", "FULL_ADR")
+        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
+         Call FixFormula(rRng.Offset(0, 5), "=""PLC03.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
+        .Move before:=oWb.Sheets(oWb.Sheets.Count)
+   End With
+
+       With .Worksheets.Add
+        sWs = "DB_PLC03_Y"
+        .Name = sWs
+        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "FULL_ADR")
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 4), "=""PLC03.Y."" & SUBSTITUTE(RC1,""Y"",""Y00"")") 'FULL_ADR
+    End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+End Sub
+
+Sub ADD_TYOUGOU(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+
+    Debug.Print "PLC03 TYOUGOU START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_TYOUGOU")
+    OpenFileAsWb (sWb)
+
+    With .Worksheets.Add
+        sWs = "DB_TYOUGOU_R"
+        .Name = sWs
+        .Range("A1:O1").Value2 = Array("_", "_", "_", "_", "_", "ALIAS", "_", "_", "_", "_", "COMMENT", "_", "_", "_", "DEVICE")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+   Workbooks(Dir(sWb)).Close False
+
+End With
+End Sub
+
+
+Sub ADD_HIRANO(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+    Debug.Print "PLC03 HIRANO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_HIRANO")
+    OpenFileAsWb (sWb)
+
+    With .Worksheets.Add
+        sWs = "DB_HIRANO_DI_B"
+        .Name = sWs
+        .Range("A1:F1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_HIRANO_ALM_W"
+        .Name = sWs
+        .Range("A1:F1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_HIRANO_DO_B"
+        .Name = sWs
+        .Range("A1:F1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_HIRANO_PV_W"
+        .Name = sWs
+        .Range("A1:J1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "MIN", "MAX", "UNITS", "_", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_HIRANO_SV_W"
+        .Name = sWs
+        .Range("A1:J1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "MIN", "MAX", "UNITS", "_", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+End Sub
+
+
+Sub ADD_WARITUKE(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+
+    Debug.Print "PLC 00 PLC03 WARITUKE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_WARITUKE")
+    OpenFileAsWb (sWb)
+
+  'PLC00 PLC03 ANALOG
+    With .Worksheets.Add
+        sWs = "DB_PLC00_ANALOG"
+        .Name = sWs
+        .Range("A1:AP1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "MODE_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "SCADA_HH_DEVICE", "SCADA_H_DEVICE", "SCADA_L_DEVICE", "SCADA_LL_DEVICE", "SCADEA_CAL_M_DEVICE")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_PLC03_ANALOG"
+        .Name = sWs
+        .Range("A1:AP1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "MODE_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "SCADA_HH_DEVICE", "SCADA_H_DEVICE", "SCADA_L_DEVICE", "SCADA_LL_DEVICE", "SCADEA_CAL_M_DEVICE")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    'PLC00
+    With .Worksheets.Add
+        sWs = "DB_PLC00_M"
+        .Name = sWs
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_PLC00_R"
+        .Name = sWs
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    'PLC03
+    With .Worksheets.Add
+        sWs = "DB_PLC03_M"
+        .Name = sWs
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_PLC03_R"
+        .Name = sWs
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    'CC LINK
+    With .Worksheets.Add
+        sWs = "DB_CCL00_B"
+        .Name = sWs
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+   End With
+
+    With .Worksheets.Add
+        sWs = "DB_CCL00_W"
+        .Name = sWs
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
+
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+    End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+End Sub
+
+
+Sub ADD_SERVER_CSV(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+ Debug.Print "SERVER START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_SERVER")
+    OpenFileAsWb (sWb)
+
+    With ThisWorkbook.Worksheets.Add 'buffer sht
+        sWs = "DB_SERVER_CSV"
+        .Name = sWs
+        .Cells.NumberFormatLocal = "@"
+        .Range("A1:M1").Value2 = Array( _
+                                                                "CSV1", "CSV2", "CSV3", _
+                                                                "PLC", "FOLDER", "NAME", "FULL_ADR", "EU", "COMMENT", "DEC1", "DEC2", "DEC3", "BINALY" _
+                                                                )
+                                                                
+        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs) 'buffer sht
+
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+
+        Debug.Print "   CSV1  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 3), "=IF(RC1=""*"",R[-1]C,fSplit(RC1,1,""#""))") 'CSV1
+
+        Debug.Print "   CSV2  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 4), "=IF(RC2=""*"",R[-1]C,fSplit(RC2,1,""#""))") 'CSV2
+
+        Debug.Print "   CSV3  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 5), "=IF(RC3=""*"",R[-1]C,fSplit(RC3,1,""#""))") 'CSV3
+
+        Debug.Print "   FULL_ADR  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 6), "=RC4 & ""."" & RC5 & ""."" & RC6") 'FULL_ADR
+
+        Debug.Print "   EU  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 7), "=fSplitBetween(RC3,2,""+EU="",""+C="")") 'EU
+
+        Debug.Print "   COMMENT  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 8), "=fSplit(RC3,2,""+C="")") 'COMMENT
+
+        Debug.Print "   DEC1  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 9), "=fSplitCsvPrmDec(RC3,1)") 'DEC1
+
+        Debug.Print "   DEC2  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 10), "=fSplitCsvPrmDec(RC3,2)") 'DEC2
+
+        Debug.Print "   DEC3  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 11), "=fSplitCsvPrmDec(RC3,3)") 'DEC3
+
+        Debug.Print "   BIN  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 12), "=fSplitCsvPrmBin(RC3)") 'BIN
+        
+        .Move before:=oWb.Sheets(oWb.Sheets.Count)
+
+    End With
+    Workbooks(Dir(sWb)).Close False
+End With
+End Sub
+
+
+Sub ADD_TREND_PENINFO(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+    Debug.Print "TREND_PENINFO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_TREND_PENINFO ")
+    FileCopy sWb, fReplace(sWb, ".txt", ".csv")
+    sWb = fReplace(sWb, ".txt", ".csv")
+    OpenFileAsWb (sWb)
+
+    With ThisWorkbook.Sheets.Add
+        sWs = "DB_TREND_PENINFO "
+        .Name = sWs
+        .Range("A1:P1").Value2 = Array( _
+                                                "TREND_COMMENT", "UNITS", "_", "_", "_", "MIN", "MAX", "_", "_", "DATA_SOURCE", "DECIMAL", "SIZE", _
+                                                "TREND_NAME", "FP_TYPE", "CMT_ALIAS", "CMT_DESC")
+
+        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+
+        Debug.Print "   COL SPLIT  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 12), "=SUBSTITUTE(fSplit(RC10,2,""::""),fSplit(fSplit(RC10,2,""::""),1,""."") &""."","""")") 'TREND_NAME
+        Call FixFormula(rRng.Offset(0, 13), "=fSplitBetween(RC10,2,""::"",""."")") 'FP_TYPE
+        Call FixFormula(rRng.Offset(0, 14), "=IF(NOT(LEFT(RC1,1)=""[""),fSplit(RC1,1,"" ""),"""")") 'CMT_ALIAS
+        Call FixFormula(rRng.Offset(0, 15), "=IF(NOT(LEFT(RC1,1)=""[""),TRIM(SUBSTITUTE(RC1,fSplit(RC1,1,"" ""),"""")),"""")") 'CMT_DESC
+        .Move before:=oWb.Sheets(oWb.Sheets.Count)
+   End With
+    Workbooks(Dir(sWb)).Close False
+
+
+  Debug.Print "TREND_PENINFO_ONEPOINT START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_TREND_PENINFO_ONEPOINT")
+    FileCopy sWb, fReplace(sWb, ".txt", ".csv")
+    sWb = fReplace(sWb, ".txt", ".csv")
+    OpenFileAsWb (sWb)
+
+    With ThisWorkbook.Sheets.Add
+        sWs = "DB_TREND_PENINFO_ONEPOINT"
+        .Name = sWs
+        .Range("A1:E1").Value2 = Array("SRC", "_", "_", "TREND_NAME", "FP_TYPE")
+
+        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        
+        Debug.Print "   COL SPLIT  START : " & Now()
+        Call FixFormula(rRng.Offset(0, 3), "=SUBSTITUTE(fSplit(RC1,2,""::""),fSplit(fSplit(RC1,2,""::""),1,""."") &""."","""")") 'TREND_NAME
+        Call FixFormula(rRng.Offset(0, 4), "=fSplitBetween(RC1,2,""::"",""."")") 'FP_TYPE
+        .Move before:=oWb.Sheets(oWb.Sheets.Count)
+   End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+
+End Sub
+
+    
+Sub ADD_ALM_MASTER(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+    Debug.Print "ALM_MASTER START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_ALARM_MASTER")
+    OpenFileAsWb (sWb)
+
+    With .Worksheets.Add
+        sWs = "DB_ALM_MASTER"
+        .Name = sWs
+        .Range("A1:L1").Value2 = Array("ALARMID", "_", "_", "FULL_ADR", "COMMENT", "_", "_", "_", "ALIAS", "_", "CATEGORY", "_")
+
+    Call Xml2DbShtRefresh(oWb.Name, sWs)
+    End With
+    Workbooks(Dir(sWb)).Close False
+
+End With
+
+End Sub
+
+    
+Function fSplitCsvPrmDec(inptStr As String, inptRetCol As Long) As String
+
+Dim lCol As Long: lCol = inptRetCol
+Dim sStr As String: sStr = inptStr
+Dim sDec As String: sDec = fSplit(sStr, 2, "DEC:")
+Dim sResult As String
+
+If sDec = sStr Then
+    sResult = ""
+Else
+    Select Case lCol
+        Case 1
+            sResult = fSplit(sDec, 1, "|")
+        Case 2
+            sResult = fSplit(sDec, 2, "|")
+        Case 3
+            sResult = fSplit(fSplit(sDec, 3, "|"), 1, "+")
+        Case Else
+            Stop
+    End Select
+End If
+
+fSplitCsvPrmDec = sResult
+
+End Function
+
+Function fSplitCsvPrmBin(inptStr As String) As String
+
+Dim sStr As String: sStr = inptStr
+Dim sResult As String
+
+If fSplit(sStr, 2, "FLT") <> sStr Then
+    sResult = "FLT"
+ElseIf fSplit(sStr, 2, "BIN") <> sStr Then
+    sResult = "BIN" & fSplitBetween(sStr, 2, "BIN", "+")
+Else
+    sResult = ""
+End If
+
+fSplitCsvPrmBin = sResult
+
+End Function
+
+
+'Alternate
+'Sub BatchXml2DbShtRefresh()
+'Dim sTabColor As Integer: sTabColor = 49 ' # 123456
+'Dim ws As Worksheet
+'For Each ws In ThisWorkbook.Worksheets
+'    If ws.Tab.ColorIndex = sTabColor Then
+'        ws.Activate
+'        Xml2DbShtRefresh
+'    End If
+'Next ws
+'End Sub
+
+Sub Xml2DbShtRefreshActiveSht()
+'For KeyBind
+If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
+ Call Xml2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
+End Sub
+
+
+Sub Xml2DbShtRefresh(inptWb As String, inptWs As String) ' DstWb, DstWs
+Application.ScreenUpdating = False
+
+Dim wbSRC As Workbook
+Dim wbDst As Workbook: Set wbDst = Workbooks(inptWb)
+Dim wsDst As Worksheet: Set wsDst = wbDst.Worksheets(inptWs)
+Dim sData As Variant
+Dim l As Long
+Dim lEnd As Long
+Dim sPrf As String: sPrf = inptWs 'DB_PLC00_M
+
+Dim sWbLD As String: sWbLD = ThisWorkbook.Name
+Dim sWsLD As String: sWsLD = "LinkData"
+Dim sWb As String
+Dim sWs As String
+Dim sStCell As String
+Dim sEndCell As String
+Dim lEndDst As Integer
+                
+wsDst.Rows("3:" & Rows.Count).Clear
+wsDst.Rows("3:" & Rows.Count).NumberFormat = "@"
+
+With Workbooks(sWbLD).Sheets(sWsLD)
+lEnd = .Cells(.Rows.Count, 1).End(xlUp).Row
+    For l = 1 To lEnd
+        'search link key
+        If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then ' DB_XXX_XX
+            
+            
+'            If Left(.Cells(l, 1).Value, Len("DB_PLC00_M")) = "DB_PLC00_M" Then
+'                Debug.Print .Cells(l, 1).Value
+'                Stop
+'            End If
+'
+            
+            'append range
+            sData = fGetRowData(sWbLD, sWsLD, .Cells(l, 1).Value, "A")  'row => [link parameter]
+            If UBound(sData) = -1 Then Debug.Print "does not match": Exit Sub
+                sWb = fReplace(CStr(sData(2)), ".txt", ".csv")
+                sWs = CStr(sData(3))
+                sStCell = CStr(sData(4))
+                sEndCell = CStr(sData(5))
+                'Stop
+                    
+                Set wbSRC = Workbooks(Dir(sWb))
+                lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
+                wbSRC.Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
+                wsDst.Activate
+                wsDst.Cells(lEndDst, 1).Select
+                wsDst.PasteSpecial
+                wbSRC.Sheets(sWs).Range("A1").Copy
+        End If
+    Next l
+End With
+
+wsDst.Range("A1").Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub AAA_BKM_TABLE()
+End Sub
+
+
+Sub CreateDFR3DBTable(inptWbDB As Workbook, inptWbTABLE As Workbook)
+Application.ScreenUpdating = False
+
+'Dim sWb As String
+'Dim sWs As String
+Dim oWbDB As Workbook: Set oWbDB = inptWbDB
+Dim oWbTABLE As Workbook: Set oWbTABLE = inptWbTABLE
+'Dim oWbTmp As Workbook
+'Dim rRng As Range
+
+Debug.Print "CREATE DB TABLE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'##STOP## =>> FULL_ADR => SQL QUERY
+Call CheckALM(oWbDB, oWbTABLE)
+
+    
+
+
+Debug.Print "CREATE DB TABLE END: " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+End Sub
+
+
+Sub testQuery()
+    Dim sSQLQuery As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    'ALARM : DB_ALM_MASTER
+                '＜＝>
+    'DB_KONDO_K2A_B CATEGORY = ALM
+    'DB_OP CATEGORY = ALM
+    'WARITUKE.CATEGORY = PLC03_M PLC00_R ALM OR OPE
+    'WARITUKE.ANALOG HH H L LL
+    'IO CATEGORY = ALM
+    'DB_HIRANO CMT IS NOT NULL
+    
+    sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB.xlsx' 'Excel 12.0 Xml;HDR=YES' "
+    
+    'Out Setting
+    sWsName = "SQL_OUT"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    
+    
+    Dim sALM_MASTER As String
+    sALM_MASTER = _
+        "SELECT " & _
+            ", CATEGORY " & _
+        "FROM [DB_ALM_MASTER$] IN " & sWbDBPath & _
+        "WHERE FULL_ADR IS NOT NULL " ' & _
+
+    Dim sPLC00_X As String
+    sPLC00_X = _
+        "SELECT " & _
+            " FULL_ADR " & _
+            ", [COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [PLC00_X_CMT] " & _
+        "FROM [DB_PLC00_X$] IN " & sWbDBPath & _
+        "WHERE CATEGORY = 'ALM' " ' & _
+
+    sSQLQuery = sPLC00_X
+
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+    
+    
+End Sub
+
+Sub CheckALM(inptWbDB As Workbook, inptWbTABLE As Workbook)
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    'ALARM : DB_ALM_MASTER＜＝＞
+    'DB_KONDO_K2A_B CATEGORY = ALM
+    'DB_OP CATEGORY = ALM
+    'WARITUKE.CATEGORY = PLC03_M PLC00_R ALM OR OPE
+    'WARITUKE.ANALOG HH H L LL
+    'IO CATEGORY = ALM
+    'DB_HIRANO CMT IS NOT NULL
+    
+'    Call UnionAnalogTable
+    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNITS], [DECIMAL], [PLC] & '.R.' & [PV] AS [FULL_ADR]"
+    
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_PLC00_A$]" & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_A$]"
+        
+    'Out Setting
+    WorkSheetName = "A_TABLE"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+    
+    Call UnionFPTable
+
+    'Out Setting
+    WorkSheetName = "ALM_TABLE"
+    WorkBookName = inptWbTABLE.Name
+    
+    SQLQuery = _
+        "SELECT " & _
+            " [ONCONDITION] AS [FULL_ADR]" & _
+            ",[CM0]" & _
+            ",[CM4]" & _
+            ",[CM6]" & _
+            ",[DB_PLC00_X$].[COL1] & ' ' & [DB_PLC00_X$].[COL2] AS [LST_CMT]" & _
+        "FROM ([DB_ALM_MASTER$] " & _
+        "RIGHT JOIN [ALM_TABLE$] ON [DB_ALM_MASTER$].[ONCONDITION] =  [ALM_TABLE$].[FULL_ADR] ) " & _
+        "WHERE [DB_ALM_MASTER$].[ONCONDITION] IS NOT NULL " '& _
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
+
+
+Sub UnionALMTable()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    
+    Headers1 = "[COL1], [COL2], [COL3], [FULL_ADR]"
+    
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_PLC00_X$] " & _
+        "WHERE [DB_PLC00_X$].[COL2] LIKE '%異常%' " & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_X$] " & _
+        "WHERE [DB_PLC03_X$].[COL2] LIKE '%異常%' " ' & _
+
+    'Out Setting
+    WorkSheetName = "ALM_TABLE"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+
+    
+End Sub
+
+
+Sub CheckFPQuery()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    
+    'QUERY ===========================================
+    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT]"
+    'SQLQuery = _
+        "SELECT " & Headers & _
+    "FROM [DB_AI_SV $]" & _
+         "UNION ALL SELECT " & Headers & "FROM [DB_AI_AL4$]"
+    
+'    SQLQuery = _
+'        "SELECT " & Headers1 & "," & Headers2 & _
+'        "FROM [DB_AI_SV $]" & _
+'        "INNER JOIN [DB_PLC00_A$] ON [DB_AI_SV $].[Code] = [DB_PLC00_A$].[TAG_NO]" '& _
+'        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]" & _
+
+Call UnionAnalogTable
+Call UnionFPTable
+
+    SQLQuery = _
+        "SELECT " & _
+            " [A_TABLE$].[FULL_ADR] " & _
+            ",[A_TABLE$].[TAG_NO] " & _
+            ",[FP_TABLE$].[TAG_NO] " & _
+            ",[FP_TABLE$].[FP_TYPE] " & _
+            ",[DB_TREND_PENINFO$].[FP_TYPE] AS [TPI_FP_TYPE] " & _
+            ",[FP_TABLE$].[MAX] " & _
+            ",[A_TABLE$].[MAX] " & _
+            ",[DB_TREND_PENINFO$].[MAX] " & _
+            ",[FP_TABLE$].[DECIMAL] " & _
+            ",[A_TABLE$].[DECIMAL] " & _
+            ",[DB_TREND_PENINFO$].[DECIMAL] " & _
+            ",[FP_TABLE$].[UNITS] " & _
+            ",[A_TABLE$].[UNITS] " & _
+            ",[DB_TREND_PENINFO$].[UNITS] " & _
+        "FROM ([FP_TABLE$] " & _
+        "RIGHT JOIN [A_TABLE$] ON [A_TABLE$].[TAG_NO] = [FP_TABLE$].[TAG_NO]) " & _
+        "LEFT JOIN [DB_TREND_PENINFO$] ON [A_TABLE$].[TAG_NO] = [DB_TREND_PENINFO$].[TAG_NO] " & _
+        "WHERE [A_TABLE$].[TAG_NO] IS NOT NULL " '& _
+
+
+    'Out Setting
+    WorkSheetName = "SQL_OUT"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
+
+
+Sub UnionAnalogTable()
+   Dim sSQLQuery As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB.xlsx' 'Excel 12.0 Xml;HDR=YES' "
+    
+    'Out Setting
+    sWsName = "SQL_OUT"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    
+    sSQLQuery = _
+        "SELECT " & _
+            " ALIAS" & _
+            ", COMMENT" & _
+            ", 'PLC00'  AS [WARI_PLC] " & _
+        "FROM [DB_PLC00_ANALOG$] IN " & sWbDBPath & _
+        "WHERE ALIAS IS NOT NULL " & _
+        "UNION ALL " & _
+        "SELECT " & _
+            " ALIAS" & _
+            ", COMMENT" & _
+            ", 'PLC03'  AS [WARI_PLC] " & _
+        "FROM [DB_PLC03_ANALOG$] IN " & sWbDBPath & _
+        "WHERE ALIAS IS NOT NULL " '& _
+
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+
+End Sub
+
+Sub UnionFPTable()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    Headers1 = " [Code] AS [TAG_NO] " & _
+                         ",[ClassID] AS [FP_TYPE] " & _
+                         ", [PVMax] AS [MAX] " & _
+                         ", [PVMin] AS [MIN] " & _
+                         ",  [PVTrendMax] AS [TREND_MAX] " & _
+                         ", [PVTrendMin] AS[TREND_MIN] " & _
+                         ", [Units] AS [UNITS] " & _
+                         ", [DecimalPlace] AS [DECIMAL]"
+    
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_AI_SV $]" & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]"
+    
+    'Out Setting
+    WorkSheetName = "FP_TABLE"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
+
+
