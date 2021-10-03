@@ -7,101 +7,6 @@ Option Explicit
 'CSV1    CSV2    CSV3    UNIT    FOLDER  NAME    EU  COMMENT DEC1    DEC2    DEC3    BINALY
 '[FUNC]          =IF(A2'="*",D1,fSplit(A2,1,"#"))    =IF(B2'="*",E1,fSplit(B2,1,"#"))    =fSplit(C2,1,"#")   =fSplitBetween($C2,2,"+EU'=","+C'=")    =fSplit($C2,2,"+C'=")   =fSplitBetween($C2,2,"DEC:","|","TRUE") =fSplitBetween($C2,2,"|","|","TRUE")    =IF(fSplit(C2,1,"DEC")'=C2,"",fSplitBetween($C2,3,"|","+EU",TRUE))  =fReplaceRegx(C2,".*(BIN-?\d+).*","$1")
 
-
-Sub CreateSQLQuery()
-
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
-    
-    'QUERY ===========================================
-    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT]"
-    'SQLQuery = _
-        "SELECT " & Headers & _
-    "FROM [DB_AI_SV $]" & _
-         "UNION ALL SELECT " & Headers & "FROM [DB_AI_AL4$]"
-    
-'    SQLQuery = _
-'        "SELECT " & Headers1 & "," & Headers2 & _
-'        "FROM [DB_AI_SV $]" & _
-'        "INNER JOIN [DB_PLC00_A$] ON [DB_AI_SV $].[Code] = [DB_PLC00_A$].[TAG_NO]" '& _
-'        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]" & _
-
-    SQLQuery = _
-        "SELECT " & _
-            "[FP_TABLE$].[Code], " & _
-            "[FP_TABLE$].[PVMax], " & _
-            "[A_TABLE$].[MAX], " & _
-            "IIF([FP_TABLE$].[PVMax] = [A_TABLE$].[MAX], 'OK', 'NG') AS [PV_CHK]," & _
-            "[FP_TABLE$].[DecimalPlace], " & _
-            "[A_TABLE$].[DECIMAL], " & _
-            "IIF([FP_TABLE$].[DecimalPlace] = [A_TABLE$].[DECIMAL], 'OK', 'NG') AS [DEC_CHK]" & _
-        "FROM [FP_TABLE$] " & _
-        "RIGHT JOIN [A_TABLE$] ON [FP_TABLE$].[Code] = [A_TABLE$].[TAG_NO] " '& _
-        "LEFT JOIN [DB_TREND_PENINFO$] ON [FP_TABLE$].[Code] = [DB_TREND_PENINFO$].[TAG_NO]" '& _
-
-    'Out Setting
-    WorkSheetName = "SQL_OUT"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
-End Sub
-
-
-Sub UnionAnalogTable()
-
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
-    
-    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT], [DECIMAL], [PLC] & '.R.' & [PV]"
-    
-    SQLQuery = _
-        "SELECT " & Headers1 & _
-        "FROM [DB_PLC00_A$]" & _
-        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_A$]"
-        
-    'Out Setting
-    WorkSheetName = "A_TABLE"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
-End Sub
-
-Sub UnionFPTable()
-
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
-    Headers1 = "[Code], [ClassID],  [PVMax], [PVMin],  [PVTrendMax], [PVTrendMin], [Units], [DecimalPlace] "
-    
-    SQLQuery = _
-        "SELECT " & Headers1 & _
-        "FROM [DB_AI_SV $]" & _
-        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]"
-    
-    'Out Setting
-    WorkSheetName = "FP_TABLE"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
-End Sub
-
 Sub GetQueryResults(SQLQuery As String, WorkBookName As String, WorkSheetName As String)
 
     Dim DataFilePath As String
@@ -125,7 +30,7 @@ Sub GetQueryResults(SQLQuery As String, WorkBookName As String, WorkSheetName As
     
     If Dir(DataFilePath) = "" Then
         MsgBox _
-            Prompt:="Could not find Movies.xlsx", _
+            Prompt:="Could not find " & Dir(DataFilePath), _
             Buttons:=vbCritical, _
             Title:="File not found"
         Exit Sub
@@ -182,7 +87,7 @@ Sub GetQueryResults(SQLQuery As String, WorkBookName As String, WorkSheetName As
     'Select the worksheet to avoid the formatting bug with CopyFromRecordset
     Workbooks(Dir(DataFilePath)).Activate
     ws.Select
-    ws.Cells.Clear
+    ws.Range("A1:XFD" & Rows.Count).Clear
     
     'Format the header row of the worksheet
     With ws.Range("A1").Resize(1, ColCount)
