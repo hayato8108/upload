@@ -1,35 +1,9 @@
 Option Explicit
 
-'    "SELECT * , " & _
-"IIF(F1 < 100, 'YES', 'NO') As [NewCol] " & _
-"LEN(F1) As [NewCol] " & _
-"F1 +  F2 As [NewCol] " & _
-"LEN(F1 + F2) As [NewCol] " & _
-"LEFT(F1, '5') As [NewCol] " & _
-"REPLACE(F1, 'TREND', '_') As [NewCol] " & _
-
-
-Sub AAA_BKM_BOOK()
-End Sub
-
-
-Sub CheckDFR3DB()
-Application.ScreenUpdating = False
-Dim oWbDB As Workbook
-Dim oWbTABLE As Workbook
-
-Set oWbDB = Workbooks.Add
-Call CreateDFR3DBBook(oWbDB)
-
-Stop
-Set oWbDB = Workbooks("Book24")
-'call CreateDFR3DBBook (oWbDB)
-
-Stop
-Set oWbTABLE = Workbooks.Add
-Call CreateDFR3DBTable(oWbDB, oWbDB)
-
-Application.ScreenUpdating = True
+Sub Xml2DbShtRefreshActiveSht()
+'For KeyBind
+If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
+ Call Xml2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
 End Sub
 
 
@@ -40,25 +14,27 @@ Dim oWb As Workbook: Set oWb = inptWb
 'Dim oWbTmp As Workbook
 Dim rRng As Range
 
+Application.ScreenUpdating = False
+
 Debug.Print "CreateDFR3DBBook START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-'    Call ADD_FACEPLATE(oWb)
-'    Call ADD_FIELDMASTER_TAG(oWb)
-'    Call ADD_ALIAS(oWb)
-'    Call ADD_OP(oWb)
-'    Call ADD_KONDO(oWb)
+    Call ADD_FACEPLATE(oWb)
+    Call ADD_FIELDMASTER_TAG(oWb)
+    Call ADD_ALIAS(oWb)
+    Call ADD_OP(oWb)
+    Call ADD_KONDO(oWb)
     Call ADD_IO(oWb)
-'    Call ADD_TYOUGOU(oWb)
-'    Call ADD_HIRANO(oWb)
-'    Call ADD_WARITUKE(oWb)
-'    Call ADD_SERVER_CSV(oWb)
-'    Call ADD_TREND_PENINFO(oWb)
-'    Call ADD_ALM_MASTER(oWb)
+    Call ADD_TYOUGOU(oWb)
+    Call ADD_HIRANO(oWb)
+    Call ADD_WARITUKE(oWb)
+    Call ADD_SERVER_CSV(oWb)
+    Call ADD_TREND_PENINFO(oWb)
+    Call ADD_ALM_MASTER(oWb)
 
  '   Call ADD_ALM_MASTER(oWb) DB_PLC00_R HYOUJITOU_FLG_LIST
         
 '.Sheets("Sheet1").Delete
-
+Application.ScreenUpdating = True
 Debug.Print "CreateDFR3DBBook END : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 End Sub
 
@@ -174,7 +150,6 @@ End With
 End Sub
 
 
-
 Sub ADD_FIELDMASTER_TAG(inptWb As Workbook)
 Dim sWb As String
 Dim sWs As String
@@ -270,16 +245,15 @@ With oWb
     sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_OP")
     OpenFileAsWb (sWb)
 
-    With ThisWorkbook.Worksheets.Add
+    With .Worksheets.Add
         sWs = "DB_OP_X"
         .Name = sWs
         .Range("A1:E1").Value2 = Array("DEVICE", "_", "COMMENT1", "COMMENT2", "CATEGORY")
 
-        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
         Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")") 'CATEGORY
 
-        .Move before:=oWb.Sheets(oWb.Sheets.Count)
     End With
     Workbooks(Dir(sWb)).Close False
 
@@ -354,15 +328,14 @@ With oWb
     sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_IO")
     OpenFileAsWb (sWb)
 
-    With ThisWorkbook.Worksheets.Add
+    With .Worksheets.Add
         sWs = "DB_PLC00_X"
         .Name = sWs
         .Range("A1:F1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY", "FULL_ADR")
-        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
         Call FixFormula(rRng.Offset(0, 5), "=""PLC00.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
-        .Move before:=oWb.Sheets(oWb.Sheets.Count)
    End With
 
        With .Worksheets.Add
@@ -374,15 +347,14 @@ With oWb
         Call FixFormula(rRng.Offset(0, 4), "=""PLC00.Y."" & SUBSTITUTE(RC1,""Y"",""Y00"")") 'FULL_ADR
    End With
 
-    With ThisWorkbook.Worksheets.Add
+    With .Worksheets.Add
         sWs = "DB_PLC03_X"
         .Name = sWs
         .Range("A1:F1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY", "FULL_ADR")
-        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs)
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
          Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
          Call FixFormula(rRng.Offset(0, 5), "=""PLC03.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
-        .Move before:=oWb.Sheets(oWb.Sheets.Count)
    End With
 
        With .Worksheets.Add
@@ -579,7 +551,7 @@ With oWb
     sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_SERVER")
     OpenFileAsWb (sWb)
 
-    With ThisWorkbook.Worksheets.Add 'buffer sht
+    With .Worksheets.Add 'buffer sht
         sWs = "DB_SERVER_CSV"
         .Name = sWs
         .Cells.NumberFormatLocal = "@"
@@ -588,7 +560,7 @@ With oWb
                                                                 "PLC", "FOLDER", "NAME", "FULL_ADR", "EU", "COMMENT", "DEC1", "DEC2", "DEC3", "BINALY" _
                                                                 )
                                                                 
-        Call Xml2DbShtRefresh(ThisWorkbook.Name, sWs) 'buffer sht
+        Call Xml2DbShtRefresh(oWb.Name, sWs) 'buffer sht
 
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
 
@@ -621,8 +593,6 @@ With oWb
 
         Debug.Print "   BIN  START : " & Now()
         Call FixFormula(rRng.Offset(0, 12), "=fSplitCsvPrmBin(RC3)") 'BIN
-        
-        .Move before:=oWb.Sheets(oWb.Sheets.Count)
 
     End With
     Workbooks(Dir(sWb)).Close False
@@ -760,8 +730,6 @@ fSplitCsvPrmBin = sResult
 
 End Function
 
-
-'Alternate
 'Sub BatchXml2DbShtRefresh()
 'Dim sTabColor As Integer: sTabColor = 49 ' # 123456
 'Dim ws As Worksheet
@@ -772,12 +740,6 @@ End Function
 '    End If
 'Next ws
 'End Sub
-
-Sub Xml2DbShtRefreshActiveSht()
-'For KeyBind
-If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
- Call Xml2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
-End Sub
 
 
 Sub Xml2DbShtRefresh(inptWb As String, inptWs As String) ' DstWb, DstWs
@@ -808,13 +770,6 @@ lEnd = .Cells(.Rows.Count, 1).End(xlUp).Row
         'search link key
         If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then ' DB_XXX_XX
             
-            
-'            If Left(.Cells(l, 1).Value, Len("DB_PLC00_M")) = "DB_PLC00_M" Then
-'                Debug.Print .Cells(l, 1).Value
-'                Stop
-'            End If
-'
-            
             'append range
             sData = fGetRowData(sWbLD, sWsLD, .Cells(l, 1).Value, "A")  'row => [link parameter]
             If UBound(sData) = -1 Then Debug.Print "does not match": Exit Sub
@@ -837,280 +792,6 @@ End With
 
 wsDst.Range("A1").Activate
 Application.ScreenUpdating = True
-End Sub
-
-
-Sub AAA_BKM_TABLE()
-End Sub
-
-
-Sub CreateDFR3DBTable(inptWbDB As Workbook, inptWbTABLE As Workbook)
-Application.ScreenUpdating = False
-
-'Dim sWb As String
-'Dim sWs As String
-Dim oWbDB As Workbook: Set oWbDB = inptWbDB
-Dim oWbTABLE As Workbook: Set oWbTABLE = inptWbTABLE
-'Dim oWbTmp As Workbook
-'Dim rRng As Range
-
-Debug.Print "CREATE DB TABLE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-'##STOP## =>> FULL_ADR => SQL QUERY
-Call CheckALM(oWbDB, oWbTABLE)
-
-    
-
-
-Debug.Print "CREATE DB TABLE END: " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-End Sub
-
-
-Sub testQuery()
-    Dim sSQLQuery As String
-    Dim sWbName As String
-    Dim sWsName As String
-    Dim sWbDBPath As String
-    
-    'ALARM : DB_ALM_MASTER
-                '＜＝>
-    'DB_KONDO_K2A_B CATEGORY = ALM
-    'DB_OP CATEGORY = ALM
-    'WARITUKE.CATEGORY = PLC03_M PLC00_R ALM OR OPE
-    'WARITUKE.ANALOG HH H L LL
-    'IO CATEGORY = ALM
-    'DB_HIRANO CMT IS NOT NULL
-    
-    sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB.xlsx' 'Excel 12.0 Xml;HDR=YES' "
-    
-    'Out Setting
-    sWsName = "SQL_OUT"
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    
-    
-    Dim sALM_MASTER As String
-    sALM_MASTER = _
-        "SELECT " & _
-            ", CATEGORY " & _
-        "FROM [DB_ALM_MASTER$] IN " & sWbDBPath & _
-        "WHERE FULL_ADR IS NOT NULL " ' & _
-
-    Dim sPLC00_X As String
-    sPLC00_X = _
-        "SELECT " & _
-            " FULL_ADR " & _
-            ", [COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [PLC00_X_CMT] " & _
-        "FROM [DB_PLC00_X$] IN " & sWbDBPath & _
-        "WHERE CATEGORY = 'ALM' " ' & _
-
-    sSQLQuery = sPLC00_X
-
-    'Run the query with the SQL string
-    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
-    
-    
-End Sub
-
-Sub CheckALM(inptWbDB As Workbook, inptWbTABLE As Workbook)
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    'ALARM : DB_ALM_MASTER＜＝＞
-    'DB_KONDO_K2A_B CATEGORY = ALM
-    'DB_OP CATEGORY = ALM
-    'WARITUKE.CATEGORY = PLC03_M PLC00_R ALM OR OPE
-    'WARITUKE.ANALOG HH H L LL
-    'IO CATEGORY = ALM
-    'DB_HIRANO CMT IS NOT NULL
-    
-'    Call UnionAnalogTable
-    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNITS], [DECIMAL], [PLC] & '.R.' & [PV] AS [FULL_ADR]"
-    
-    SQLQuery = _
-        "SELECT " & Headers1 & _
-        "FROM [DB_PLC00_A$]" & _
-        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_A$]"
-        
-    'Out Setting
-    WorkSheetName = "A_TABLE"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
-    
-    Call UnionFPTable
-
-    'Out Setting
-    WorkSheetName = "ALM_TABLE"
-    WorkBookName = inptWbTABLE.Name
-    
-    SQLQuery = _
-        "SELECT " & _
-            " [ONCONDITION] AS [FULL_ADR]" & _
-            ",[CM0]" & _
-            ",[CM4]" & _
-            ",[CM6]" & _
-            ",[DB_PLC00_X$].[COL1] & ' ' & [DB_PLC00_X$].[COL2] AS [LST_CMT]" & _
-        "FROM ([DB_ALM_MASTER$] " & _
-        "RIGHT JOIN [ALM_TABLE$] ON [DB_ALM_MASTER$].[ONCONDITION] =  [ALM_TABLE$].[FULL_ADR] ) " & _
-        "WHERE [DB_ALM_MASTER$].[ONCONDITION] IS NOT NULL " '& _
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
-End Sub
-
-
-Sub UnionALMTable()
-
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
-    
-    Headers1 = "[COL1], [COL2], [COL3], [FULL_ADR]"
-    
-    SQLQuery = _
-        "SELECT " & Headers1 & _
-        "FROM [DB_PLC00_X$] " & _
-        "WHERE [DB_PLC00_X$].[COL2] LIKE '%異常%' " & _
-        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_X$] " & _
-        "WHERE [DB_PLC03_X$].[COL2] LIKE '%異常%' " ' & _
-
-    'Out Setting
-    WorkSheetName = "ALM_TABLE"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-
-    
-End Sub
-
-
-Sub CheckFPQuery()
-
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
-    
-    'QUERY ===========================================
-    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT]"
-    'SQLQuery = _
-        "SELECT " & Headers & _
-    "FROM [DB_AI_SV $]" & _
-         "UNION ALL SELECT " & Headers & "FROM [DB_AI_AL4$]"
-    
-'    SQLQuery = _
-'        "SELECT " & Headers1 & "," & Headers2 & _
-'        "FROM [DB_AI_SV $]" & _
-'        "INNER JOIN [DB_PLC00_A$] ON [DB_AI_SV $].[Code] = [DB_PLC00_A$].[TAG_NO]" '& _
-'        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]" & _
-
-Call UnionAnalogTable
-Call UnionFPTable
-
-    SQLQuery = _
-        "SELECT " & _
-            " [A_TABLE$].[FULL_ADR] " & _
-            ",[A_TABLE$].[TAG_NO] " & _
-            ",[FP_TABLE$].[TAG_NO] " & _
-            ",[FP_TABLE$].[FP_TYPE] " & _
-            ",[DB_TREND_PENINFO$].[FP_TYPE] AS [TPI_FP_TYPE] " & _
-            ",[FP_TABLE$].[MAX] " & _
-            ",[A_TABLE$].[MAX] " & _
-            ",[DB_TREND_PENINFO$].[MAX] " & _
-            ",[FP_TABLE$].[DECIMAL] " & _
-            ",[A_TABLE$].[DECIMAL] " & _
-            ",[DB_TREND_PENINFO$].[DECIMAL] " & _
-            ",[FP_TABLE$].[UNITS] " & _
-            ",[A_TABLE$].[UNITS] " & _
-            ",[DB_TREND_PENINFO$].[UNITS] " & _
-        "FROM ([FP_TABLE$] " & _
-        "RIGHT JOIN [A_TABLE$] ON [A_TABLE$].[TAG_NO] = [FP_TABLE$].[TAG_NO]) " & _
-        "LEFT JOIN [DB_TREND_PENINFO$] ON [A_TABLE$].[TAG_NO] = [DB_TREND_PENINFO$].[TAG_NO] " & _
-        "WHERE [A_TABLE$].[TAG_NO] IS NOT NULL " '& _
-
-
-    'Out Setting
-    WorkSheetName = "SQL_OUT"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
-End Sub
-
-
-Sub UnionAnalogTable()
-   Dim sSQLQuery As String
-    Dim sWbName As String
-    Dim sWsName As String
-    Dim sWbDBPath As String
-    
-    sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB.xlsx' 'Excel 12.0 Xml;HDR=YES' "
-    
-    'Out Setting
-    sWsName = "SQL_OUT"
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    
-    sSQLQuery = _
-        "SELECT " & _
-            " ALIAS" & _
-            ", COMMENT" & _
-            ", 'PLC00'  AS [WARI_PLC] " & _
-        "FROM [DB_PLC00_ANALOG$] IN " & sWbDBPath & _
-        "WHERE ALIAS IS NOT NULL " & _
-        "UNION ALL " & _
-        "SELECT " & _
-            " ALIAS" & _
-            ", COMMENT" & _
-            ", 'PLC03'  AS [WARI_PLC] " & _
-        "FROM [DB_PLC03_ANALOG$] IN " & sWbDBPath & _
-        "WHERE ALIAS IS NOT NULL " '& _
-
-    'Run the query with the SQL string
-    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
-
-End Sub
-
-Sub UnionFPTable()
-
-    Dim SQLQuery As String
-    Dim WorkBookName As String
-    Dim WorkSheetName As String
-    Dim Headers1 As String
-    Dim Headers2 As String
-    
-    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
-    Headers1 = " [Code] AS [TAG_NO] " & _
-                         ",[ClassID] AS [FP_TYPE] " & _
-                         ", [PVMax] AS [MAX] " & _
-                         ", [PVMin] AS [MIN] " & _
-                         ",  [PVTrendMax] AS [TREND_MAX] " & _
-                         ", [PVTrendMin] AS[TREND_MIN] " & _
-                         ", [Units] AS [UNITS] " & _
-                         ", [DecimalPlace] AS [DECIMAL]"
-    
-    SQLQuery = _
-        "SELECT " & Headers1 & _
-        "FROM [DB_AI_SV $]" & _
-        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]"
-    
-    'Out Setting
-    WorkSheetName = "FP_TABLE"
-
-    'Run the query with the SQL string
-    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
-    
 End Sub
 
 
