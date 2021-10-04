@@ -1,194 +1,354 @@
-Option Explicit
 
-'CreateSQLQuery
-'UnionAnalogTable
-'UnionFPTable
-'
-'CSV1    CSV2    CSV3    UNIT    FOLDER  NAME    EU  COMMENT DEC1    DEC2    DEC3    BINALY
-'[FUNC]          =IF(A2'="*",D1,fSplit(A2,1,"#"))    =IF(B2'="*",E1,fSplit(B2,1,"#"))    =fSplit(C2,1,"#")   =fSplitBetween($C2,2,"+EU'=","+C'=")    =fSplit($C2,2,"+C'=")   =fSplitBetween($C2,2,"DEC:","|","TRUE") =fSplitBetween($C2,2,"|","|","TRUE")    =IF(fSplit(C2,1,"DEC")'=C2,"",fSplitBetween($C2,3,"|","+EU",TRUE))  =fReplaceRegx(C2,".*(BIN-?\d+).*","$1")
+Sub CreateDFR3DBTable(inptWbDB As Workbook, inptWbTABLE As Workbook)
+Application.ScreenUpdating = False
 
-Sub GetQueryResults(SQLQuery As String, WorkBookName As String, WorkSheetName As String)
+'Dim sWb As String
+'Dim sWs As String
+Dim oWbDB As Workbook: Set oWbDB = inptWbDB
+Dim oWbTABLE As Workbook: Set oWbTABLE = inptWbTABLE
+'Dim oWbTmp As Workbook
+'Dim rRng As Range
 
-    Dim DataFilePath As String
-    Dim cn As ADODB.Connection
-    Dim rs As ADODB.Recordset
-    Dim ws As Worksheet
-    Dim i As Integer
-    Dim RowCount As Long, ColCount As Long
+Debug.Print "CREATE DB TABLE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'##STOP## =>> FULL_ADR => SQL QUERY
+Call CheckALM(oWbDB, oWbTABLE)
+
+Debug.Print "CREATE DB TABLE END: " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+End Sub
+
+
+Sub testQuery()
+    Dim sSQLQuery As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
     
-    'Exit the procedure if no query was passed in
-    If SQLQuery = "" Then
-        MsgBox _
-            Prompt:="You didn't enter a query", _
-            Buttons:=vbCritical, _
-            Title:="Query string missing"
-        Exit Sub
-    End If
+    'ALARM : DB_ALM_MASTER
+                '＜＝>
+    'DB_KONDO_K2A_B CATEGORY = ALM
+    'DB_OP CATEGORY = ALM
+    'WARITUKE.CATEGORY = PLC03_M PLC00_R ALM OR OPE
+    'WARITUKE.ANALOG HH H L LL
+    'IO CATEGORY = ALM
+    'DB_HIRANO CMT IS NOT NULL
     
-    'Check that the Movies workbook exists in the same folder as this workbook
-    DataFilePath = WorkBookName
+    sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB_211004.xlsm' 'Excel 12.0 Xml;HDR=YES' "
     
-    If Dir(DataFilePath) = "" Then
-        MsgBox _
-            Prompt:="Could not find " & Dir(DataFilePath), _
-            Buttons:=vbCritical, _
-            Title:="File not found"
-        Exit Sub
-    End If
+    'Out Setting
+    sWsName = "SQL_OUT"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+        
+    Dim sBASE_QUERY As String
+    sBASE_QUERY = _
+        "SELECT " & _
+                "[DEVICE],[COMMENT],[CATEGORY] " & _
+        "FROM " & _
+                "[DB_PLC03_R$] IN " & sWbDBPath & " " & _
+        "WHERE CATEGORY LIKE '%ALM%'" & _
+        "UNION ALL " & _
+                "SELECT " & _
+                        "[DEVICE],[COMMENT],[CATEGORY] " & _
+                "FROM " & _
+                        "[DB_PLC03_M$] IN " & sWbDBPath & _
+                "WHERE CATEGORY LIKE '%ALM%'" & _
+        "UNION ALL " & _
+                "SELECT " & _
+                        "[DEVICE],[COMMENT],[CATEGORY] " & _
+                "FROM " & _
+                        "[DB_PLC00_R$] IN " & sWbDBPath & _
+                "WHERE CATEGORY LIKE '%ALM%'" & _
+        "UNION ALL " & _
+                "SELECT " & _
+                        "[DEVICE],[COMMENT],[CATEGORY] " & _
+                "FROM " & _
+                        "[DB_PLC00_M$] IN " & sWbDBPath & _
+                "WHERE CATEGORY LIKE '%ALM%' "
+                
+
+        Dim sUNION_1 As String
+        sUNION_1 = _
+        "UNION ALL " & _
+        "SELECT " & _
+                "[DEVICE],[COMMENT],'ALM' " & _
+        "FROM " & _
+                "[DB_HIRANO_ALM_W$] IN " & sWbDBPath & _
+        "WHERE COMMENT IS NOT NULL " & _
+        "UNION ALL " & _
+        "SELECT " & _
+                "[DEVICE], [COMMENT],[CATEGORY] " & _
+        "FROM " & _
+                "[DB_KONDO_K2A_B$] IN " & sWbDBPath & _
+        "WHERE [CATEGORY] = 'ALM' " & _
+        "UNION ALL " & _
+        "SELECT " & _
+                "[DEVICE],  [COMMENT1] & ' ' & [COMMENT2] AS [COMMENT],[CATEGORY] " & _
+        "FROM " & _
+                "[DB_OP_X$] IN " & sWbDBPath & _
+        "WHERE [CATEGORY] = 'ALM' "
+        
+        Dim sUNION_ANALOG As String
+        sUNION_ANALOG = "UNION ALL "
+        sUNION_ANALOG = sUNION_ANALOG & retAlmQuery("DB_PLC00_ANALOG$", sWbDBPath)
+        sUNION_ANALOG = sUNION_ANALOG & "UNION ALL "
+        sUNION_ANALOG = sUNION_ANALOG & retAlmQuery("DB_PLC03_ANALOG$", sWbDBPath)
+
+    sSQLQuery = sBASE_QUERY & sUNION_1 & sUNION_ANALOG
+
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
     
-    'Create and open a connection to the Movies workbook
-    Set cn = New ADODB.Connection
-    cn.ConnectionString = _
-        "Provider=Microsoft.ACE.OLEDB.12.0;" & _
-        "Data Source=" & DataFilePath & ";" & _
-        "Extended Properties='Excel 12.0 Xml;HDR=YES';"
     
-    'Try to open the connection, exit the subroutine if this fails
-    On Error GoTo EndPoint
-    cn.Open
+End Sub
+
+
+Function retAlmQuery(inptShtName As String, inptDBPath As String) As String
     
-    'If anything fails after this point, close the connection before exiting
-    On Error GoTo CloseConnection
-    
-    'Create and populate the recordset using the SQLQuery
-    Set rs = New ADODB.Recordset
-    rs.ActiveConnection = cn
-    rs.CursorType = adOpenStatic
-    
-    rs.Source = SQLQuery    'Use the query string that we passed into the procedure
-    
-    'Try to open the recordset to return the results of the query
-    rs.Open
-    
-    'If anything fails after this point, close the recordset and connection before exiting
-    On Error GoTo CloseRecordset
-    
-    'Get count of rows returned by the query
-    RowCount = rs.RecordCount
-    
-    'Debug.Print RowCount & " row(s)", SQLQuery
-    
-    'Exit the procedure if no rows returned
-    If RowCount = 0 Then
-        MsgBox _
-            Prompt:="The query returned no results", _
-            Buttons:=vbExclamation, _
-            Title:="No Results"
-        Exit Sub
-    End If
-    
-    'Get the count of columns returned by the query
-    ColCount = rs.Fields.Count
-    
-    'Create a new worksheet
-    'Set ws = ThisWorkbook.Worksheets.Add
-    Set ws = ThisWorkbook.Worksheets(WorkSheetName)
-    
-    'Select the worksheet to avoid the formatting bug with CopyFromRecordset
-    Workbooks(Dir(DataFilePath)).Activate
-    ws.Select
-    ws.Range("A1:XFD" & Rows.Count).Clear
-    
-    'Format the header row of the worksheet
-    With ws.Range("A1").Resize(1, ColCount)
-        .Interior.Color = rgbCornflowerBlue
-        .Font.Color = rgbWhite
-        .Font.Bold = True
-    End With
-    
-    'Copy values from the recordset into the worksheet
-    ws.Range("A2").CopyFromRecordset rs
-    
-    'Write column names into row 1 of the worksheet
-    For i = 0 To ColCount - 1
-        With rs.Fields(i)
-            ws.Range("A1").Offset(0, i).Value = .Name
+    Dim sShtName As String: sShtName = inptShtName
+    Dim sWbDBPath As String: sWbDBPath = inptDBPath
+    Dim sQuery As String
+       
+       sQuery = _
+            "SELECT " & _
+                    " [HH_DEVICE] AS [DEVICE] " & _
+                    ",[COMMENT] & '_HH' AS [COMMENT] " & _
+                    ", 'ALM_HH' " & _
+            "FROM " & _
+                     "[" & sShtName & "]" & " IN " & sWbDBPath & _
+            "WHERE [COMMENT] IS NOT NULL " & _
+            "UNION ALL " & _
+            "SELECT " & _
+                    " [H_DEVICE] AS [DEVICE] " & _
+                    ",[COMMENT] & '_H' AS [COMMENT] " & _
+                    ", 'ALM_H' " & _
+            "FROM " & _
+                     "[" & sShtName & "]" & " IN " & sWbDBPath & _
+            "WHERE [COMMENT] IS NOT NULL "
+
+          sQuery = sQuery & _
+            "UNION ALL " & _
+            "SELECT " & _
+                    " [L_DEVICE] AS [DEVICE] " & _
+                    ",[COMMENT] & '_L' AS [COMMENT] " & _
+                    ", 'ALM_L' " & _
+            "FROM " & _
+                     "[" & sShtName & "]" & " IN " & sWbDBPath & _
+            "WHERE [COMMENT] IS NOT NULL " & _
+             "UNION ALL " & _
+            "SELECT " & _
+                    " [LL_DEVICE] AS [DEVICE] " & _
+                    ",[COMMENT] & '_LL' AS [COMMENT] " & _
+                    ", 'ALM_LL' " & _
+            "FROM " & _
+                     "[" & sShtName & "]" & " IN " & sWbDBPath & _
+            "WHERE [COMMENT] IS NOT NULL "
             
-            'Apply a custom date format to date columns
-            If .Type = adDate Then
-                ws.Range("A1").Offset(1, i).Resize(RowCount, 1).NumberFormat = "dd mmm yyyy"
-            End If
-        End With
-    Next i
-    
-    'Change the column widths on the worksheet
-    ws.Range("A1").CurrentRegion.EntireColumn.AutoFit
-    
-    'Close the recordset and connection
-    'This will happen anyway when the local variables go out of scope at the end of the subroutine
-    rs.Close
-    cn.Close
-    
-    'Free resources used by the recordset and connection
-    'This will happen anyway when the local variables go out of scope at the end of the subroutine
-    Set rs = Nothing
-    Set cn = Nothing
-    
-    'Exit here to make sure that the error handling code does not run
-    Exit Sub
-    
-'========================================================================
-'ERROR HANDLERS
-'========================================================================
-CloseRecordset:
-'If the recordset is opened successfully but a runtime error occurs later we end up here
-    rs.Close
-    cn.Close
-    
-    Set rs = Nothing
-    Set cn = Nothing
-    
-'    Debug.Print SQLQuery
-    
-    MsgBox _
-        Prompt:="An error occurred after the recordset was opened." & vbNewLine _
-            & vbNewLine & "Error number: " & Err.Number _
-            & vbNewLine & "Error description: " & Err.Description, _
-        Buttons:=vbCritical, _
-        Title:="Error After Recordset Open"
-    
-    Exit Sub
+            retAlmQuery = sQuery
+            
+End Function
 
-CloseConnection:
-'If the connection is opened successfully but a runtime error occurs later we end up here
-    cn.Close
+
+Sub CheckALM(inptWbDB As Workbook, inptWbTABLE As Workbook)
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
     
-    Set cn = Nothing
+    'ALARM : DB_ALM_MASTER＜＝＞
+    'DB_KONDO_K2A_B CATEGORY = ALM
+    'DB_OP CATEGORY = ALM
+    'WARITUKE.CATEGORY = PLC03_M PLC00_R ALM OR OPE
+    'WARITUKE.ANALOG HH H L LL
+    'IO CATEGORY = ALM
+    'DB_HIRANO CMT IS NOT NULL
     
-   ' Debug.Print SQLQuery
+'    Call UnionAnalogTable
+    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNITS], [DECIMAL], [PLC] & '.R.' & [PV] AS [FULL_ADR]"
     
-    MsgBox _
-        Prompt:="An error occurred after the connection was established." & vbNewLine _
-            & vbNewLine & "Error number: " & Err.Number _
-            & vbNewLine & "Error description: " & Err.Description, _
-        Buttons:=vbCritical, _
-        Title:="Error After Connection Open"
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_PLC00_A$]" & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_A$]"
+        
+    'Out Setting
+    WorkSheetName = "A_TABLE"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
     
-    Exit Sub
     
-'If the connection failed to open we end up here
-EndPoint:
-    MsgBox _
-        Prompt:="The connection failed to open." & vbNewLine _
-            & vbNewLine & "Error number: " & Err.Number _
-            & vbNewLine & "Error description: " & Err.Description, _
-        Buttons:=vbCritical, _
-        Title:="Connection Error"
+    Call UnionFPTable
+
+    'Out Setting
+    WorkSheetName = "ALM_TABLE"
+    WorkBookName = inptWbTABLE.Name
+    
+    SQLQuery = _
+        "SELECT " & _
+            " [ONCONDITION] AS [FULL_ADR]" & _
+            ",[CM0]" & _
+            ",[CM4]" & _
+            ",[CM6]" & _
+            ",[DB_PLC00_X$].[COL1] & ' ' & [DB_PLC00_X$].[COL2] AS [LST_CMT]" & _
+        "FROM ([DB_ALM_MASTER$] " & _
+        "RIGHT JOIN [ALM_TABLE$] ON [DB_ALM_MASTER$].[ONCONDITION] =  [ALM_TABLE$].[FULL_ADR] ) " & _
+        "WHERE [DB_ALM_MASTER$].[ONCONDITION] IS NOT NULL " '& _
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
     
 End Sub
 
-Sub DeleteAllButMenuSheet()
 
-    Dim ws As Worksheet
+Sub UnionALMTable()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
     
-    Application.DisplayAlerts = False
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
     
-    For Each ws In ThisWorkbook.Worksheets
-        If Not ws Is MenuSheet Then ws.Delete
-    Next ws
+    Headers1 = "[COL1], [COL2], [COL3], [FULL_ADR]"
     
-    Application.DisplayAlerts = True
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_PLC00_X$] " & _
+        "WHERE [DB_PLC00_X$].[COL2] LIKE '%異常%' " & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_PLC03_X$] " & _
+        "WHERE [DB_PLC03_X$].[COL2] LIKE '%異常%' " ' & _
+
+    'Out Setting
+    WorkSheetName = "ALM_TABLE"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+
     
 End Sub
+
+
+Sub CheckFPQuery()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    
+    'QUERY ===========================================
+    Headers1 = "[TAG_NO], [FP_TYPE], [MAX], [MIN], [UNIT]"
+    'SQLQuery = _
+        "SELECT " & Headers & _
+    "FROM [DB_AI_SV $]" & _
+         "UNION ALL SELECT " & Headers & "FROM [DB_AI_AL4$]"
+    
+'    SQLQuery = _
+'        "SELECT " & Headers1 & "," & Headers2 & _
+'        "FROM [DB_AI_SV $]" & _
+'        "INNER JOIN [DB_PLC00_A$] ON [DB_AI_SV $].[Code] = [DB_PLC00_A$].[TAG_NO]" '& _
+'        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]" & _
+
+Call UnionAnalogTable
+Call UnionFPTable
+
+    SQLQuery = _
+        "SELECT " & _
+            " [A_TABLE$].[FULL_ADR] " & _
+            ",[A_TABLE$].[TAG_NO] " & _
+            ",[FP_TABLE$].[TAG_NO] " & _
+            ",[FP_TABLE$].[FP_TYPE] " & _
+            ",[DB_TREND_PENINFO$].[FP_TYPE] AS [TPI_FP_TYPE] " & _
+            ",[FP_TABLE$].[MAX] " & _
+            ",[A_TABLE$].[MAX] " & _
+            ",[DB_TREND_PENINFO$].[MAX] " & _
+            ",[FP_TABLE$].[DECIMAL] " & _
+            ",[A_TABLE$].[DECIMAL] " & _
+            ",[DB_TREND_PENINFO$].[DECIMAL] " & _
+            ",[FP_TABLE$].[UNITS] " & _
+            ",[A_TABLE$].[UNITS] " & _
+            ",[DB_TREND_PENINFO$].[UNITS] " & _
+        "FROM ([FP_TABLE$] " & _
+        "RIGHT JOIN [A_TABLE$] ON [A_TABLE$].[TAG_NO] = [FP_TABLE$].[TAG_NO]) " & _
+        "LEFT JOIN [DB_TREND_PENINFO$] ON [A_TABLE$].[TAG_NO] = [DB_TREND_PENINFO$].[TAG_NO] " & _
+        "WHERE [A_TABLE$].[TAG_NO] IS NOT NULL " '& _
+
+
+    'Out Setting
+    WorkSheetName = "SQL_OUT"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
+
+
+Sub UnionAnalogTable()
+   Dim sSQLQuery As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB.xlsx' 'Excel 12.0 Xml;HDR=YES' "
+    
+    'Out Setting
+    sWsName = "SQL_OUT"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    
+    sSQLQuery = _
+        "SELECT " & _
+            " ALIAS" & _
+            ", COMMENT" & _
+            ", 'PLC00'  AS [WARI_PLC] " & _
+        "FROM [DB_PLC00_ANALOG$] IN " & sWbDBPath & _
+        "WHERE ALIAS IS NOT NULL " & _
+        "UNION ALL " & _
+        "SELECT " & _
+            " ALIAS" & _
+            ", COMMENT" & _
+            ", 'PLC03'  AS [WARI_PLC] " & _
+        "FROM [DB_PLC03_ANALOG$] IN " & sWbDBPath & _
+        "WHERE ALIAS IS NOT NULL " '& _
+
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+
+End Sub
+
+Sub UnionFPTable()
+
+    Dim SQLQuery As String
+    Dim WorkBookName As String
+    Dim WorkSheetName As String
+    Dim Headers1 As String
+    Dim Headers2 As String
+    
+    WorkBookName = "C:\Users\Owner\Documents\workspace\c20210920.xlsm"
+    Headers1 = " [Code] AS [TAG_NO] " & _
+                         ",[ClassID] AS [FP_TYPE] " & _
+                         ", [PVMax] AS [MAX] " & _
+                         ", [PVMin] AS [MIN] " & _
+                         ",  [PVTrendMax] AS [TREND_MAX] " & _
+                         ", [PVTrendMin] AS[TREND_MIN] " & _
+                         ", [Units] AS [UNITS] " & _
+                         ", [DecimalPlace] AS [DECIMAL]"
+    
+    SQLQuery = _
+        "SELECT " & Headers1 & _
+        "FROM [DB_AI_SV $]" & _
+        "UNION ALL SELECT " & Headers1 & "FROM [DB_AI_AL4$]"
+    
+    'Out Setting
+    WorkSheetName = "FP_TABLE"
+
+    'Run the query with the SQL string
+    Call GetQueryResults(SQLQuery, WorkBookName, WorkSheetName)
+    
+End Sub
+
 
 
