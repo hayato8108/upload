@@ -871,6 +871,7 @@ Call FillFormula(Selection, "")
 
 End Sub
 
+
 Sub FillFormula(inptRng As Range, inptFormula As String)
     
     Dim rRng As Range: Set rRng = inptRng
@@ -883,6 +884,27 @@ Sub FillFormula(inptRng As Range, inptFormula As String)
         ReplaceFormat:=False
     End With
     
+End Sub
+
+
+Sub SelectShtOrAdd(inptShtName As String, inptWb As String)
+
+Dim sSht As String: sSht = inptShtName
+Dim sWb As String: sWb = inptWb
+Dim s As Worksheet
+
+For Each s In Workbooks(sWb).Sheets
+    If s.Name = sSht Then
+        Workbooks(sWb).Sheets(sSht).Activate
+        Exit Sub
+    End If
+Next s
+
+With Workbooks(sWb).Worksheets.Add
+    .Name = sSht
+    .Activate
+End With
+
 End Sub
 
 
