@@ -1,12 +1,12 @@
 Option Explicit
 
-'Sub Xml2DbShtRefreshActiveSht()
-''For KeyBind
-'If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
-' 'assume that workbook open
-'Call Xml2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
-'
-'End Sub
+Sub Xml2DbShtRefreshActiveSht()
+'For KeyBind
+If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
+ 'assume that workbook open
+Call Xml2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
+
+End Sub
 
 
 Sub CreateDFR3DBBook(Optional inptWb As Workbook = Nothing)
@@ -535,17 +535,19 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_CCL00_B"
         .Name = sWs
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
-
+        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "_", "FULL_ADR")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 3), "=""PLC03.B.""&substitute(RC1,""B"",""B0"")")
    End With
 
     With .Worksheets.Add
         sWs = "DB_CCL00_W"
         .Name = sWs
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
-
+        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "_", "FULL_ADR")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
+        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
+        Call FixFormula(rRng.Offset(0, 3), "=""PLC03.W.""&substitute(RC1,""W"",""W0"")")
     End With
     Workbooks(Dir(sWb)).Close False
 
