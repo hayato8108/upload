@@ -256,12 +256,10 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_OP_X"
         .Name = sWs
-        .Range("A1:F1").Value2 = Array("DEVICE", "_", "COMMENT1", "COMMENT2", "CATEGORY", "FULL_ADR")
-
+        .Range("A1:E1").Value2 = Array("DEVICE", "_", "COMMENT1", "COMMENT2", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
         Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")")
-        Call FixFormula(rRng.Offset(0, 4), "=""PLC03.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
     End With
     Workbooks(Dir(sWb)).Close False
 
@@ -284,28 +282,22 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_KONDO_K2A_B"
         .Name = sWs
-        .Range("A1:M1").Value2 = Array("Index", "_", "_", "_", "CATEGORY", "_", "COMMENT", "Device", "_", "_", "_", "_", "FULL_ADR")
+        .Range("A1:L1").Value2 = Array("Index", "_", "_", "_", "CATEGORY", "_", "COMMENT", "Device", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 12), "=""PLC03.B.B0"" & right(RC8,len(RC8)-1)") 'FULL_ADR
     End With
 
     With .Worksheets.Add
         sWs = "DB_KONDO_A2K_B"
         .Name = sWs
-        .Range("A1:H1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_", "FULL_ADR")
+        .Range("A1:G1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 7), "=""PLC03.B.B0"" & right(RC5,len(RC5)-1)") 'FULL_ADR
     End With
 
     With .Worksheets.Add
         sWs = "DB_KONDO_K2A_W"
         .Name = sWs
-        .Range("A1:J1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_", "_", "_", "FULL_ADR")
+        .Range("A1:I1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 9), "=""PLC03.B.B0"" & right(RC5,len(RC5)-1)") 'FULL_ADR
     End With
 
     '?? 1C701
@@ -314,8 +306,6 @@ With oWb
         .Name = sWs
         .Range("A1:J1").Value2 = Array("Index", "???", "_", "COMMENT", "Device", "_", "Min", "Max", "Unit", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 10), "=""PLC03.B.B0"" & right(RC5,len(RC5)-1)") 'FULL_ADR
     End With
     Workbooks(Dir(sWb)).Close False
 
@@ -339,39 +329,35 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_PLC00_X"
         .Name = sWs
-        .Range("A1:F1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY", "FULL_ADR")
+        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
-        Call FixFormula(rRng.Offset(0, 5), "=""PLC00.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
    End With
 
        With .Worksheets.Add
         sWs = "DB_PLC00_Y"
         .Name = sWs
-        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "FULL_ADR")
+        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
          Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 4), "=""PLC00.Y."" & SUBSTITUTE(RC1,""Y"",""Y00"")") 'FULL_ADR
    End With
 
     With .Worksheets.Add
         sWs = "DB_PLC03_X"
         .Name = sWs
-        .Range("A1:F1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY", "FULL_ADR")
+        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
-        Call FixFormula(rRng.Offset(0, 5), "=""PLC03.X."" & SUBSTITUTE(RC1,""X"",""X00"")") 'FULL_ADR
    End With
 
        With .Worksheets.Add
         sWs = "DB_PLC03_Y"
         .Name = sWs
-        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "FULL_ADR")
+        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 4), "=""PLC03.Y."" & SUBSTITUTE(RC1,""Y"",""Y00"")") 'FULL_ADR
     End With
     Workbooks(Dir(sWb)).Close False
 
@@ -394,10 +380,9 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_TYOUGOU_R"
         .Name = sWs
-        .Range("A1:P1").Value2 = Array("_", "_", "_", "_", "_", "ALIAS", "_", "_", "_", "_", "COMMENT", "_", "_", "_", "DEVICE", "FULL_ADR")
+        .Range("A1:O1").Value2 = Array("_", "_", "_", "_", "_", "ALIAS", "_", "_", "_", "_", "COMMENT", "_", "_", "_", "DEVICE")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 6), .Cells(Rows.Count, 6).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 10), "=IF(NOT(RC15=""""),""PLC03.R."" & SUBSTITUTE(RC15,""R"",""R00""),"""")") 'FULL_ADR
    End With
    Workbooks(Dir(sWb)).Close False
 
@@ -428,10 +413,9 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_HIRANO_ALM_W"
         .Name = sWs
-        .Range("A1:G1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_", "FULL_ADR")
+        .Range("A1:F1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 6), "=""PLC03.W."" & SUBSTITUTE(freplace(RC5,""."",""@""),""W"",""W00"")") 'FULL_ADR
    End With
 
     With .Worksheets.Add
@@ -497,57 +481,51 @@ With oWb
     With .Worksheets.Add
         sWs = "DB_PLC00_M"
         .Name = sWs
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY", "FULL_ADR")
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=""PLC00.M.""&substitute(RC1,""M"",""M0"")")
    End With
 
     With .Worksheets.Add
         sWs = "DB_PLC00_R"
         .Name = sWs
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY", "FULL_ADR")
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=""PLC00.R.""&substitute(RC1,""R"",""R0"")")
    End With
 
     'PLC03
     With .Worksheets.Add
         sWs = "DB_PLC03_M"
         .Name = sWs
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY", "FULL_ADR")
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=""PLC03.M.""&substitute(RC1,""M"",""M0"")")
    End With
 
     With .Worksheets.Add
         sWs = "DB_PLC03_R"
         .Name = sWs
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY", "FULL_ADR")
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=""PLC03.R.""&substitute(RC1,""R"",""R0"")")
    End With
 
     'CC LINK
     With .Worksheets.Add
         sWs = "DB_CCL00_B"
         .Name = sWs
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "_", "FULL_ADR")
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=""PLC03.B.""&substitute(RC1,""B"",""B0"")")
    End With
 
     With .Worksheets.Add
         sWs = "DB_CCL00_W"
         .Name = sWs
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT", "_", "FULL_ADR")
+        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=""PLC03.W.""&substitute(RC1,""W"",""W0"")")
     End With
     Workbooks(Dir(sWb)).Close False
 
