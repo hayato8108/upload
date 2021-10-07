@@ -17,6 +17,35 @@ Debug.Print "CREATE DB TABLE END: " & Now() ''''''''''''''''''''''''''''''''''''
 End Sub
 
 
+Sub QueryCheckAnalogPrm()
+    Dim sSQLQuery As String
+    Dim sWbPath As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    'sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB_211004.xlsm' 'Excel 12.0 Xml;HDR=YES' "
+    
+    'Out Setting
+    sWsName = "LIST_FULLADR"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    Call SelectShtOrAdd(sWsName, ThisWorkbook.Name)
+    
+    Dim sTable1 As String
+    Dim sHeader1 As String: sHeader1 = "[FULL_ADR],[COMMENT]"
+    'Dim sWhere1 As String: sWhere1 = "WHERE CATEGORY LIKE '%ALM%' "
+
+   sTable1 = _
+            RetQuerySelectFrom(sHeader1 & ",'PLC03_R' AS UNIT", "[DB_PLC03_R$] AS T1") & _
+        "UNION ALL " & _
+            " "
+    sSQLQuery = sTable1
+            
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+    
+End Sub
+
 Sub QueryAllListFullAdr()
     Dim sSQLQuery As String
     Dim sWbPath As String
@@ -71,6 +100,11 @@ Sub QueryAllListFullAdr()
     
 End Sub
 
+
+
+
+
+
 Sub testQuery()
     Dim sSQLQuery As String
     Dim sWbPath As String
@@ -81,94 +115,67 @@ Sub testQuery()
     'sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB_211004.xlsm' 'Excel 12.0 Xml;HDR=YES' "
     
     'Out Setting
-    sWsName = "ALARM_LSIT"
+    sWsName = "ALARM_LIST"
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
     Call SelectShtOrAdd(sWsName, ThisWorkbook.Name)
     
-    Dim sTable1 As String
-    Dim sHeader1 As String: sHeader1 = "[DEVICE],[COMMENT],[CATEGORY],[FULL_ADR]"
-    Dim sWhere1 As String: sWhere1 = "WHERE CATEGORY LIKE '%ALM%' "
+    Dim sHeader1 As String: sHeader1 = "[DEVICE],[COMMENT],[CATEGORY]"
+    Dim sWhere1 As String: sWhere1 = "WHERE [CATEGORY] LIKE '%ALM%' OR  [CATEGORY] LIKE '%OPE%' "
 
-    'sTable1 = _
-            RetQuerySelectFrom(sHeader1 & ",'PLC03_R'", "[DB_PLC03_R$]") & sWhere1 & _
+    sSQLQuery = _
+            RetQuerySelectFrom(sHeader1 & ",'PLC03.R.' & REPLACE([DEVICE], 'R', 'R0') AS [FULL_ADR] " & ",'PLC03_R' AS SHEET", "[DB_PLC03_R$]") & sWhere1 & _
         "UNION ALL " & _
-            RetQuerySelectFrom(sHeader1 & ",'PLC03_M'", "[DB_PLC03_M$]") & sWhere1 & _
+            RetQuerySelectFrom(sHeader1 & ",'PLC03.M.' & REPLACE([DEVICE], 'M', 'M0') AS [FULL_ADR] " & ",'PLC03_M'", "[DB_PLC03_M$]") & sWhere1 & _
         "UNION ALL " & _
-            RetQuerySelectFrom(sHeader1 & ",'PLC00_R'", "[DB_PLC00_R$]") & sWhere1 & _
+            RetQuerySelectFrom(sHeader1 & ",'PLC00.R.' & REPLACE([DEVICE], 'R', 'R0') AS [FULL_ADR] " & ",'PLC00_R'", "[DB_PLC00_R$]") & sWhere1 & _
         "UNION ALL " & _
-            RetQuerySelectFrom(sHeader1 & ",'PLC00_M'", "[DB_PLC00_M$]") & sWhere1 & _
+            RetQuerySelectFrom(sHeader1 & ",'PLC00.M.' & REPLACE([DEVICE], 'M', 'M0') AS [FULL_ADR] " & ",'PLC00_M'", "[DB_PLC00_M$]") & sWhere1 & _
             " "
 
-    'sTable1 = sTable1 & _
+    sSQLQuery = sSQLQuery & _
         "UNION ALL " & _
-            RetQuerySelectFrom("[DEVICE],[COMMENT],'ALM',[FULL_ADR],'HIRANO_W'", "[DB_HIRANO_ALM_W$]") & "WHERE COMMENT IS NOT NULL " & _
+            RetQuerySelectFrom("[DEVICE],[COMMENT],'ALM', 'PLC03.W.' & REPLACE(REPLACE([DEVICE], 'W', 'W0'), '.', '@') ,'HIRANO_W'", "[DB_HIRANO_ALM_W$]") & "WHERE COMMENT IS NOT NULL " & _
         "UNION ALL " & _
-            RetQuerySelectFrom("[DEVICE],[COMMENT],[CATEGORY],[FULL_ADR],'KONDO_B'", "[DB_KONDO_K2A_B$]") & "WHERE [CATEGORY] = 'ALM' " & _
+            RetQuerySelectFrom("[DEVICE],[COMMENT],[CATEGORY], 'PLC03.B.' & REPLACE([DEVICE], 'B', 'B0') ,'KONDO_B'", "[DB_KONDO_K2A_B$]") & "WHERE [CATEGORY] = 'ALM' " & _
         "UNION ALL " & _
-            RetQuerySelectFrom("[DEVICE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT] ,[CATEGORY],[FULL_ADR],'OP_X'", "[DB_OP_X$]") & "WHERE [CATEGORY] = 'ALM' " & _
+            RetQuerySelectFrom("[DEVICE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT] ,[CATEGORY], 'PLC03.X.' & REPLACE([DEVICE], 'X', 'X00') ,'OP_X'", "[DB_OP_X$]") & "WHERE [CATEGORY] = 'ALM' " & _
             " "
 
-    'sTable1 = sTable1 & _
+    sSQLQuery = sSQLQuery & _
             "UNION ALL " & _
-            RetQuerySelectFrom("[DEVICE],[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY],[FULL_ADR],'DB_PLC00_X'", "[DB_PLC00_X$] AS PLC00_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
+            RetQuerySelectFrom("[DEVICE],[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY], 'PLC00.X.' & REPLACE([DEVICE], 'X', 'X00') ,'DB_PLC00_X'", "[DB_PLC00_X$] AS PLC00_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
             "UNION ALL " & _
-            RetQuerySelectFrom("[DEVICE],[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY],[FULL_ADR],'DB_PLC03_X'", "[DB_PLC03_X$] AS PLC03_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
+            RetQuerySelectFrom("[DEVICE],[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY], 'PLC03.X.' & REPLACE([DEVICE], 'X', 'X00') ,'DB_PLC03_X'", "[DB_PLC03_X$] AS PLC03_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
             " "
 
-    'sTable1 = sTable1 & _
+    sSQLQuery = sSQLQuery & _
         "UNION ALL " & _
             RetQueryAlmDev("[DB_PLC00_ANALOG$]") & _
         "UNION ALL " & _
-            RetQueryAlmDev("[DB_PLC03_ANALOG$] AS T1") & _
+            RetQueryAlmDev("[DB_PLC03_ANALOG$]") & _
             " "
-                        'sTable1 = _
-                        RetQuerySelectFrom("[HH_DEVICE] AS [DEVICE] ,[COMMENT] & '_HH' AS [COMMENT], 'ALM_HH', '" & sPlc & ".R." & "' & [HH_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
-                        "WHERE [COMMENT] IS NOT NULL " & _
-                            "UNION ALL " & _
-                        RetQuerySelectFrom("[H_DEVICE] AS [DEVICE] ,[COMMENT] & '_H' AS [COMMENT], 'ALM_H', '" & sPlc & ".R." & "' & [HH_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
-                        "WHERE [COMMENT] IS NOT NULL " & _
-                            "UNION ALL " & _
-                        RetQuerySelectFrom("[L_DEVICE] AS [DEVICE] ,[COMMENT] & '_L' AS [COMMENT], 'ALM_L', '" & sPlc & ".R." & "' & [HH_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
-                        "WHERE [COMMENT] IS NOT NULL " & _
-                            "UNION ALL " & _
-                        RetQuerySelectFrom("[LL_DEVICE] AS [DEVICE] ,[COMMENT] & '_LL' AS [COMMENT], 'ALM_LL', '" & sPlc & ".R." & "' & [HH_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
-                        "WHERE [COMMENT] IS NOT NULL "
-                        
-    
-    'sTable1 = _
-    "UNION ALL " & _
-        RetQuerySelectFrom(sHeader1 & ",'PLC03_M'", "[DB_PLC03_M$]") & _
-    "UNION ALL " & _
-        RetQuerySelectFrom(sHeader1 & ",'PLC00_R'", "[DB_PLC00_R$]") & _
-    "UNION ALL " & _
-        RetQuerySelectFrom(sHeader1 & ",'PLC00_M'", "[DB_PLC00_M$]") & _
-        " "
-            
-    'sTable1 = sTable1 & _
-            "INNER JOIN [DB_ALM_MASTER$] AS J1 ON T1.[FULL_ADR] = J1.FULL_ADR" & _
-            " "
-'    Dim sHeader1 As String: sHeader1 = "[DEVICE],[COMMENT],[CATEGORY],[FULL_ADR]"
-'    Dim sWhere1 As String: sWhere1 = "WHERE CATEGORY LIKE '%ALM%' "
-    
-    'fail ?
-        sSQLQuery = _
-        "SELECT " & _
-            "MST.[FULL_ADR] " & _
-            ",P03M.[FULL_ADR] " & _
-        "FROM [DB_ALM_MASTER$] AS MST " & _
-        "UNION ALL " & _
-            RetQuerySelectFrom(sHeader1 & ",'PLC00_M'", "[DB_PLC00_M$]") & _
-        "INNER JOIN [DB_PLC03_M$] AS P03M ON MST.[FULL_ADR] = P03M.[FULL_ADR] " & _
-        "WHERE P03M.[CATEGORY] LIKE '%ALM%' AND P03M.[COMMENT] IS NOT NULL " & _
-        ""
-        
-        
     sSQLQuery = sSQLQuery
 
     'Run the query with the SQL string
     Call GetQueryResults(sSQLQuery, sWbName, sWsName)
     
     
+    
+    'Out Setting
+    sWsName = "ALARM_DIFF"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    Call SelectShtOrAdd(sWsName, ThisWorkbook.Name)
+    
+        sSQLQuery = _
+            RetQuerySelectFrom("*", "[ALARM_LIST$] AS T1 " & _
+            "LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON T1.[FULL_ADR] = MST.[FULL_ADR] ") & _
+            ""
+       sSQLQuery = sSQLQuery
+
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+     
+     
 End Sub
 
 
@@ -351,6 +358,71 @@ End Sub
 
 Sub ★BKM_SAMPLES(): End Sub
 
+Sub sample_parentasis()
+    Dim sSQLQuery As String
+    Dim sWbPath As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    'sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB_211004.xlsm' 'Excel 12.0 Xml;HDR=YES' "
+    
+    'Out Setting
+    sWsName = "SQL_OUT"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    Call SelectShtOrAdd(sWsName, ThisWorkbook.Name)
+    
+    Dim sTable1 As String
+    Dim sHeader1 As String: sHeader1 = "[DEVICE],[COMMENT],[CATEGORY],[FULL_ADR]"
+    Dim sWhere1 As String: sWhere1 = "WHERE CATEGORY LIKE '%VB%' "
+    
+    'OK
+    sTable1 = _
+            RetQuerySelectFrom(sHeader1 & ",'PLC03_R'", "[DB_PLC03_R$]") & sWhere1 & _
+    sTable1 = "SELECT * FROM (" & sTable1 & " ) "
+
+    
+    'OK
+    sTable1 = _
+            RetQuerySelectFrom(sHeader1 & ",'PLC03_R'", "[DB_PLC03_R$]") & sWhere1 & _
+        "UNION ALL " & _
+            RetQuerySelectFrom(sHeader1 & ",'PLC03_M'", "[DB_PLC03_M$]") & sWhere1 & _
+        "UNION ALL " & _
+            RetQuerySelectFrom(sHeader1 & ",'PLC00_R'", "[DB_PLC00_R$]") & sWhere1 & _
+        "UNION ALL " & _
+            RetQuerySelectFrom(sHeader1 & ",'PLC00_M'", "[DB_PLC00_M$]") & sWhere1 & _
+            " "
+    sTable1 = "SELECT * FROM (" & sTable1 & " ) WHERE [CATEGORY] = 'VB' "
+
+    
+    sSQLQuery = sTable1
+    
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+
+End Sub
+
+
+Sub sample_replace()
+   Dim sSQLQuery As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    'Out Setting
+    sWsName = "SQL_OUT"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    Call SelectShtOrAdd(sWsName, ThisWorkbook.Name)
+    
+    sSQLQuery = _
+            RetQuerySelectFrom("*, REPLACE([DEVICE], 'M', 'M00')", "[DB_PLC03_M$]") & _
+        ""
+
+    'Run the query with the SQL string
+    Call GetQueryResults(sSQLQuery, sWbName, sWsName)
+
+End Sub
+
 
 Sub sample_innerjoin()
    Dim sSQLQuery As String
@@ -365,6 +437,7 @@ Sub sample_innerjoin()
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
     Call SelectShtOrAdd(sWsName, ThisWorkbook.Name)
     
+    '
     sSQLQuery = _
         "SELECT " & _
         " MST.[FULL_ADR] " & _
@@ -375,6 +448,45 @@ Sub sample_innerjoin()
         "RIGHT OUTER JOIN [TST2$] AS LST ON MST.[FULL_ADR] = LST.[FULL_ADR] " & _
         "WHERE LST.[CATEGORY] LIKE '%ALM%' AND LST.[COMMENT] IS NOT NULL " & _
         ""
+            
+    'OK
+    sSQLQuery = _
+            RetQuerySelectFrom("*", "[DB_PLC03_R$] AS T1 " & _
+            "LEFT OUTER JOIN [DB_PLC03_R$] AS T3 ON T1.[DEVICE] = T3.[DEVICE] ") & _
+            "UNION ALL " & _
+            RetQuerySelectFrom("*", "[DB_PLC03_M$] AS T2 " & _
+            "LEFT OUTER JOIN [DB_PLC03_M$] AS T4 ON T2.[DEVICE] = T4.[DEVICE] ") & _
+            ""
+            
+    '! NG each table must have same column count
+    'sSQLQuery = _
+            RetQuerySelectFrom("*", "[DB_PLC03_R$] AS T1 " & _
+            "LEFT OUTER JOIN [DB_PLC03_R$] AS T3 ON T1.[DEVICE] = T3.[DEVICE] ") & _
+            "UNION " & _
+            RetQuerySelectFrom("*", "[DB_PLC03_M$]") & _
+            ""
+
+       'sSQLQuery = _
+            "SELECT " & _
+                "  'PLC03.M.' & REPLACE([DEVICE],  'M',  'M00' ) AS [FULL_ADR]  " & _
+                ", T1.[COMMENT]" & _
+                ", T1.[CATEGORY]" & _
+                ", MST.[COMMENT]" & _
+            "FROM [DB_PLC03_M$] AS T1 " & _
+            "LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON T1.[FULL_ADR] = MST.[FULL_ADR] " & _
+            "WHERE T1.[COMMENT] IS NOT NULL AND T1.[CATEGORY] LIKE '%ALM%' " & _
+            "UNION ALL " & _
+            "SELECT " & _
+                "  'PLC03.M.' & REPLACE([DEVICE],  'M',  'M00' ) AS [FULL_ADR]  " & _
+                ", T1.[COMMENT]" & _
+                ", T1.[CATEGORY]" & _
+                ", MST.[COMMENT]" & _
+            "FROM [DB_PLC03_M$] AS T1 " & _
+            "RIGHT OUTER JOIN [DB_ALM_MASTER$] AS MST ON T1.[FULL_ADR] = MST.[FULL_ADR] " & _
+            "WHERE T1.[COMMENT] IS NOT NULL AND T1.[CATEGORY] LIKE '%ALM%' " & _
+            ""
+            
+            
 
     'Run the query with the SQL string
     Call GetQueryResults(sSQLQuery, sWbName, sWsName)
@@ -484,6 +596,36 @@ RetQuerySelectFrom = sResult
 End Function
 
 
+Function RetQuerySelectFromCnd(inptSels As String, inptSht As String, Optional inptCondition As String = "", Optional inptWbPath As String = "")
+Dim sResult As String
+Dim aSels As Variant: aSels = Split(inptSels, ",")
+Dim sSht As String: sSht = inptSht
+Dim sWbDBPath As String: sWbDBPath = inptWbPath
+Dim sCondition As String: sCondition = inptCondition
+Dim v As Variant
+Dim vSels As String
+
+For Each v In aSels
+    vSels = vSels & v & ", "
+Next v
+
+vSels = Left(vSels, Len(vSels) - 2)
+
+sResult = _
+"SELECT " & _
+         vSels & " " & _
+"FROM " & _
+        sSht & " "
+
+If sWbDBPath <> "" Then sResult = sResult & "IN " & sWbDBPath & " "
+
+sResult = sResult & " " & sCondition
+
+RetQuerySelectFromCnd = sResult
+
+End Function
+
+
 Function RetQuerySelect(inptSels As String)
 Dim sResult As String
 Dim aSels As Variant: aSels = Split(inptSels, ",")
@@ -515,6 +657,18 @@ Dim sQUERY As String
 Dim sPlc As String
 sPlc = fSplit(sShtName, 2, "_")
 
+    sQUERY = _
+    RetQuerySelectFrom("[SCADA_HH_DEVICE] AS [DEVICE] ,[COMMENT] & '_HH' AS [COMMENT], 'ALM_HH', '" & sPlc & ".M." & "' & [SCADA_HH_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
+    "WHERE [COMMENT] IS NOT NULL " & _
+        "UNION ALL " & _
+    RetQuerySelectFrom("[SCADA_H_DEVICE] AS [DEVICE] ,[COMMENT] & '_H' AS [COMMENT], 'ALM_H', '" & sPlc & ".M." & "' & [SCADA_H_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
+    "WHERE [COMMENT] IS NOT NULL " & _
+        "UNION ALL " & _
+    RetQuerySelectFrom("[SCADA_L_DEVICE] AS [DEVICE] ,[COMMENT] & '_L' AS [COMMENT], 'ALM_L', '" & sPlc & ".M." & "' & [SCADA_L_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
+    "WHERE [COMMENT] IS NOT NULL " & _
+        "UNION ALL " & _
+    RetQuerySelectFrom("[SCADA_LL_DEVICE] AS [DEVICE] ,[COMMENT] & '_LL' AS [COMMENT], 'ALM_LL', '" & sPlc & ".M." & "' & [SCADA_LL_DEVICE], '" & fReplace(sShtName, "DB_", "") & "'", sShtName) & _
+    "WHERE [COMMENT] IS NOT NULL "
 
 
     RetQueryAlmDev = sQUERY
