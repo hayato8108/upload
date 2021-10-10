@@ -887,7 +887,7 @@ Sub FillFormula(inptRng As Range, inptFormula As String)
 End Sub
 
 
-Sub SelectShtOrAdd(inptShtName As String, inptWb As String)
+Sub SelectOrAddWs(inptShtName As String, inptWb As String)
 
 Dim sSht As String: sSht = inptShtName
 Dim sWb As String: sWb = inptWb
@@ -908,6 +908,51 @@ End With
 End Sub
 
 
+
+Sub SelectOrOpenWb(inptWbPath As String)
+Dim sWbPath As String: sWbPath = inptWbPath
+Dim w As Workbook
+
+For Each w In Workbooks
+    If w.Name = Dir(sWbPath) Then
+        Workbooks(Dir(sWbPath)).Activate
+        Exit Sub
+    End If
+Next w
+
+Workbooks.Open (sWbPath)
+End Sub
+
+
+Sub CloseWb(inptWb As String)
+Dim sWb As String: sWb = inptWb
+Dim w As Workbook
+For Each w In Workbooks
+    If w.Name = sWb Then
+        Workbooks(sWb).Close False
+        Exit Sub
+    End If
+Next w
+
+End Sub
+
+
+Sub DeleteTmpTable(inptWorkbook As String)
+Dim sWb As String: sWb = inptWorkbook
+Dim s As Worksheet
+
+Application.DisplayAlerts = False
+For Each s In Workbooks(sWb).Sheets
+    If UCase(Left(s.Name, 3)) = "TMP" Then
+        Workbooks(sWb).Sheets(s.Name).Delete
+    End If
+Next s
+Application.DisplayAlerts = True
+
+End Sub
+
+
+
 Sub FixFormula(inptRng As Range, inptFormula As String)
     Call FillFormula(inptRng, inptFormula)
     inptRng.Copy
@@ -915,4 +960,21 @@ Sub FixFormula(inptRng As Range, inptFormula As String)
 End Sub
 
 
+Function Range2String(inptRange As Range, inptSide As String, inptDelimiter As String)
+Dim rRng As Range: Set rRng = inptRange
+Dim sSide As String: sSide = inptSide
+Dim sDel As String: sDel = inptDelimiter
+Dim v As Variant
+Dim sResult As String
+
+For Each v In rRng
+    If Not v.Value = "" Then sResult = sResult & sSide & v.Value & sSide & sDel
+Next v
+
+If sResult = "" Then Range2String = "": Exit Function
+
+sResult = Left(sResult, Len(sResult) - 1)
+Range2String = sResult
+
+End Function
 
