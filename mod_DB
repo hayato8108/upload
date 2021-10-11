@@ -227,7 +227,7 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG "
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -242,7 +242,7 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG_PV"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -257,7 +257,7 @@ With oWb
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
 
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -272,7 +272,7 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG_PRT"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS", "_", "_", "_")
+        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -551,7 +551,14 @@ With oWb
     sWs = "DB_PLC00_ANALOG"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:AR1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "SCADA_HH_DEVICE", "SCADA_H_DEVICE", "SCADA_L_DEVICE", "SCADA_LL_DEVICE", "SCADA_CAL_M_DEVICE", "", "DECIMAL")
+'PLC_DEV => COMMENT ONLY
+        .Range("A1:AR1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
+        .Range("AE1").Value = "MODE_DEVICE"
+        .Range("AL1").Value = "AL_HH_DEVICE"
+        .Range("AM1").Value = "AL_H_DEVICE"
+        .Range("AN1").Value = "AL_L_DEVICE"
+        .Range("AO1").Value = "AL_LL_DEVICE"
+        .Range("AP1").Value = "AL_CAL_DEVICE"
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 43), "=IF(NOT(fLenOfDecimal(RC4)=fLenOfDecimal(RC5)),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
@@ -561,7 +568,13 @@ With oWb
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-        .Range("A1:AR1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "SCADA_HH_DEVICE", "SCADA_H_DEVICE", "SCADA_L_DEVICE", "SCADA_LL_DEVICE", "SCADA_CAL_M_DEVICE", "", "DECIMAL")
+        .Range("A1:AR1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
+        .Range("AE1").Value = "MODE_DEVICE"
+        .Range("AL1").Value = "AL_HH_DEVICE"
+        .Range("AM1").Value = "AL_H_DEVICE"
+        .Range("AN1").Value = "AL_L_DEVICE"
+        .Range("AO1").Value = "AL_LL_DEVICE"
+        .Range("AP1").Value = "AL_CAL_DEVICE"
         Call Xml2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 43), "=IF(fLenOfDecimal(RC4)<>fLenOfDecimal(RC5),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
