@@ -888,7 +888,6 @@ End Sub
 
 
 Sub SelectOrAddWs(inptShtName As String, inptWb As String)
-
 Dim sSht As String: sSht = inptShtName
 Dim sWb As String: sWb = inptWb
 Dim s As Worksheet
@@ -978,3 +977,29 @@ Range2String = sResult
 
 End Function
 
+
+Sub SortSht()
+Dim s As Worksheet
+Dim sName As String
+
+sName = "DB"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+sName = "PRG"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+sName = "PRE"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+sName = "DIFF"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+End Sub
