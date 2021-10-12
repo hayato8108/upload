@@ -1,3 +1,5 @@
+Option Explicit
+'SQL
 
 Sub CreateDFR3DBTable()
 Application.ScreenUpdating = False
@@ -8,12 +10,11 @@ Dim rRng As Range
 
 Set oWb = ThisWorkbook
 
-
 Debug.Print ""
 Debug.Print "CREATE DB  START : " & Now() & "==========================================="
 
 '※※※ OP=>PLC00?
-
+'
 '    Call ADD_FACEPLATE(oWb)
 '    Call ADD_FIELDMASTER_TAG(oWb)
 '    Call ADD_ALIAS(oWb)
@@ -22,24 +23,27 @@ Debug.Print "CREATE DB  START : " & Now() & "===================================
 '    Call ADD_IO(oWb)
 '    Call ADD_TYOUGOU(oWb)
 '    Call ADD_HIRANO(oWb)
+'    Call ADD_ANALOG(oWb)
 '    Call ADD_WARITUKE(oWb)
 '    Call ADD_SERVER_CSV(oWb)
 '    Call ADD_TREND_PENINFO(oWb)
 '    Call ADD_ALM_MASTER(oWb)
+'    Call ADD_C(oWb)
 
 Debug.Print "CREATE DB_TABLE START : " & Now() & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
-'Create Pre Table
-'Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
+''Create Pre Table
+Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
 'Call updatePreAnalogTable
 'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID"))
-
-'Table Check
-'Call CheckServerComment ' OK
-'Call CheckAlarmMaster 'OK
-'Call CheckAnalog2ServerPrm 'OK DEC
-Call CheckAnalog2ActionPrm
-'=> ? check contain all table
+'
+''Table Check
+'Debug.Print "table check start :" & Now()
+'Call CheckServerComment : Debug.Print "analog 2 server end :" & Now()
+'Call CheckAlarmMaster: Debug.Print "alarm master start :" & Now()
+Call CheckAnalog2ServerPrm: Debug.Print "analog 2 server end :" & Now()
+Call CheckAnalog2ActionPrm: Debug.Print "analog 2 action end  :" & Now()
+''=> ? check contain all table
 
 'CLEAR TEMP TABLE
 Call DeleteTmpTable(ThisWorkbook.Name)
@@ -49,6 +53,51 @@ Debug.Print "CREATE DB_TABLE END: " & Now() & "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 Debug.Print ""
 
 Application.ScreenUpdating = True
+End Sub
+
+
+Sub joinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
+Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+Dim sWsName As String: sWsName = inptSht
+Dim sSqlQuery As String
+Dim sLeft As String: sLeft = inptLeft
+Dim sRight As String: sRight = inptRight
+Dim vLeftSel As Variant: vLeftSel = Split(inptLeftSel, ",")
+Dim vRightSel As Variant: vRightSel = Split(inptRightSel, ",")
+Dim sLeftSel As String
+Dim sRightSel As String
+Dim v As Variant
+Dim sKey As String: sKey = inptKey
+sLeft = "[" & sLeft & "$]"
+sRight = "[" & sRight & "$]"
+sLeftSel = """"
+sRightSel = """"
+sWbName = ThisWorkbook.Name
+
+If inptOutSht = "" Then
+    sWsName = "TMP_SQL_OUT"
+Else
+    sWsName = inptOutSht
+End If
+
+For Each v In vLeftSel
+    sLeftSel = sLeftSel & "L.[" & CStr(v) & "],"
+Next v
+    sLeftSel = Left(sLeftSel, Len(sLeftSel) - 1)
+
+For Each v In vRightSel
+    sRightSel = sRightSel & "R.[" & CStr(v) & "],"
+Next v
+    sRightSel = Left(sRightSel, Len(sRightSel) - 1)
+    
+    sSqlQuery = sLeftSel & sRightSel
+    
+    sSqlQuery = _
+        RetQuerySelectFrom("""" & sSqlQuery & """", sLeft & " AS L") & _
+        "LEFT OUTER JOIN " & sRight & " AS R ON  L.[" & sKey & "] = R.[" & sKey & "]" & _
+        ""
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
 End Sub
 
 
@@ -105,15 +154,15 @@ Dim sPlcM As String
 Dim sSelect As String
 Dim vSelect As Variant
 vSelect = Array( _
-                        " [FP_TYPE],[ALIAS]" & _
+                        " [FP_TYPE],[ALIAS_BASE]" & _
                         ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
                         ", [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & _
                         ",'_' AS [RESET]" & _
                         ", '_' AS [SV_MAX]" & _
-                        ", '_' AS [SV_MIN]", _
-                        "[FP_TYPE],[ALIAS],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",[RESET]" & ", '_', '_' ", _
-                        "[FP_TYPE],[ALIAS],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ",[SV_MAX],[SV_MIN]", _
-                        "[FP_TYPE],[ALIAS],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ", '_', '_' ")
+                        ", '_' AS [SV_MIN]" _
+                        , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",[RESET]" & ", '_', '_' " _
+                        , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ",[SV_MAX],[SV_MIN]" _
+                        , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ", '_', '_' ")
 
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
     sWsName = sOutSht
@@ -193,42 +242,39 @@ Sub CheckAnalog2ActionPrm()
     Dim sWsName As String
     Dim sWbDBPath As String
     Dim sSelect As String
-    
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-'
-'    sWsName = "TMP_BASE_TABLE" ' ======================================
-'    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-'
-'    'ANALOG => BASE
-'    sSelect = "[FULL_ADR],[ALIAS],[COMMENT],[UNITS],[DECIMAL],[BINALY]"
-'    sSqlQuery = ""
-'    sSqlQuery = sSqlQuery & _
-'        RetQuerySelectFrom(sSelect, "[PRE_ANALOG_TABLE$]") & _
-'    ""
-'    'Run the query with the SQL string
-'    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-'    sSqlQuery = ""
+    Dim vSelect(10) As Variant
+    'server
+    vSelect(0) = "'SERVER_CSV' AS [SHEET],SVR.[FULL_ADR] AS [FULL_ADR],SVR.[COMMENT] AS [COMMENT],SVR.[UNITS] AS [UNITS], SVR.[DECIMAL] AS [DECIMAL], SVR.[BINALY] AS BINALY  " & _
+                    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+   'Fieldmaster
+    vSelect(1) = "'FIELD_MASTER' AS [SHEET],'_',[ALIAS],[COMMENT],'_',[DECIMAL],'_','_' "
+    vSelect(2) = "'FIELD_MASTER','_',PRE.[ALIAS],PRE.[COMMENT],'_',PRE.[DECIMAL],'_','_' " & _
+    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    'Peninfo
+    vSelect(3) = "'PENINFO','_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_','_' " & _
+        ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    'Faceplate
+    vSelect(4) = "'FP','_',FP.[ALIAS],FP.[COMMENT],FP.[UNITS],FP.[DECIMAL],'_', FP.[FP_TYPE] AS FP_FPTYPE " & _
+        ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
 
-    sWsName = "TMP_JOIN_WITH_FULLADR" ' ======================================
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
 
     '(FULL_ADR) => SERVER
-    sSelect = "'SERVER' AS [SHEET],SVR.[FULL_ADR] AS [FULL_ADR],'_',SVR.[COMMENT] AS [COMMENT],SVR.[UNITS] AS [UNITS], SVR.[DECIMAL] AS [DECIMAL], SVR.[BINALY] AS BINALY , '_' " & _
-                    ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    sSelect = CStr(vSelect(0))
     sSqlQuery = sSqlQuery & _
         RetQuerySelectFrom(sSelect, "[DB_SERVER_CSV$] AS SVR") & _
         "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[FULL_ADR] = SVR.[FULL_ADR]" & _
-        "WHERE SVR.[UNITS] IS NOT NULL  OR SVR.[DECIMAL] IS NOT NULL" & _
+        "WHERE SVR.[UNITS] IS NOT NULL  OR SVR.[DECIMAL] IS NOT NULL " & _
+        "ORDER BY ANLG.[SHEET], [NO], SVR.[FULL_ADR] ASC " & _
         ""
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    sWsName = "DIFF_A2_SERVER" ' ======================================
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
 
-    sWsName = "TMP_pre_JOIN_WITH_ALIAS" ' ======================================
     '(ALIAS) => Fieldmaster
-    sSelect = "'FIELD_MASTER' AS [SHEET],'_',[ALIAS],[COMMENT],'_',[DECIMAL],'_','_' "
+    sSelect = CStr(vSelect(1))
     sSqlQuery = sSqlQuery & _
-            RetQuerySelectFrom(sSelect, "[DB_FIELDMASTER_TAG_PRT$]") & _
+            RetQuerySelectFrom(CStr(vSelect(1)), "[DB_FIELDMASTER_TAG_PRT$]") & _
         "UNION ALL " & _
             RetQuerySelectFrom(sSelect, "[DB_FIELDMASTER_TAG_SV$]") & _
         "UNION ALL " & _
@@ -236,139 +282,47 @@ Sub CheckAnalog2ActionPrm()
         "UNION ALL " & _
             RetQuerySelectFrom(sSelect, "[DB_FIELDMASTER_TAG $]") & _
         ""
+    
+    sWsName = "TMP_pre_JOIN_WITH_ALIAS" ' ======================================
      Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
-    
-    sSelect = "'FIELD_MASTER','_',PRE.[ALIAS],PRE.[COMMENT],'_',PRE.[DECIMAL],'_','_' " & _
-    ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+
+    sSelect = CStr(vSelect(2))
     sSqlQuery = sSqlQuery & _
         RetQuerySelectFrom(sSelect, "[" & sWsName & "$] AS PRE") & _
         "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = PRE.[ALIAS]" & _
         "WHERE PRE.[ALIAS] IS NOT NULL " & _
+        "ORDER BY ANLG.[SHEET], [NO] ASC " & _
         ""
-   
-    sWsName = "TMP_JOIN_WITH_ALIAS"
-'    'Run the query with the SQL string
-'    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+
+    sWsName = "DIFF_A2_FIELDMASTER" ' ======================================
+     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
 
     '(ALIAS) => TREND
-    sSelect = "'PENINFO','_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_','_' " & _
-        ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    sSelect = CStr(vSelect(3))
     sSqlQuery = sSqlQuery & _
-        "UNION ALL " & _
              RetQuerySelectFrom(sSelect, "[DB_TREND_PENINFO $] AS PINFO") & _
-                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = PINFO.[ALIAS]" & _
+                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = PINFO.[ALIAS]" & _
         ""
-'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+        
+    sWsName = "DIFF_A2_PENINFO" ' ======================================
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
     Debug.Print "now peninfo alias get ng"
 
     '(ALIAS) => FP
-   sSelect = "'FP','_',FP.[ALIAS],FP.[COMMENT],FP.[UNITS],FP.[DECIMAL],'_', FP.[FP_TYPE] AS FP_FPTYPE " & _
-        ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+   sSelect = vSelect(4)
     sSqlQuery = sSqlQuery & _
-        "UNION ALL " & _
              RetQuerySelectFrom(sSelect, "[PRE_FP_TABLE$] AS FP ") & _
-                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = FP.[ALIAS]" & _
-        ""
-        
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-    sSqlQuery = ""
-    
-    sWsName = "DIFF_ANLG_PRM"
-    sSqlQuery = sSqlQuery & _
-             RetQuerySelectFrom("*", "[TMP_JOIN_WITH_FULLADR$]") & _
-        "UNION ALL " & _
-             RetQuerySelectFrom("*", "[TMP_JOIN_WITH_ALIAS$]") & _
-        ""
-        
+                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = FP.[ALIAS]" & _
+                     ""
+
+    sWsName = "DIFF_A2_FP" ' ======================================
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Sub
 
-
-Sub CheckServerComment()
-    'SERVER <=> LIST
-    'ALIAS, COMMENT, UNITS, DECIMAL, BINALY
-    Dim sSqlQuery As String
-    Dim sWbPath As String
-    Dim sWbName As String
-    Dim sWsName As String
-    Dim sWbDBPath As String
-    
-    'LIST_TABLE=======================================================
-    sWsName = "TMP_TABLE1"
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-
-    sSqlQuery = RetQueryServerDev0() & _
-                    ""
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
-    sSqlQuery = _
-        RetQuerySelectFrom(" * ", "[" & sWsName & "$] AS " & sWsName) & _
-    "UNION ALL " & _
-        RetQueryServerDevAnalog("[DB_PLC00_ANALOG$]") & _
-    "UNION ALL " & _
-        RetQueryServerDevAnalog("[DB_PLC03_ANALOG$]") & _
-        " "
-    sWsName = "TMP_TABLE2"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
-     sSqlQuery = _
-        RetQuerySelectFrom(" * ", "[" & sWsName & "$] AS " & sWsName) & _
-    "UNION ALL " & _
-        RetQueryServerDev2("[DB_PLC00_ANALOG$]") & _
-    "UNION ALL " & _
-        RetQueryServerDev2("[DB_PLC03_ANALOG$]") & _
-        " "
-
-    sWsName = "TMP_TABLE3"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-    
-    'FULL LIST
-     sSqlQuery = _
-        RetQuerySelectFrom("LST.[FULL_ADR] AS LST_FULLADR" & _
-                                         ", SVR.[FULL_ADR] AS SVR_FULLADR" & _
-                                         ", LST.[ALIAS] AS LST_ALIAS" & _
-                                         ", LST.[SHEET] AS LST_SHEET" & _
-                                         ", LST.[COMMENT] AS LST_COMMENT" & _
-                                         ", SVR.[COMMENT] AS SVR_COMMENT" _
-                                         , "[" & sWsName & "$] AS LST") & _
-        "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON SVR.[FULL_ADR] = LST.[FULL_ADR] " & _
-        ""
-        
-    sWsName = "TMP_DIFF_SERVER"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
-    
-    'SVR COMMENT VERIFY
-    sSqlQuery = _
-    RetQuerySelectFrom(" SVR.[CSV1]" & _
-                                    ",SVR.[CSV2]" & _
-                                    ",SVR.[CSV3]" & _
-                                    ",SVR.[FULL_ADR]" & _
-                                    ",DIFF.[LST_SHEET]" & _
-                                    ",DIFF.[LST_COMMENT]" _
-                                    , "[DB_SERVER_CSV$] AS SVR ") & _
-    "RIGHT OUTER JOIN [" & sWsName & "$] AS DIFF ON DIFF.[LST_FULLADR] = SVR.[FULL_ADR] " & _
-    ""
-    
-    sWsName = "DIFF_COMMENT_CHECK"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-    
-'    Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
-'    Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")")
-
-
-End Sub
 
 
 Sub updatePreAnalogTable()
@@ -424,136 +378,136 @@ Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
     sField = "[PV_DEVICE]"
     sType = "PV"
     sSqlQuery = _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[SV_DEVICE]"
     sType = "SV"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MV_DEVICE]"
     sType = "MV"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[SH_DEVICE]"
     sType = "SH"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[SL_DEVICE]"
     sType = "SL"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MV1_DEVICE]"
     sType = "MV1"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MV2_DEVICE]"
     sType = "MV2"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[DB_DEVICE]"
     sType = "DB"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MH_DEVICE]"
     sType = "MH"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[ML_DEVICE]"
     sType = "ML"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
 '    'ALARM DEV
     sField = "[HH_DEVICE]"
     sType = "HH"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[H_DEVICE]"
     sType = "H"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[L_DEVICE]"
     sType = "L"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[LL_DEVICE]"
     sType = "LL"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     'HYS
     sField = "[HYS_DEVICE]"
     sType = "HYS"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[CAL_DEVICE]"
     sType = "CAL"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[CAL_M_DEVICE]"
     sType = "CAL_M"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[RAW_DEVICE]"
     sType = "RAW"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+      
       'PID
     sField = "[P_DEVICE]"
     sType = "P"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[I_DEVICE]"
     sType = "I"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[D_DEVICE]"
     sType = "D"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MODE_DEVICE]"
     sType = "MODE"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     Call GetQueryResults(sSqlQuery, sWbName, sWsName)
 
@@ -565,62 +519,62 @@ Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
     sField = "[PLC_HH_DEVICE]"
     sType = "PLC_HH"
     sSqlQuery = sSqlQuery & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_H_DEVICE]"
     sType = "PLC_H"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_L_DEVICE]"
     sType = "PLC_L"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_LL_DEVICE]"
     sType = "PLC_LL"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_CAL_M_DEVICE]"
     sType = "PLC_CAL_M"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
    'SCADA ALARM DEV
     sField = "[AL_HH_DEVICE]"
     sType = "AL_HH"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_H_DEVICE]"
     sType = "AL_H"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_L_DEVICE]"
     sType = "AL_L"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_LL_DEVICE]"
     sType = "AL_LL"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_CAL_DEVICE]"
     sType = "AL_CAL"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
   Call GetQueryResults(sSqlQuery, sWbName, sWsName)
 
@@ -632,8 +586,7 @@ Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
                     ""
                     
     sWsName = sOutSht
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Function
 
@@ -649,77 +602,97 @@ Dim vSelect(20) As Variant
       
 '1 : 'PV , RAW, sH, sL, P, CAL, d, Db, H, HH, HYS, i, l, LL
 ' NORMAL
-    vSelect(0) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(0) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
                         ", [MIN] ,[MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
                         ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
 '2 : SV
 'xRANGE
-    vSelect(1) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(1) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
                         ", [MIN] , [MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
                         ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
 '3 : MH  ML  MV  MV1 MV2
 '0.0 100.0 %
-    vSelect(2) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(2) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
                         ", '0.0', '100.0','%','1',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '4 : (BIT) AL_CAL    AL_H    AL_HH   AL_L    AL_LL
 'BIT o ALIAS oCOMMENT (SCADAL)
-    vSelect(3) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(3) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
                         ", '0', '0','','0',[FP_TYPE]" & _
                         ", 'BIT' AS [BINALY] "
 '5 : (BIT) PLC_CAL_M , PLC_H, PLC_HH, PLC_L, PLC_LL
 'BIT x ALIAS oCOMMENT (PLC)
-    vSelect(4) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(4) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
                         ", '0', '0','','0',[FP_TYPE]" & _
                         ", 'BIT' AS [BINALY] "
 '6 : MODE
 'ALIAS => MODE, COMMENT => A/M
-    vSelect(5) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(5) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_A/M" & "' AS [COMMENT]" & _
                         ", '0', '0','','0',[FP_TYPE]" & _
                         ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
 '7 : P (DEC 0)
-    vSelect(6) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(6) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '_' ,'_' ,'_',0,[FP_TYPE]" & _
+                        ", '_' ,'_' ,'_','0',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '8 : I (DEC 1)
-    vSelect(7) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(7) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '_' ,'_' ,'_',1,[FP_TYPE]" & _
+                        ", '_' ,'_' ,'_','1',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '9 : D (DEC 2)
-    vSelect(8) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(8) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '_' ,'_' ,'_',2,[FP_TYPE]" & _
+                        ", '_' ,'_' ,'_','2',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '10 : CAL_M
-    vSelect(9) = "'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+    vSelect(9) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
                         ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+                        ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
                         ", '0', '0','','0',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY]  "
@@ -735,7 +708,7 @@ Dim vSelect(20) As Variant
 '9 : D (DEC 2)
 
 
-   If WorksheetFunction.Or(sType = "PV", sType = "RAW", sType = "SH", sType = "SL", sType = "P", sType = "CAL", sType = "D", sType = "DB", sType = "H", sType = "HH", sType = "HYS", sType = "I", sType = "L", sType = "LL") Then
+   If WorksheetFunction.Or(sType = "PV", sType = "RAW", sType = "SH", sType = "SL", sType = "CAL", sType = "DB", sType = "H", sType = "HH", sType = "HYS", sType = "L", sType = "LL") Then
         sSelect = vSelect(0)
     ElseIf sType = "SV" Then
         sSelect = vSelect(1)
@@ -852,136 +825,136 @@ sPlcM = fSplit(sShtName, 1, "_") & ".M."
     sField = "[PV_DEVICE]"
     sType = "PV"
     sQUERY = _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[SV_DEVICE]"
     sType = "SV"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MV_DEVICE]"
     sType = "MV"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[SH_DEVICE]"
     sType = "SH"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[SL_DEVICE]"
     sType = "SL"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MV1_DEVICE]"
     sType = "MV1"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MV2_DEVICE]"
     sType = "MV2"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[DB_DEVICE]"
     sType = "DB"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MH_DEVICE]"
     sType = "MH"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[ML_DEVICE]"
     sType = "ML"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
 '    'ALARM DEV
     sField = "[HH_DEVICE]"
     sType = "HH"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[H_DEVICE]"
     sType = "H"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[L_DEVICE]"
     sType = "L"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[LL_DEVICE]"
     sType = "LL"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     'HYS
     sField = "[HYS_DEVICE]"
     sType = "HYS"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[CAL_DEVICE]"
     sType = "CAL"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[CAL_M_DEVICE]"
     sType = "CAL_M"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[RAW_DEVICE]"
     sType = "RAW"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
       'PID
     sField = "[P_DEVICE]"
     sType = "P"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[I_DEVICE]"
     sType = "I"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[D_DEVICE]"
     sType = "D"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[MODE_DEVICE]"
     sType = "MODE"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     RetQueryServerDevAnalog = sQUERY
             
@@ -1004,66 +977,150 @@ sPlcM = fSplit(sShtName, 1, "_") & ".M."
     sType = "PLC_HH"
     sQUERY = ""
     sQUERY = sQUERY & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
     
     sField = "[PLC_H_DEVICE]"
     sType = "PLC_H"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_L_DEVICE]"
     sType = "PLC_L"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_LL_DEVICE]"
     sType = "PLC_LL"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[PLC_CAL_M_DEVICE]"
     sType = "PLC_CAL_M"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
    'SCADA ALARM DEV
     sField = "[AL_HH_DEVICE]"
     sType = "AL_HH"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_H_DEVICE]"
     sType = "AL_H"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_L_DEVICE]"
     sType = "AL_L"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_LL_DEVICE]"
     sType = "AL_LL"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sField = "[AL_CAL_M_DEVICE]"
     sType = "AL_CAL_M"
     sQUERY = sQUERY & _
             "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS] IS NOT NULL AND " & sField & " IS NOT NULL ")
+             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     RetQueryServerDev2 = sQUERY
             
 End Function
+
+Sub CheckServerComment()
+    'SERVER <=> LIST
+    'ALIAS, COMMENT, UNITS, DECIMAL, BINALY
+    Dim sSqlQuery As String
+    Dim sWbPath As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    
+    'LIST_TABLE=======================================================
+    sWsName = "TMP_TABLE1"
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+
+    sSqlQuery = RetQueryServerDev0() & _
+                    ""
+    'Run the query with the SQL string
+    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+
+    sSqlQuery = _
+        RetQuerySelectFrom(" * ", "[" & sWsName & "$] AS " & sWsName) & _
+    "UNION ALL " & _
+        RetQueryServerDevAnalog("[DB_PLC00_ANALOG$]") & _
+    "UNION ALL " & _
+        RetQueryServerDevAnalog("[DB_PLC03_ANALOG$]") & _
+        " "
+    sWsName = "TMP_TABLE2"
+    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    'Run the query with the SQL string
+    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+
+     sSqlQuery = _
+        RetQuerySelectFrom(" * ", "[" & sWsName & "$] AS " & sWsName) & _
+    "UNION ALL " & _
+        RetQueryServerDev2("[DB_PLC00_ANALOG$]") & _
+    "UNION ALL " & _
+        RetQueryServerDev2("[DB_PLC03_ANALOG$]") & _
+        " "
+
+    sWsName = "TMP_TABLE3"
+    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    'Run the query with the SQL string
+    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    
+    'FULL LIST
+     sSqlQuery = _
+        RetQuerySelectFrom("LST.[FULL_ADR] AS LST_FULLADR" & _
+                                         ", SVR.[FULL_ADR] AS SVR_FULLADR" & _
+                                         ", LST.[ALIAS] AS LST_ALIAS" & _
+                                         ", LST.[SHEET] AS LST_SHEET" & _
+                                         ", LST.[COMMENT] AS LST_COMMENT" & _
+                                         ", SVR.[COMMENT] AS SVR_COMMENT" _
+                                         , "[" & sWsName & "$] AS LST") & _
+        "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON SVR.[FULL_ADR] = LST.[FULL_ADR] " & _
+        ""
+        
+    sWsName = "TMP_DIFF_SERVER"
+    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    'Run the query with the SQL string
+    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+
+    
+    'SVR COMMENT VERIFY
+    sSqlQuery = _
+    RetQuerySelectFrom(" SVR.[CSV1]" & _
+                                    ",SVR.[CSV2]" & _
+                                    ",SVR.[CSV3]" & _
+                                    ",SVR.[FULL_ADR]" & _
+                                    ",DIFF.[LST_SHEET]" & _
+                                    ",DIFF.[LST_COMMENT]" _
+                                    , "[DB_SERVER_CSV$] AS SVR ") & _
+    "RIGHT OUTER JOIN [" & sWsName & "$] AS DIFF ON DIFF.[LST_FULLADR] = SVR.[FULL_ADR] " & _
+    ""
+    
+    sWsName = "DIFF_COMMENT_CHECK"
+    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    
+'    Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
+'    Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")")
+
+
+End Sub
 
 
 
