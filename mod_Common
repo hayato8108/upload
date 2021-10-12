@@ -384,7 +384,8 @@ Else
     sRslt = aStr(lCol - 1)
 End If
 
-If inptMatch = True And sResult = inptStr Then sResult = ""
+
+If inptMatch = True And sRslt = inptStr Then sRslt = ""
 
 fSplit = sRslt
 
@@ -393,11 +394,15 @@ End Function
 
 Function fSplitBetween(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptMatch As Boolean = False) As String
 Dim sResult As String
+Dim bFlag As Boolean: bFlag = False
 
 sResult = fSplit(inptStr, inptCol, inptLeft)
-sResult = fSplit(sResult, 1, inptRight)
+If sResult = inptStr Then bFlag = True
 
-If inptMatch = True And sResult = inptStr Then sResult = ""
+sResult = fSplit(sResult, 1, inptRight)
+If sResult = inptStr Then bFlag = True
+
+If inptMatch = True And bFlag = True Then sResult = ""
 
 fSplitBetween = sResult
 
