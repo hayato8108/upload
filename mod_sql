@@ -37,7 +37,7 @@ Debug.Print "CREATE DB_TABLE START : " & Now() & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 'Table Check
 'Call CheckServerComment ' OK
 'Call CheckAlarmMaster 'OK
-'Call CheckAnalog2ServerPrm 'OK
+'Call CheckAnalog2ServerPrm 'OK DEC
 Call CheckAnalog2ActionPrm
 '=> ? check contain all table
 
@@ -195,26 +195,26 @@ Sub CheckAnalog2ActionPrm()
     Dim sSelect As String
     
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    
-    sWsName = "TMP_BASE_TABLE" ' ======================================
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    
-    'ANALOG => BASE
-    sSelect = "[FULL_ADR],[ALIAS],[COMMENT],[UNITS],[DECIMAL],[BINALY]"
-    sSqlQuery = ""
-    sSqlQuery = sSqlQuery & _
-        RetQuerySelectFrom(sSelect, "[PRE_ANALOG_TABLE$]") & _
-    ""
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-    sSqlQuery = ""
+'
+'    sWsName = "TMP_BASE_TABLE" ' ======================================
+'    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+'
+'    'ANALOG => BASE
+'    sSelect = "[FULL_ADR],[ALIAS],[COMMENT],[UNITS],[DECIMAL],[BINALY]"
+'    sSqlQuery = ""
+'    sSqlQuery = sSqlQuery & _
+'        RetQuerySelectFrom(sSelect, "[PRE_ANALOG_TABLE$]") & _
+'    ""
+'    'Run the query with the SQL string
+'    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+'    sSqlQuery = ""
 
     sWsName = "TMP_JOIN_WITH_FULLADR" ' ======================================
     Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
 
     '(FULL_ADR) => SERVER
-    sSelect = "'SERVER' AS [SHEET],SVR.[FULL_ADR] AS [FULL_ADR],'_',SVR.[COMMENT] AS [COMMENT],SVR.[UNITS] AS [UNITS], SVR.[DECIMAL] AS [DECIMAL], SVR.[BINALY] AS BINALY " & _
-                    ",ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY "
+    sSelect = "'SERVER' AS [SHEET],SVR.[FULL_ADR] AS [FULL_ADR],'_',SVR.[COMMENT] AS [COMMENT],SVR.[UNITS] AS [UNITS], SVR.[DECIMAL] AS [DECIMAL], SVR.[BINALY] AS BINALY , '_' " & _
+                    ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     sSqlQuery = sSqlQuery & _
         RetQuerySelectFrom(sSelect, "[DB_SERVER_CSV$] AS SVR") & _
         "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[FULL_ADR] = SVR.[FULL_ADR]" & _
@@ -226,7 +226,7 @@ Sub CheckAnalog2ActionPrm()
 
     sWsName = "TMP_pre_JOIN_WITH_ALIAS" ' ======================================
     '(ALIAS) => Fieldmaster
-    sSelect = "'FIELD_MASTER' AS [SHEET],'_',[ALIAS],[COMMENT],'_',[DECIMAL],'_' "
+    sSelect = "'FIELD_MASTER' AS [SHEET],'_',[ALIAS],[COMMENT],'_',[DECIMAL],'_','_' "
     sSqlQuery = sSqlQuery & _
             RetQuerySelectFrom(sSelect, "[DB_FIELDMASTER_TAG_PRT$]") & _
         "UNION ALL " & _
@@ -239,8 +239,8 @@ Sub CheckAnalog2ActionPrm()
      Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
     
-    sSelect = "'FIELD_MASTER','_',PRE.[ALIAS],PRE.[COMMENT],'_',PRE.[DECIMAL],'_' " & _
-    ",ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY "
+    sSelect = "'FIELD_MASTER','_',PRE.[ALIAS],PRE.[COMMENT],'_',PRE.[DECIMAL],'_','_' " & _
+    ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     sSqlQuery = sSqlQuery & _
         RetQuerySelectFrom(sSelect, "[" & sWsName & "$] AS PRE") & _
         "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = PRE.[ALIAS]" & _
@@ -252,27 +252,36 @@ Sub CheckAnalog2ActionPrm()
 '    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
 
     '(ALIAS) => TREND
-    sSelect = "'PENINFO','_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_' " & _
-        ",ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY "
+    sSelect = "'PENINFO','_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_','_' " & _
+        ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     sSqlQuery = sSqlQuery & _
         "UNION ALL " & _
              RetQuerySelectFrom(sSelect, "[DB_TREND_PENINFO $] AS PINFO") & _
                      "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = PINFO.[ALIAS]" & _
         ""
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-    Debug.Print "peninfo alias get ng"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    Debug.Print "now peninfo alias get ng"
 
     '(ALIAS) => FP
+   sSelect = "'FP','_',FP.[ALIAS],FP.[COMMENT],FP.[UNITS],FP.[DECIMAL],'_', FP.[FP_TYPE] AS FP_FPTYPE " & _
+        ",ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     sSqlQuery = sSqlQuery & _
         "UNION ALL " & _
-            RetQuerySelectFrom("[FULL_ADR],[ALIAS],[UNITS],[DECIMAL],IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')", "[DB_PLC00_ANALOG$]") & _
-        "UNION ALL" & _
-            RetQuerySelectFrom("[FULL_ADR],[ALIAS],[UNITS],[DECIMAL],IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')", "[DB_PLC03_ANALOG$]") & _
+             RetQuerySelectFrom(sSelect, "[PRE_FP_TABLE$] AS FP ") & _
+                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = FP.[ALIAS]" & _
         ""
-                 sWsName = "TMP2" ' ======================================
+        
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-Stop
-
+    sSqlQuery = ""
+    
+    sWsName = "DIFF_ANLG_PRM"
+    sSqlQuery = sSqlQuery & _
+             RetQuerySelectFrom("*", "[TMP_JOIN_WITH_FULLADR$]") & _
+        "UNION ALL " & _
+             RetQuerySelectFrom("*", "[TMP_JOIN_WITH_ALIAS$]") & _
+        ""
+        
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Sub
 
@@ -1106,8 +1115,8 @@ Sub CheckAlarmMaster()
     Call GetQueryResults(sSqlQuery, sWbName, sWsName)
     
         sSqlQuery = _
-            RetQuerySelectFrom("T1.[FULL_ADR],T1.[SHEET],T1.[COMMENT],T1.[CATEGORY],MST.[COMMENT],[ALIAS],MST.[CATEGORY]", "[" & sWsName & "$] AS T1 " & _
-            "LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON T1.[FULL_ADR] = MST.[FULL_ADR] ") & _
+            RetQuerySelectFrom("LST.[FULL_ADR],LST.[SHEET],LST.[COMMENT],LST.[CATEGORY],MST.[COMMENT],[ALIAS],MST.[CATEGORY]", "[" & sWsName & "$] AS LST " & _
+            "LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR] ") & _
             ""
             
     'Out Setting
