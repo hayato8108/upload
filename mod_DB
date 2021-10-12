@@ -1,4 +1,5 @@
 Option Explicit
+'DB
 
 Sub Xml2DbShtRefreshActiveSht()
 'For KeyBind
@@ -8,43 +9,6 @@ Call Xml2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
 
 End Sub
 
-
-Sub CreateDFR3DBBook(Optional inptWb As Workbook = Nothing)
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook
-'Dim oWbTmp As Workbook
-Dim rRng As Range
-
-If inptWb Is Nothing Then
-    Set oWb = Workbooks.Add
-Else
-    Set oWb = inptWb
-End If
-
-Application.ScreenUpdating = False
-Debug.Print " "
-Debug.Print "CreateDFR3DBBook START : " & Now() & "==========================================================="
-
-'    Call ADD_FACEPLATE(oWb)
-'    Call ADD_FIELDMASTER_TAG(oWb)
-'    Call ADD_ALIAS(oWb)
-'    Call ADD_OP(oWb)
-'    Call ADD_KONDO(oWb)
-'    Call ADD_IO(oWb)
-'    Call ADD_TYOUGOU(oWb)
-'    Call ADD_HIRANO(oWb)
-    Call ADD_WARITUKE(oWb)
-'    Call ADD_SERVER_CSV(oWb)
-'    Call ADD_TREND_PENINFO(oWb)
-'    Call ADD_ALM_MASTER(oWb)
-
- '   Call ADD_ALM_MASTER(oWb) DB_PLC00_R HYOUJITOU_FLG_LIST
-
-'.Sheets("Sheet1").Delete
-Application.ScreenUpdating = True
-Debug.Print "CreateDFR3DBBook END : " & Now() & "==========================================================="
-End Sub
 
 Function RetCDirTmpPath(inptPath As String) As String
 Dim sPath As String: sPath = inptPath
@@ -307,6 +271,43 @@ End With
 End Sub
 
 
+
+Sub ADD_C(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+    Debug.Print "C : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_C ")
+    Call CloseWb(Dir(sWb))
+    FileCopy sWb, RetCDirTmpPath(sWb)
+    sWb = RetCDirTmpPath(sWb)
+    OpenFileAsWb (sWb)
+
+    sWs = "DB_C "
+    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
+    With .Worksheets(sWs)
+        .Range("A1").Value = "GROUP"
+        .Range("B1").Value = "ALIAS_BASE"
+        .Range("C1").Value = "COMMENT"
+        .Range("D1").Value = "MIN"
+        .Range("E1").Value = "MAX"
+        .Range("F1").Value = "UNIT"
+        .Range("G1").Value = "_"
+        .Range("H1").Value = "FP_TYPE"
+        .Range("I1").Value = "WORD_SIZE"
+        Call Xml2DbShtRefresh(oWb.Name, sWs)
+    End With
+    Workbooks(Dir(sWb)).Close False
+End With
+
+End Sub
+
+
+
 Sub ADD_OP(inptWb As Workbook)
 Dim sWb As String
 Dim sWs As String
@@ -531,7 +532,7 @@ End With
 End Sub
 
 
-Sub ADD_WARITUKE(inptWb As Workbook)
+Sub ADD_ANALOG(inptWb As Workbook)
 Dim sWb As String
 Dim sWs As String
 Dim oWb As Workbook: Set oWb = inptWb
@@ -539,7 +540,6 @@ Dim oWbTmp As Workbook
 Dim rRng As Range
 
 With oWb
-
     Debug.Print "PLC 00 PLC03 WARITUKE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_WARITUKE")
     Call CloseWb(Dir(sWb))
@@ -552,7 +552,7 @@ With oWb
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
 'PLC_DEV => COMMENT ONLY
-        .Range("A1:AR1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
+        .Range("A1:AR1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
         .Range("AE1").Value = "MODE_DEVICE"
         .Range("AL1").Value = "AL_HH_DEVICE"
         .Range("AM1").Value = "AL_H_DEVICE"
@@ -568,7 +568,7 @@ With oWb
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-        .Range("A1:AR1").Value2 = Array("_", "ALIAS", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
+        .Range("A1:AR1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
         .Range("AE1").Value = "MODE_DEVICE"
         .Range("AL1").Value = "AL_HH_DEVICE"
         .Range("AM1").Value = "AL_H_DEVICE"
@@ -579,8 +579,21 @@ With oWb
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
         Call FixFormula(rRng.Offset(0, 43), "=IF(fLenOfDecimal(RC4)<>fLenOfDecimal(RC5),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
    End With
+End With
+
+    Workbooks(Dir(sWb)).Close False
+    
+End Sub
 
 
+Sub ADD_WARITUKE(inptWb As Workbook)
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = inptWb
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
     'PLC00
         sWs = "DB_PLC00_M"
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
@@ -681,10 +694,10 @@ With oWb
         Call FixFormula(rRng.Offset(0, 6), "=RC4 & ""."" & RC5 & ""."" & RC6") 'FULL_ADR
 
         Debug.Print "   UNITS  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 7), "=fSplitBetween(RC3,2,""+EU="",""+C="")") 'UNITS
-        
+        Call FixFormula(rRng.Offset(0, 7), "=fSplitBetween(RC3,2,""+EU="",""+C="",TRUE)") 'UNITS
+
         Debug.Print "   COMMENT  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 8), "=IF(fSplit(RC3,2,""+C="") = RC3, """", fSplit(RC3,2,""+C=""))") 'COMMENT
+        Call FixFormula(rRng.Offset(0, 8), "=fSplit(RC3,2,""+C="",TRUE)") 'COMMENT
 
         Debug.Print "   DEC1  START : " & Now()
         Call FixFormula(rRng.Offset(0, 9), "=fSplitCsvPrmDec(RC3,1)") 'DEC1
@@ -696,12 +709,11 @@ With oWb
         Call FixFormula(rRng.Offset(0, 11), "=fSplitCsvPrmDec(RC3,3)") 'DEC3
         
         Debug.Print "   DECIMAL START : " & Now()
-        Call FixFormula(rRng.Offset(0, 12), "=IF(fLenOfDecimal(RC10)<>fLenOfDecimal(RC11),""NG"",fLenOfDecimal(SUBSTITUTE(RC11,""-"","""")))") 'DECIMAL
-        
+        Call FixFormula(rRng.Offset(0, 12), "=IF(NOT(SUBSTITUTE(RC10,""-"","""")=SUBSTITUTE(RC11,""-"","""")),""NG"",SUBSTITUTE(RC10,""-"",""""))") 'DECIMAL
+  
         Debug.Print "   BIN  START : " & Now()
         Call FixFormula(rRng.Offset(0, 13), "=fSplitCsvPrmBin(RC3)") 'BIN
-
-    End With
+        End With
     Workbooks(Dir(sWb)).Close False
 End With
 End Sub
