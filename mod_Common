@@ -1,18 +1,29 @@
-'c20210706 common
-'[KEY]   [WorkBookName]  [WorkSheetName] [KeyCol]    [RtnCol]
+Option Explicit
+'common
 
-'Note
+Sub DebugOut(inptCategory As String, inptMsg As String)
+Dim v As Variant
+Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim i As Integer
 
-Sub setDBKeyBInd()
-    Application.OnKey "+^%Q", "ShowQueryForm"
-    Application.OnKey "+^%R", "Xml2DbShtRefreshActiveSht"
-    Application.OnKey "+^%A", "BatchXml2DbShtRefresh"
-End Sub
+oArr.Add "ROOT"
+oArr.Add "SUB_ST"
+oArr.Add "GET_QUERY" 'from GetQueryOnSht
+oArr.Add "MARK"
+oArr.Add "UTIL"
+oArr.Add "REM"
+'oArr.Add "RET_QUERY_SELECT"
+oArr.Add "SQL_ERR"
 
 
-Sub reload()
-    Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
-        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+For Each v In oArr
+    If v = UCase(inptCategory) Then
+            Debug.Print Format(Now(), "MM:SS") & _
+            WorksheetFunction.Rept(" ", 5) & _
+            v & " : " & inptMsg
+    End If
+Next v
+
 End Sub
 
 
@@ -219,7 +230,7 @@ Dim sWbName As String: sWbName = inptWb
 Dim sWsName As String: sWsName = inptWs
 Dim sKeyCol As String: sKeyCol = inptKeyCol
 Dim sKey As String: sKey = inptKey
-Dim sTargetCol As String: sTargetCol = inptTargetCol
+'Dim sTargetCol As String: sTargetCol = inptTargetCol
 Dim sMatchRow As String
 Dim vRslt As Variant
 
@@ -870,15 +881,7 @@ Dim x As Variant
 End Function
 
 
-Sub tstrng()
-
-Call FillFormula(Selection, "")
-
-End Sub
-
-
 Sub FillFormula(inptRng As Range, inptFormula As String)
-    
     Dim rRng As Range: Set rRng = inptRng
         
     With rRng
@@ -910,7 +913,6 @@ With Workbooks(sWb).Worksheets.Add
 End With
 
 End Sub
-
 
 
 Sub SelectOrOpenWb(inptWbPath As String)
@@ -956,7 +958,6 @@ Application.DisplayAlerts = True
 End Sub
 
 
-
 Sub FixFormula(inptRng As Range, inptFormula As String)
     Call FillFormula(inptRng, inptFormula)
     inptRng.Copy
@@ -983,28 +984,9 @@ Range2String = sResult
 End Function
 
 
-Sub SortSht()
-Dim s As Worksheet
-Dim sName As String
-
-sName = "DB"
-For Each s In ThisWorkbook.Worksheets
-If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
-Next s
-
-sName = "PRG"
-For Each s In ThisWorkbook.Worksheets
-If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
-Next s
-
-sName = "PRE"
-For Each s In ThisWorkbook.Worksheets
-If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
-Next s
-
-sName = "DIFF"
-For Each s In ThisWorkbook.Worksheets
-If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
-Next s
-
+Sub reload()
+    Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
+        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
 End Sub
+
+
