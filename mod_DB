@@ -52,7 +52,7 @@ With oWb
     sWs = "DB_FP_AI "
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -66,7 +66,7 @@ With oWb
     sWs = "DB_FP_AI_AL4"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:BD1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -80,8 +80,7 @@ With oWb
     sWs = "DB_FP_AI_Q"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        Debug.Print "※※※ TMP ※※※"
-        .Range("A1:AW1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:AW1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_")
         .Range("CN1").Value = "RESET"
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
@@ -96,7 +95,7 @@ With oWb
     sWs = "DB_FP_AI_SV "
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -110,7 +109,7 @@ With oWb
     sWs = "DB_FP_AI_SV2"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "SV_MAX", "_", "_", "SV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -124,7 +123,7 @@ With oWb
     sWs = "DB_FP_AI_SV3"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "SV_MAX", "_", "SV_MIN", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:CZ1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "SV_MAX", "_", "SV_MIN", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -138,7 +137,7 @@ With oWb
     sWs = "DB_FP_PID"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:M1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2")
+        .Range("A1:M1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2")
         .Range("AH1").Value = "PV_MAX"
         .Range("AK1").Value = "PV_MIN"
         .Range("AT1").Value = "TREND_MAX"
@@ -158,7 +157,7 @@ With oWb
     sWs = "DB_FP_PR_B"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:DC1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
+        .Range("A1:DC1").Value2 = Array("STRUCT_TAG_ADR", "FP_TYPE", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "COMMENT1", "_", "_", "COMMENT2", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "PV_MAX", "_", "_", "PV_MIN", "_", "_", "TREND_MAX", "_", "_", "TREND_MIN", "_", "_", "_", "_", "_", "_", "_", "_", "UNITS", "_", "_", "DECIMAL", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_", "_")
         Call Xml2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -594,6 +593,13 @@ Dim oWbTmp As Workbook
 Dim rRng As Range
 
 With oWb
+    Debug.Print "PLC 00 PLC03 WARITUKE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_WARITUKE")
+    Call CloseWb(Dir(sWb))
+    FileCopy sWb, RetCDirTmpPath(sWb)
+    sWb = RetCDirTmpPath(sWb)
+    OpenFileAsWb (sWb)
+
     'PLC00
         sWs = "DB_PLC00_M"
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
@@ -956,5 +962,34 @@ End With
 wsDst.Range("A1").Activate
 Application.ScreenUpdating = True
 End Sub
+
+
+
+Sub SortSht()
+Dim s As Worksheet
+Dim sName As String
+
+sName = "DB"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+sName = "PRG"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+sName = "PRE"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+sName = "DIFF"
+For Each s In ThisWorkbook.Worksheets
+If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+Next s
+
+End Sub
+
 
 
