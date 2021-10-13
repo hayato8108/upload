@@ -3,18 +3,12 @@ Option Explicit
 
 Sub CreateDFR3DBTable()
 Application.ScreenUpdating = False
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook
-Dim rRng As Range
-
-Set oWb = ThisWorkbook
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 
 Debug.Print ""
-Debug.Print "CREATE DB  START : " & Now() & "==========================================="
+Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
+Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
 
-'※※※ OP=>PLC00?
-'
 '    Call ADD_FACEPLATE(oWb)
 '    Call ADD_FIELDMASTER_TAG(oWb)
 '    Call ADD_ALIAS(oWb)
@@ -30,74 +24,26 @@ Debug.Print "CREATE DB  START : " & Now() & "===================================
 '    Call ADD_ALM_MASTER(oWb)
 '    Call ADD_C(oWb)
 
-Debug.Print "CREATE DB_TABLE START : " & Now() & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-
-''Create Pre Table
-Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
+'Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
+'Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
 'Call updatePreAnalogTable
 'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID"))
-'
-''Table Check
-'Debug.Print "table check start :" & Now()
-'Call CheckServerComment : Debug.Print "analog 2 server end :" & Now()
-'Call CheckAlarmMaster: Debug.Print "alarm master start :" & Now()
-Call CheckAnalog2ServerPrm: Debug.Print "analog 2 server end :" & Now()
-Call CheckAnalog2ActionPrm: Debug.Print "analog 2 action end  :" & Now()
+
+'Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
+'Call CheckServerComment
+'Call CheckAlarmMaster
+'Call CheckAnalog2ServerPrm
+Call CheckAnalog2ActionPrm
 ''=> ? check contain all table
 
 'CLEAR TEMP TABLE
 Call DeleteTmpTable(ThisWorkbook.Name)
 Call SortSht
 
-Debug.Print "CREATE DB_TABLE END: " & Now() & "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-Debug.Print ""
+Call DebugOut("ROOT", "PROC END >>>" & Now())
+Debug.Print WorksheetFunction.Rept(vbNewLine, 2)
 
 Application.ScreenUpdating = True
-End Sub
-
-
-Sub joinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
-Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-Dim sWsName As String: sWsName = inptSht
-Dim sSqlQuery As String
-Dim sLeft As String: sLeft = inptLeft
-Dim sRight As String: sRight = inptRight
-Dim vLeftSel As Variant: vLeftSel = Split(inptLeftSel, ",")
-Dim vRightSel As Variant: vRightSel = Split(inptRightSel, ",")
-Dim sLeftSel As String
-Dim sRightSel As String
-Dim v As Variant
-Dim sKey As String: sKey = inptKey
-sLeft = "[" & sLeft & "$]"
-sRight = "[" & sRight & "$]"
-sLeftSel = """"
-sRightSel = """"
-sWbName = ThisWorkbook.Name
-
-If inptOutSht = "" Then
-    sWsName = "TMP_SQL_OUT"
-Else
-    sWsName = inptOutSht
-End If
-
-For Each v In vLeftSel
-    sLeftSel = sLeftSel & "L.[" & CStr(v) & "],"
-Next v
-    sLeftSel = Left(sLeftSel, Len(sLeftSel) - 1)
-
-For Each v In vRightSel
-    sRightSel = sRightSel & "R.[" & CStr(v) & "],"
-Next v
-    sRightSel = Left(sRightSel, Len(sRightSel) - 1)
-    
-    sSqlQuery = sLeftSel & sRightSel
-    
-    sSqlQuery = _
-        RetQuerySelectFrom("""" & sSqlQuery & """", sLeft & " AS L") & _
-        "LEFT OUTER JOIN " & sRight & " AS R ON  L.[" & sKey & "] = R.[" & sKey & "]" & _
-        ""
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
 End Sub
 
 
@@ -124,21 +70,19 @@ Next v
 
 sSqlQuery = Left(sSqlQuery, Len(sSqlQuery) - 10)
 
-Call SelectOrAddWs(sWsName, Dir(sWbName))
-Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
+Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 sSqlQuery = RetQuerySelectFrom("*", "[" & sWsName & "$]") & _
-                    "WHERE [ALIAS] IS NOT NULL"
+                    "WHERE [ALIAS_BASE] IS NOT NULL"
 
 sWsName = "PRE_FP_TABLE"
-Call SelectOrAddWs(sWsName, Dir(sWbName))
-Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Sub
 
 
 Function CreatePreFPTable(inptShtName As String, inptOutSht As String) As String
+Call DebugOut("SUB_ST", "CreatePreFPTable")
 Dim sSqlQuery As String
 Dim sWbPath As String
 Dim sWbName As String
@@ -152,8 +96,14 @@ Dim sQUERY As String
 Dim sPlcR As String
 Dim sPlcM As String
 Dim sSelect As String
-Dim vSelect As Variant
-vSelect = Array( _
+Dim vSelect(10) As Variant
+
+    ''0 : AI, AI_AL4
+    ''1 : AI_Q
+    ''2 : DB_FP_AI_SV, DB_FP_AI_SV2, DB_FP_AI_SV3
+    ''3 : DB_FP_PID
+
+'vSelect = Array( _
                         " [FP_TYPE],[ALIAS_BASE]" & _
                         ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
                         ", [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & _
@@ -163,6 +113,18 @@ vSelect = Array( _
                         , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",[RESET]" & ", '_', '_' " _
                         , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ",[SV_MAX],[SV_MIN]" _
                         , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ", '_', '_' ")
+
+vSelect(0) = " [FP_TYPE],[ALIAS_BASE]" & _
+                        ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
+                        ", [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & _
+                        ",'_' AS [RESET]" & _
+                        ", '_' AS [SV_MAX]" & _
+                        ", '_' AS [SV_MIN]"
+                        
+vSelect(1) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",[RESET]" & ", '_', '_' "
+vSelect(2) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ",[SV_MAX],[SV_MIN]"
+vSelect(3) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ", '_', '_' "
+
 
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
     sWsName = sOutSht
@@ -192,7 +154,7 @@ Else
 
 End If
 
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Function
 
@@ -245,17 +207,21 @@ Sub CheckAnalog2ActionPrm()
     Dim vSelect(10) As Variant
     'server
     vSelect(0) = "'SERVER_CSV' AS [SHEET],SVR.[FULL_ADR] AS [FULL_ADR],SVR.[COMMENT] AS [COMMENT],SVR.[UNITS] AS [UNITS], SVR.[DECIMAL] AS [DECIMAL], SVR.[BINALY] AS BINALY  " & _
-                    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+                    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
+                    ""
    'Fieldmaster
     vSelect(1) = "'FIELD_MASTER' AS [SHEET],'_',[ALIAS],[COMMENT],'_',[DECIMAL],'_','_' "
     vSelect(2) = "'FIELD_MASTER','_',PRE.[ALIAS],PRE.[COMMENT],'_',PRE.[DECIMAL],'_','_' " & _
     ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     'Peninfo
-    vSelect(3) = "'PENINFO','_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_','_' " & _
+    vSelect(3) = "'PENINFO' AS [SHEET],'_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_','_' " & _
         ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     'Faceplate
-    vSelect(4) = "'FP','_',FP.[ALIAS],FP.[COMMENT],FP.[UNITS],FP.[DECIMAL],'_', FP.[FP_TYPE] AS FP_FPTYPE " & _
-        ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    vSelect(4) = "'FACEPLATE' AS [SHEET],FP.[ALIAS_BASE],FP.[COMMENT],FP.[PV_MAX],FP.[PV_MIN],FP.[TREND_MAX],FP.[TREND_MIN],FP.[SV_MAX],FP.[SV_MIN],FP.[UNITS],FP.[DECIMAL], FP.[FP_TYPE] AS FP_FPTYPE " & _
+        ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
+        " WHERE ANLG.[TYPE] = 'PV'" & _
+        ""
+    Call DebugOut("MARK", "<<<")
 
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
 
@@ -267,14 +233,14 @@ Sub CheckAnalog2ActionPrm()
         "WHERE SVR.[UNITS] IS NOT NULL  OR SVR.[DECIMAL] IS NOT NULL " & _
         "ORDER BY ANLG.[SHEET], [NO], SVR.[FULL_ADR] ASC " & _
         ""
-    sWsName = "DIFF_A2_SERVER" ' ======================================
+    sWsName = "DIFF_ANGL&SERVER" ' ======================================
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
 
     '(ALIAS) => Fieldmaster
     sSelect = CStr(vSelect(1))
     sSqlQuery = sSqlQuery & _
-            RetQuerySelectFrom(CStr(vSelect(1)), "[DB_FIELDMASTER_TAG_PRT$]") & _
+            RetQuerySelectFrom(sSelect, "[DB_FIELDMASTER_TAG_PRT$]") & _
         "UNION ALL " & _
             RetQuerySelectFrom(sSelect, "[DB_FIELDMASTER_TAG_SV$]") & _
         "UNION ALL " & _
@@ -295,7 +261,7 @@ Sub CheckAnalog2ActionPrm()
         "ORDER BY ANLG.[SHEET], [NO] ASC " & _
         ""
 
-    sWsName = "DIFF_A2_FIELDMASTER" ' ======================================
+    sWsName = "DIFF_ANLG&FIELDMASTER" ' ======================================
      Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
 
@@ -306,19 +272,20 @@ Sub CheckAnalog2ActionPrm()
                      "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = PINFO.[ALIAS]" & _
         ""
         
-    sWsName = "DIFF_A2_PENINFO" ' ======================================
+    sWsName = "DIFF_ANLG&PENINFO" ' ======================================
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
-    Debug.Print "now peninfo alias get ng"
 
-    '(ALIAS) => FP
-   sSelect = vSelect(4)
+   sSelect = "'FACEPLATE' AS [SHEET],FP.[ALIAS_BASE],FP.[COMMENT],FP.[PV_MAX],FP.[PV_MIN],FP.[TREND_MAX],FP.[TREND_MIN],FP.[SV_MAX],FP.[SV_MIN],FP.[UNITS],FP.[DECIMAL], FP.[FP_TYPE] AS FP_FPTYPE " & _
+                    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[MAX] AS [ANALOG_MAX],ANLG.[MIN] AS [ANALOG_MIN],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE,ANLG.[TYPE]" & _
+                    ""
     sSqlQuery = sSqlQuery & _
              RetQuerySelectFrom(sSelect, "[PRE_FP_TABLE$] AS FP ") & _
-                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = FP.[ALIAS]" & _
+                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = FP.[ALIAS_BASE]" & _
+                     "WHERE ANLG.[TYPE] = 'PV' " & _
                      ""
 
-    sWsName = "DIFF_A2_FP" ' ======================================
+    sWsName = "DIFF_ANLG&FACEPLATE" ' ======================================
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Sub
@@ -371,9 +338,6 @@ Dim sField As String
 Dim sType As String
 
 sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-sWsName = "TMP_PRE_ANALOG_R"
-Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-
 
     sField = "[PV_DEVICE]"
     sType = "PV"
@@ -509,10 +473,8 @@ Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
             "UNION ALL " & _
                           RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
-    sWsName = "TMP_PRE_ANALOG_M"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    sWsName = "TMP_PRE_ANALOG_R"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
 
  'PLC ALARM DEV
@@ -576,9 +538,10 @@ Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
             "UNION ALL " & _
                           RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
-  Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
+    sWsName = "TMP_PRE_ANALOG_M"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
+    
     sSqlQuery = sSqlQuery & _
                           RetQuerySelectFrom("*", "[TMP_PRE_ANALOG_R$]") & _
                     "UNION ALL " & _
@@ -593,6 +556,7 @@ End Function
 
 
 Function RetQueryPreAnalog(inptSht As String, inptLetter As String, inptField As String, inptType As String) As String
+Call DebugOut("UTIL", "RetQueryPreAnalog" & inptSht & inptLetter & inptField & inptType)
 Dim sSht As String: sSht = inptSht
 Dim sLetter As String: sLetter = inptLetter
 Dim sField As String: sField = inptField
@@ -739,7 +703,8 @@ End Function
 
 
 Function RetQueryServerDev0() As String
-  Dim sSqlQuery As String
+Call DebugOut("UTIL", "RetQueryServerDev0")
+Dim sSqlQuery As String
 
     sSqlQuery = _
             RetQuerySelectFrom(" REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & _
@@ -811,6 +776,7 @@ End Function
 
 
 Function RetQueryServerDevAnalog(inptShtName As String) As String
+Call DebugOut("UTIL", "RetQueryServerDevAnalog" & inptShtName)
 Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
 Dim sShtObjName As String: sShtObjName = inptShtName
 Dim sQUERY As String
@@ -962,6 +928,7 @@ End Function
 
 
 Function RetQueryServerDev2(inptShtName As String) As String
+Call DebugOut("UTIL", "RetQueryServerDev2")
 Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
 Dim sShtObjName As String: sShtObjName = inptShtName
 Dim sQUERY As String
@@ -1035,10 +1002,11 @@ sPlcM = fSplit(sShtName, 1, "_") & ".M."
              RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     RetQueryServerDev2 = sQUERY
-            
+   Stop
 End Function
 
 Sub CheckServerComment()
+Call DebugOut("SUB_ST", "CheckServerComment")
     'SERVER <=> LIST
     'ALIAS, COMMENT, UNITS, DECIMAL, BINALY
     Dim sSqlQuery As String
@@ -1048,40 +1016,23 @@ Sub CheckServerComment()
     Dim sWbDBPath As String
     
     'LIST_TABLE=======================================================
-    sWsName = "TMP_TABLE1"
+    sWsName = "TMP_LST_TABLE"
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
 
     sSqlQuery = RetQueryServerDev0() & _
                     ""
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
     sSqlQuery = _
-        RetQuerySelectFrom(" * ", "[" & sWsName & "$] AS " & sWsName) & _
-    "UNION ALL " & _
-        RetQueryServerDevAnalog("[DB_PLC00_ANALOG$]") & _
-    "UNION ALL " & _
-        RetQueryServerDevAnalog("[DB_PLC03_ANALOG$]") & _
-        " "
-    sWsName = "TMP_TABLE2"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-
-     sSqlQuery = _
-        RetQuerySelectFrom(" * ", "[" & sWsName & "$] AS " & sWsName) & _
-    "UNION ALL " & _
-        RetQueryServerDev2("[DB_PLC00_ANALOG$]") & _
-    "UNION ALL " & _
-        RetQueryServerDev2("[DB_PLC03_ANALOG$]") & _
-        " "
-
-    sWsName = "TMP_TABLE3"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+        RetQuerySelectFrom(" * ", "[" & sWsName & "$]") & _
+    " UNION ALL " & _
+        RetQuerySelectFrom(" [FULL_ADR],[SHEET],[ALIAS],[COMMENT],[UNITS],[DECIMAL],[BINALY] ", "[PRE_ANALOG_TABLE$] AS ANLG") & _
+    " WHERE ANLG.[TYPE] = '_HH' OR ANLG.[TYPE] = '_H' OR ANLG.[TYPE] = '_L' OR ANLG.[TYPE] = '_LL'" & _
+    ""
     
+    sWsName = "TMP_JOIN_LIST&ANLG_TABLE"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
     'FULL LIST
      sSqlQuery = _
         RetQuerySelectFrom("LST.[FULL_ADR] AS LST_FULLADR" & _
@@ -1094,10 +1045,8 @@ Sub CheckServerComment()
         "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON SVR.[FULL_ADR] = LST.[FULL_ADR] " & _
         ""
         
-    sWsName = "TMP_DIFF_SERVER"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    sWsName = "TMP_JOIN_LIST&ANLG&SVR_TABLE"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
     
     'SVR COMMENT VERIFY
@@ -1113,28 +1062,21 @@ Sub CheckServerComment()
     ""
     
     sWsName = "DIFF_COMMENT_CHECK"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     
-'    Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
-'    Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")")
-
 
 End Sub
 
 
-
 Sub CheckAlarmMaster()
+Call DebugOut("SUB_ST", "CheckAlarmMaster")
     Dim sSqlQuery As String
     Dim sWbPath As String
     Dim sWbName As String
     Dim sWsName As String
     Dim sWbDBPath As String
-
-    'Out Setting
-    sWsName = "TMP_TABLE1"
+    
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
     
     Dim sWhere1 As String: sWhere1 = "WHERE [CATEGORY] LIKE '%ALM%' OR  [CATEGORY] LIKE '%OPE%' "
 
@@ -1161,48 +1103,91 @@ Sub CheckAlarmMaster()
             "UNION ALL " & _
             RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC03_X',[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY]", "[DB_PLC03_X$] AS PLC03_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
             " "
+
     sSqlQuery = sSqlQuery & _
         "UNION ALL " & _
-            RetQueryAlarmDev("[DB_PLC00_ANALOG$]") & _
-        "UNION ALL " & _
-            RetQueryAlarmDev("[DB_PLC03_ANALOG$]") & _
+            RetQuerySelectFrom("[FULL_ADR],[SHEET],[COMMENT] ,[TYPE]", "[PRE_ANALOG_TABLE$] AS ANLG") & "WHERE [TYPE] LIKE 'AL_%' " & _
             " "
-  
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
-    
-        sSqlQuery = _
-            RetQuerySelectFrom("LST.[FULL_ADR],LST.[SHEET],LST.[COMMENT],LST.[CATEGORY],MST.[COMMENT],[ALIAS],MST.[CATEGORY]", "[" & sWsName & "$] AS LST " & _
-            "LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR] ") & _
-            ""
             
-    'Out Setting
-    sWsName = "DIFF_ALARM"
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-    'Run the query with the SQL string
-    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+    sWsName = "TMP_TABLE1"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
 
-
+    sSqlQuery = " SELECT" & _
+                            " LST.[FULL_ADR] AS [LST_FULLADR]" & _
+                            ",MST.[FULL_ADR] AS [MST_FULLADR]" & _
+                            ",LST.[SHEET]" & _
+                            ",LST.[COMMENT]" & _
+                            ",MST.[COMMENT]" & _
+                            ",[ALIAS] AS [MST_NOTE]" & _
+                            ",LST.[CATEGORY]" & _
+                            ",MST.[CATEGORY]" & _
+                        " FROM" & _
+                            " [" & sWsName & "$] AS LST" & _
+                            ""
+                            
+   sSqlQuery = _
+                        sSqlQuery & _
+                        " LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
+                    " UNION " & _
+                        sSqlQuery & _
+                        " RIGHT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
+                        " WHERE LST.[COMMENT] IS NULL" & _
+                        " "
+                        
+    sWsName = "TMP_FULLJOIN_LST&MST"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
+    
+'    sSqlQuery = " SELECT" & _
+'                        " LST.[FULL_ADR] AS [LST_FULLADR]" & _
+'                        ",MST.[FULL_ADR] AS [MST_FULLADR]" & _
+'                        ",LST.[SHEET]" & _
+'                        ",LST.[COMMENT]" & _
+'                        ",MST.[COMMENT]" & _
+'                        ",[ALIAS] AS [MST_NOTE]" & _
+'                        ",LST.[CATEGORY]" & _
+'                        ",MST.[CATEGORY]" & _
+'                    " FROM" & _
+'                        " [" & sWsName & "$] AS LST" & _
+'                        ""
+'    sSqlQuery = _
+'                        sSqlQuery & _
+'                        " LEFT OUTER JOIN [DB_SERVER_CSV$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
+'                    " UNION ALL " & _
+'                        sSqlQuery & _
+'                        " RIGHT OUTER JOIN [DB_SERVER_CSV$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
+'                        " WHERE LST.[COMMENT] IS NULL" & _
+'                        " "
+'
+'    sWsName = "TMP_JOIN_MST<=LST"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'    sSqlQuery = ""
+'
+    
+    Call SelectOrAddWs("PRG_ALM_DELETE", ThisWorkbook.Name)
     If Not RetAColValues("PRG_ALM_DELETE") = "" Then
         sSqlQuery = "SELECT * FROM [" & sWsName & "$] WHERE [FULL_ADR] " & _
                                 "NOT IN (" & RetAColValues("PRG_ALM_DELETE") & ")" & _
-                                " ORDER BY [FULL_ADR] DESC"
-                                
-         'Run the query with the SQL string
-        Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+                                ""
+    Else
+        sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
     End If
     
+    sWsName = "DIFF_ALARM"
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+ 
 End Sub
 
 
 Function RetAColValues(inptSht As String) As String
+    Call DebugOut("UTIL", "RetAColValues  " & inptSht)
     Dim sWsName As String: sWsName = inptSht
     Dim rRng As Range
     
     Set rRng = ThisWorkbook.Sheets(sWsName).Range("A1:A" & Cells(Rows.Count, 1).End(xlUp).Row)
     RetAColValues = Range2String(rRng, "'", ",")
 End Function
-
 
 
 Sub ★BKM_SAMPLES(): End Sub
@@ -1412,28 +1397,65 @@ sTable1 = _
 'Run the query with the SQL string
 Call GetQueryResults(sSqlQuery, sWbName, sWsName)
 
-
 End Sub
 
 
 Sub ★BKM_UTILS(): End Sub
 
-Sub DebugOut(inptLv As String, inptMsg As String)
-Dim DebugLevel As Integer: DebugLevel = 5
+Sub joinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
+Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+Dim sWsName As String: sWsName = inptSht
+Dim sSqlQuery As String
+Dim sLeft As String: sLeft = inptLeft
+Dim sRight As String: sRight = inptRight
+Dim vLeftSel As Variant: vLeftSel = Split(inptLeftSel, ",")
+Dim vRightSel As Variant: vRightSel = Split(inptRightSel, ",")
+Dim sLeftSel As String
+Dim sRightSel As String
+Dim v As Variant
+Dim sKey As String: sKey = inptKey
+sLeft = "[" & sLeft & "$]"
+sRight = "[" & sRight & "$]"
+sLeftSel = """"
+sRightSel = """"
+sWbName = ThisWorkbook.Name
+
+If inptOutSht = "" Then
+    sWsName = "TMP_SQL_OUT"
+Else
+    sWsName = inptOutSht
+End If
+
+For Each v In vLeftSel
+    sLeftSel = sLeftSel & "L.[" & CStr(v) & "],"
+Next v
+    sLeftSel = Left(sLeftSel, Len(sLeftSel) - 1)
+
+For Each v In vRightSel
+    sRightSel = sRightSel & "R.[" & CStr(v) & "],"
+Next v
+    sRightSel = Left(sRightSel, Len(sRightSel) - 1)
     
-    If DebugLevel < CInt(inptLv) Then
-        Debug.Print inptMsg
-    End If
+    sSqlQuery = sLeftSel & sRightSel
+    
+    sSqlQuery = _
+        RetQuerySelectFrom("""" & sSqlQuery & """", sLeft & " AS L") & _
+        "LEFT OUTER JOIN " & sRight & " AS R ON  L.[" & sKey & "] = R.[" & sKey & "]" & _
+        ""
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
 End Sub
 
 
 Sub GetQueryResultsOnSht(sSqlQuery As String, sWbName As String, sWsName As String)
+    Call DebugOut("GET_QUERY", sWsName)
     Call SelectOrAddWs(sWsName, Dir(sWbName))
     Call GetQueryResults(sSqlQuery, sWbName, sWsName)
 End Sub
 
 
 Function RetQuerySelectFrom(inptSels As String, inptSht As String, Optional inptWbPath As String = "")
+Call DebugOut("RET_QUERY_SELECT", "RetQuerySelectFrom")
 Dim sResult As String
 Dim aSels As Variant: aSels = Split(inptSels, ",")
 Dim sSht As String: sSht = inptSht
@@ -1448,9 +1470,9 @@ Next v
 vSels = Left(vSels, Len(vSels) - 2)
 
 sResult = _
-"SELECT " & _
+" SELECT " & _
          vSels & " " & _
-"FROM " & _
+" FROM " & _
         sSht & " "
 
 If sWbDBPath <> "" Then sResult = sResult & "IN " & sWbDBPath & " "
@@ -1491,6 +1513,7 @@ End Function
 
 
 Function RetQuerySelect(inptSels As String)
+Call DebugOut("RET_QUERY_SELECT", "RetQuerySelect")
 Dim sResult As String
 Dim aSels As Variant: aSels = Split(inptSels, ",")
 Dim sSht As String: sSht = inptSht
@@ -1512,32 +1535,6 @@ RetQuerySelect = sResult
 
 End Function
 
-
-
-Function RetQueryAlarmDev(inptShtName As String) As String
-    
-Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
-Dim sShtObjName As String: sShtObjName = inptShtName
-Dim sQUERY As String
-Dim sPlc As String
-sPlc = fSplit(sShtName, 1, "_") & ".M."
-
-    sQUERY = _
-    RetQuerySelectFrom("'" & sPlc & "' & [AL_HH_DEVICE], '" & sShtName & "', [COMMENT] & '_HH' AS [COMMENT], 'ALM' ", sShtObjName) & _
-    "WHERE [COMMENT] IS NOT NULL " & _
-        "UNION ALL " & _
-    RetQuerySelectFrom("'" & sPlc & "' & [AL_H_DEVICE], '" & sShtName & "', [COMMENT] & '_H' AS [COMMENT], 'ALM' ", sShtObjName) & _
-    "WHERE [COMMENT] IS NOT NULL " & _
-        "UNION ALL " & _
-    RetQuerySelectFrom("'" & sPlc & "' & [AL_L_DEVICE], '" & sShtName & "', [COMMENT] & '_L' AS [COMMENT], 'ALM' ", sShtObjName) & _
-    "WHERE [COMMENT] IS NOT NULL " & _
-        "UNION ALL " & _
-    RetQuerySelectFrom("'" & sPlc & "' & [AL_LL_DEVICE], '" & sShtName & "', [COMMENT] & '_LL' AS [COMMENT], 'ALM' ", sShtObjName) & _
-    "WHERE [COMMENT] IS NOT NULL "
-
-    RetQueryAlarmDev = sQUERY
-            
-End Function
 
 
 
