@@ -2,15 +2,17 @@ Option Explicit
 'SQL
 
 Sub CreateDFR3DBTable()
-Application.ScreenUpdating = False
 Dim oWb As Workbook: Set oWb = ThisWorkbook
+Application.ScreenUpdating = False
+
+Call ChangeShtVisible(True, "PRE,DIFF,DB,PRG")
 
 Debug.Print ""
 Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
 Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
 
-'    Call ADD_FACEPLATE(oWb)
-'    Call ADD_FIELDMASTER_TAG(oWb)
+'   Call ADD_FACEPLATE_CSV(oWb)
+'   Call ADD_FIELDMASTER_TAG(oWb)
 '    Call ADD_ALIAS(oWb)
 '    Call ADD_OP(oWb)
 '    Call ADD_KONDO(oWb)
@@ -29,20 +31,23 @@ Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
 'Call updatePreAnalogTable
 'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID"))
 
+
 'Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
 'Call CheckServerComment
-'Call CheckAlarmMaster
+Call CheckAlarmMaster
 'Call CheckAnalog2ServerPrm
-Call CheckAnalog2ActionPrm
-''=> ? check contain all table
+'Call CheckAnalog2ActionPrm
+'=> ? check contain all table
 
 'CLEAR TEMP TABLE
-Call DeleteTmpTable(ThisWorkbook.Name)
-Call SortSht
+Call DeleteTableByPrefix("TMP")
+'Call DeleteTmpTable(ThisWorkbook.Name)
+Call SortSht("DB,PRG,PRE,DIFF")
 
 Call DebugOut("ROOT", "PROC END >>>" & Now())
 Debug.Print WorksheetFunction.Rept(vbNewLine, 2)
 
+'Call ChangeShtVisible(False, "PRE,DB,PRG")
 Application.ScreenUpdating = True
 End Sub
 
@@ -116,14 +121,27 @@ Dim vSelect(10) As Variant
 
 vSelect(0) = " [FP_TYPE],[ALIAS_BASE]" & _
                         ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
-                        ", [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & _
+                        ", [PV_MAX], [PV_MIN]" & _
+                        ", '_' AS [SV_MAX], '_' AS [SV_MIN]" & _
+                        ", [TREND_MAX], [TREND_MIN]" & _
+                        ", [UNITS], [DECIMAL]" & _
                         ",'_' AS [RESET]" & _
-                        ", '_' AS [SV_MAX]" & _
-                        ", '_' AS [SV_MIN]"
-                        
-vSelect(1) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",[RESET]" & ", '_', '_' "
-vSelect(2) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ",[SV_MAX],[SV_MIN]"
-vSelect(3) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ", '_', '_' "
+                        ""
+vSelect(1) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
+                    ",[PV_MAX], [PV_MIN]" & _
+                    ", '_', '_' " & _
+                    ",[TREND_MAX], [TREND_MIN]" & _
+                    ", [UNITS], [DECIMAL],[RESET]"
+vSelect(2) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
+                    ",[PV_MAX], [PV_MIN]" & _
+                    ",[SV_MAX],[SV_MIN]" & _
+                    ", [TREND_MAX], [TREND_MIN]" & _
+                    ", [UNITS], [DECIMAL],'_'"
+vSelect(3) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
+                    ",[PV_MAX], [PV_MIN]" & _
+                    ", '_', '_' " & _
+                    ", [TREND_MAX], [TREND_MIN]" & _
+                    ", [UNITS], [DECIMAL],'_'"
 
 
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
@@ -190,7 +208,7 @@ Sub CheckAnalog2ServerPrm()
         RetQuerySelectFrom(sSelect, "[PRE_ANALOG_TABLE$] AS ANLG") & _
         "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON ANLG.[FULL_ADR] = SVR.[FULL_ADR] " & _
     ""
-    sWsName = "DIFF_ANGL2SVR" ' ======================================
+    sWsName = "DIFF_ANGL&SVR" ' ======================================
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Sub
@@ -210,19 +228,37 @@ Sub CheckAnalog2ActionPrm()
                     ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
                     ""
    'Fieldmaster
-    vSelect(1) = "'FIELD_MASTER' AS [SHEET],'_',[ALIAS],[COMMENT],'_',[DECIMAL],'_','_' "
-    vSelect(2) = "'FIELD_MASTER','_',PRE.[ALIAS],PRE.[COMMENT],'_',PRE.[DECIMAL],'_','_' " & _
+    vSelect(1) = "'FIELD_MASTER' AS [SHEET],[ALIAS],[COMMENT],[DECIMAL]"
+    vSelect(2) = "'FIELD_MASTER',PRE.[ALIAS],PRE.[COMMENT],PRE.[DECIMAL]" & _
     ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     'Peninfo
-    vSelect(3) = "'PENINFO' AS [SHEET],'_',PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL],'_','_' " & _
+    vSelect(3) = "'PENINFO' AS [SHEET],PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL]" & _
         ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
     'Faceplate
-    vSelect(4) = "'FACEPLATE' AS [SHEET],FP.[ALIAS_BASE],FP.[COMMENT],FP.[PV_MAX],FP.[PV_MIN],FP.[TREND_MAX],FP.[TREND_MIN],FP.[SV_MAX],FP.[SV_MIN],FP.[UNITS],FP.[DECIMAL], FP.[FP_TYPE] AS FP_FPTYPE " & _
-        ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
-        " WHERE ANLG.[TYPE] = 'PV'" & _
-        ""
-    Call DebugOut("MARK", "<<<")
-
+    vSelect(4) = "'FACEPLATE' AS [SHEET]" & _
+                        ",ANLG.[SHEET] AS [ANLG_SHEET]" & _
+                        ",ANLG.[NO]" & _
+                        ",FP.[ALIAS_BASE]" & _
+                        ",ANLG.[ALIAS_BASE] AS [ANLG_ALIAS]" & _
+                        ",FP.[COMMENT]" & _
+                        ",ANLG.[COMMENT] AS [ANLG_COMMENT]" & _
+                        ",FP.[PV_MAX] AS FP_PV_MAX" & _
+                        ",FP.[SV_MAX] AS FP_SV_MAX" & _
+                        ",FP.[TREND_MAX] AS FP_TREND_MAX" & _
+                        ",ANLG.[MAX] AS ANLG_MAX" & _
+                        ",FP.[PV_MIN] AS FP_PV_MIN" & _
+                        ",FP.[SV_MIN] AS FP_SV_MIN" & _
+                        ",FP.[TREND_MIN] AS FP_TREND_MIN" & _
+                        ",ANLG.[MIN] AS ANLG_MIN" & _
+                        ",FP.[UNITS]" & _
+                        ",ANLG.[UNITS] AS [ANALOG_UNITS]" & _
+                        ",FP.[DECIMAL]" & _
+                        ", ANLG.[DECIMAL] AS [ANALOG_DECIMAL]" & _
+                        ", FP.[FP_TYPE] AS FP_FPTYPE " & _
+                        ",ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
+                        " WHERE ANLG.[TYPE] = 'PV'" & _
+                        ""
+                        
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
 
     '(FULL_ADR) => SERVER
@@ -1077,7 +1113,6 @@ Call DebugOut("SUB_ST", "CheckAlarmMaster")
     Dim sWbDBPath As String
     
     sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    
     Dim sWhere1 As String: sWhere1 = "WHERE [CATEGORY] LIKE '%ALM%' OR  [CATEGORY] LIKE '%OPE%' "
 
     sSqlQuery = _
@@ -1119,17 +1154,16 @@ Call DebugOut("SUB_ST", "CheckAlarmMaster")
                             ",LST.[SHEET]" & _
                             ",LST.[COMMENT]" & _
                             ",MST.[COMMENT]" & _
-                            ",[ALIAS] AS [MST_NOTE]" & _
+                            ",[ALIAS] AS [MST_ALIAS_NOTE]" & _
                             ",LST.[CATEGORY]" & _
                             ",MST.[CATEGORY]" & _
                         " FROM" & _
                             " [" & sWsName & "$] AS LST" & _
                             ""
-                            
    sSqlQuery = _
                         sSqlQuery & _
                         " LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
-                    " UNION " & _
+                    " UNION ALL " & _
                         sSqlQuery & _
                         " RIGHT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
                         " WHERE LST.[COMMENT] IS NULL" & _
@@ -1138,7 +1172,7 @@ Call DebugOut("SUB_ST", "CheckAlarmMaster")
     sWsName = "TMP_FULLJOIN_LST&MST"
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
-    
+
 '    sSqlQuery = " SELECT" & _
 '                        " LST.[FULL_ADR] AS [LST_FULLADR]" & _
 '                        ",MST.[FULL_ADR] AS [MST_FULLADR]" & _
@@ -1167,13 +1201,19 @@ Call DebugOut("SUB_ST", "CheckAlarmMaster")
     
     Call SelectOrAddWs("PRG_ALM_DELETE", ThisWorkbook.Name)
     If Not RetAColValues("PRG_ALM_DELETE") = "" Then
+        Call DebugOut("UTIL", "USE ALM_DELETE")
+        Call DebugOut("ERR", "currently it does not work")
         sSqlQuery = "SELECT * FROM [" & sWsName & "$] WHERE [FULL_ADR] " & _
                                 "NOT IN (" & RetAColValues("PRG_ALM_DELETE") & ")" & _
                                 ""
     Else
+        Call DebugOut("UTIL", "NOT USE ALM_DELETE")
         sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
     End If
     
+    
+        sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
+            
     sWsName = "DIFF_ALARM"
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
  
@@ -1448,6 +1488,7 @@ End Sub
 
 
 Sub GetQueryResultsOnSht(sSqlQuery As String, sWbName As String, sWsName As String)
+    Dim s As String: s = Dir(sWbName): If s = "" Then Call DebugOut("ERR", "check inptWorkbookName is FullPath")
     Call DebugOut("GET_QUERY", sWsName)
     Call SelectOrAddWs(sWsName, Dir(sWbName))
     Call GetQueryResults(sSqlQuery, sWbName, sWsName)
