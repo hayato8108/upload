@@ -14,7 +14,8 @@ oArr.Add "UTIL"
 oArr.Add "REM"
 'oArr.Add "RET_QUERY_SELECT"
 oArr.Add "SQL_ERR"
-
+oArr.Add "ERR"
+oArr.Add "XML_PROC"
 
 For Each v In oArr
     If v = UCase(inptCategory) Then
@@ -144,13 +145,13 @@ End Function
 
 
 Function fKey2Val(inptLabel As String, inptKey As String) As String
-
 Dim sLabel As String: sLabel = inptLabel
 Dim sKey As String: sKey = inptKey
 Dim sData As Variant
 Dim sResult As Variant
 Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("LinkData").Rows(1)
 Dim lIndex As Long
+Dim bMatch As Boolean
 
 sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A") 'single row, get link parameters
 
@@ -167,27 +168,30 @@ fKey2Val = sResult
 End Function
 
 
-Function fKeys2Val(inptPref As String, inptKey As String) As String
-
+Function fPref2Val(inptPref As String, inptKey As String, inptMatch As Boolean) As String
+'itelate linkdata sheet and match then return value and exit function
 Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("LinkData")
 Dim l As Long
 Dim lEnd As Long
 Dim sPrf As String: sPrf = inptPref
 Dim sKey As String: sKey = inptKey
 Dim sRslt As String: sRslt = "#N/A#"
+Dim bMatch As Boolean
 
 With ws
 lEnd = .Cells(Rows.Count, 1).End(xlUp).Row
     For l = 1 To lEnd
         If Not .Cells(l, 1).Value = "" Then
-                If Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then sRslt = fKey2Val(.Cells(l, 1).Value, sKey)
-                If Not sRslt = "#N/A#" Then fKeys2Val = sRslt: Exit Function
+                If Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then
+                        sRslt = pKey2Val(.Cells(l, 1).Value, sKey)
+                If Not sRslt = "#N/A#" Then fPref2Val = sRslt: Exit Function
             End If
         End If
     Next l
 End With
-    fKeys2Val = sRslt
-    
+
+    fPref2Val = sRslt
+
 End Function
 
 
@@ -202,14 +206,21 @@ Dim sKey As String: sKey = inptKey
 Dim sTargetCol As String: sTargetCol = inptTargetCol
 Dim sMatchRow As String
 Dim sRslt As String
-
 On Error Resume Next
 
 With Workbooks(sWbName).Worksheets(sWsName)
 
     Dim rColKey As Range
     Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
-    If rColKey Is Nothing Then fGetCellData = "#N/A#": Exit Function
+    If rColKey Is Nothing Then
+        Call DebugOut("ERR", "fGetCellData get worksheet range fail " & vbNewLine & _
+                                         "assume that worksheet name is collect " & vbNewLine & _
+                                        "InptKey : " & inptKey & vbNewLine & _
+                                         "WbName : " & sWbName & vbNewLine & _
+                                         "WsName : " & sWsName)
+        fGetCellData = "#N/A#": Exit Function
+    End If
+    
     sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
     If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
     If sMatchRow <> "" Then
@@ -902,12 +913,14 @@ Dim s As Worksheet
 
 For Each s In Workbooks(sWb).Sheets
     If s.Name = sSht Then
+        Call DebugOut("UTIL", "select sheet " & sSht)
         Workbooks(sWb).Sheets(sSht).Activate
         Exit Sub
     End If
 Next s
 
 With Workbooks(sWb).Worksheets.Add
+    Call DebugOut("UTIL", "create new sheet " & sSht)
     .Name = sSht
     .Activate
 End With
@@ -950,6 +963,20 @@ Dim s As Worksheet
 Application.DisplayAlerts = False
 For Each s In Workbooks(sWb).Sheets
     If UCase(Left(s.Name, 3)) = "TMP" Then
+        Workbooks(sWb).Sheets(s.Name).Delete
+    End If
+Next s
+Application.DisplayAlerts = True
+
+End Sub
+
+
+Sub DeleteTableByPrefix(inptPrefix As String)
+Dim sWb As String: sWb = ThisWorkbook.Name
+Dim s As Worksheet
+Application.DisplayAlerts = False
+For Each s In Workbooks(sWb).Sheets
+    If UCase(Left(s.Name, Len(inptPrefix))) = UCase(inptPrefix) Then
         Workbooks(sWb).Sheets(s.Name).Delete
     End If
 Next s
