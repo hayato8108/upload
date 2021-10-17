@@ -1,58 +1,208 @@
 Option Explicit
-'DB
+'DB 20211018
 
 
+'CONVERT XML 2 DB==========================================================
 
-Sub CLIENT2DbShtRefresh(inptWb As String, inptWs As String)    ' DstWb, DstWs
-Application.ScreenUpdating = False
-
-'Dim wbSRC As Workbook
-'Dim wbDst As Workbook: Set wbDst = Workbooks(inptWb)
-'Dim wsDst As Worksheet: Set wsDst = wbDst.Worksheets(inptWs)
-'Dim sData As Variant
-'Dim l As Long
-'Dim lEnd As Long
-'Dim sPrf As String: sPrf = inptWs 'CLT_P_R_VALUE
+'[ CLIENT DB SETTING ],,,,
+'PGPRM_DB_CLIENT_ROOT , DFR3_DB_211014.xlsm, LinkData, B, C
+'*,[ KEY ],[ VAL ],,
+'*,//Download xml setting,,,
+'*,PGPRM_PATH_LOAD_XML,REPLACE_XMLPATH,,
+'*,PGPRM_PATH_SAVE_XML,REPLACE_XMLPATH,,
+'*,,,,
+'*,,,,
+'*,PGPRM_XML_LOAD_FOLDER,_Graphic,,
+'*,,,,
+'*,PGPRM_XML_OUT_SHT,CLT_XML_OUT,,
+'*,,,,
+'*,PGPRM_CLIENT_ITEMS,p_r_value,p_r_Pump,,
+'*,,,,
+'*,PGPRM_EXPAND_CHILD,FALSE,,
 '
-'Dim sWbLD As String: sWbLD = ThisWorkbook.Name
-'Dim sWsLD As String: sWsLD = "LinkData"
-'Dim sWb As String
-'Dim sWs As String
-'Dim sStCell As String
-'Dim sEndCell As String
-'Dim lEndDst As Integer
-Dim v As Variant
-Dim vCltItems As Variant: vCltItems = Split(fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_CLIENT_ITEMS"))
-                
-wsDst.Rows("2:" & Rows.Count).Clear
-wsDst.Rows("2:" & Rows.Count).NumberFormat = "@"
+'*,PGPRM_SHEET_PREF,CLT_,,
+',,,,
+',,,,
+',,,,
+',,,,
+'[ PARTS DATA ],[ ATTRIBUTES ],[ LIBRALYCLASS ],,
+'CLT_p_r_valve,Form,Folder,Top,Left,Height,Width,_TagIn,p_r_valve,,
+'CLT_p_r_pump,Form,Folder,Top,Left,Height,Width,_TagIn,p_r_pump,,
+'CLT_p_r_pvsv,Form,Folder,Top,Left,Height,Width,_TagInPV,_TagOutPV,_TagInSV,_TagOutSV,_Decimal,p_r_pvsv,,
 
 
-    For Each v In vCltItems
-        Call SelectOrAddWs("CLT_" & CStr(v))
-        
-            sData = fGetRowData(sWbLD, sWsLD, .Cells(l, 1).Value, "A")  'row => [link parameter]
-            If UBound(sData) = -1 Then Debug.Print "does not match": Exit Sub
-                sWb = RetCDirTmpPath(CStr(sData(2)))
-                sWs = CStr(sData(3))
-                sStCell = CStr(sData(4))
-                sEndCell = CStr(sData(5))
-                    
-                Set wbSRC = Workbooks(Dir(sWb))
-                lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
-                wbSRC.Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
-                wsDst.Activate
-                wsDst.Cells(lEndDst, 1).Select
-                wsDst.PasteSpecial
-                wbSRC.Sheets(sWs).Range("A1").Copy
-        End If
-    Next v
+Sub uploadNumberingXml()
+Application.ScreenUpdating = False
+'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+Dim C As clsXapDebug: Set C = New clsXapDebug
+Dim sRet As String
+Dim ws As Worksheet
+On Error Resume Next
 
-wsDst.Range("A1").Activate
+With ThisWorkbook.ActiveSheet
+    .Activate
+    C.uploadNumberingXml (ActiveSheet.Name)
+End With
+
+Set C = Nothing
 Application.ScreenUpdating = True
 End Sub
 
 
+Sub downloadFolderXml()
+
+Application.ScreenUpdating = False
+Dim d As clsXapDebug: Set d = New clsXapDebug
+Dim f As IXMLDOMSelection
+Dim sFol As String: sFol = ""
+Dim sCid As String
+Dim l As Long
+Dim sRet As String
+Dim sOutWsName As String
+sOutWsName = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT")
+On Error Resume Next
+
+If sOutWsName = "" Then
+   Call DebugOut("ERR", "empty pgprm_xml_out_sht")
+Else
+    Call SelectOrAddWs(sOutWsName, ThisWorkbook.Name)
+    Set ws = Sheets(sOutWsName)
+End If
+    ws.Activate
+
+sFol = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_LOAD_FOLDER")
+d.reloadPath
+Set f = d.getFolder(sFol)
+
+If f.Length = 0 Then MsgBox "Folder Load Error : " & sFol: Exit Sub
+Stop
+Call d.downloadFolderXml(f)
+
+Call DebugOut("REM", "alter fgetpgval")
+'If fGetPgVal("xml_nrw_Form") = "" And fGetPgVal("xml_nrw_LibName") = "" Then Exit Sub
+'
+'If fGetPgVal("xml_nrw_Enabled") = 1 Then
+'    If fGetPgVal("xml_nrw_Form") <> "#N/A#" And fGetPgVal("xml_nrw_Form") <> "" And d.searchActiveSheetHeaderCol("LibraryComment") <> 0 Then
+'        Call d.delUnMatchForm(d.searchActiveSheetHeaderCol("form"), fGetPgVal("xml_nrw_Form"))
+'    End If
+'    If fGetPgVal("xml_nrw_LibName") <> "#N/A#" And fGetPgVal("xml_nrw_LibName") <> "" And d.searchActiveSheetHeaderCol("form") <> 0 Then
+'
+'       Call d.delUnMatchRow(d.searchActiveSheetHeaderCol("LibraryComment"), fGetPgVal("xml_nrw_LibName"))
+'    End If
+'End If
+
+Set d = Nothing
+Set f = Nothing
+Set fr = Nothing
+
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub downloadFixReport()
+Application.ScreenUpdating = False
+'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+Dim C As clsXapDebug: Set C = New clsXapDebug
+Dim sRet As String
+
+On Error Resume Next
+
+If fGetPgVal("fix_repo_OutSht") = "" Then
+    Set ws = ActiveSheet
+Else
+    Set ws = Sheets(fGetPgVal("fix_repo_OutSht"))
+    If ws.Name <> fGetPgVal("fix_repo_OutSht") Then MsgBox "does not exist  : " & fGetPgVal("fix_repo_OutSht"): Exit Sub
+End If
+
+With ws
+    .Activate
+    .Cells.Clear
+    .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+    C.reloadPath
+    C.downloadFixReport
+End With
+
+Set C = Nothing
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub uploadFixReport()
+Application.ScreenUpdating = False
+'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+Dim C As clsXapDebug: Set C = New clsXapDebug
+Dim sRet As String
+Dim ws As Worksheet
+On Error Resume Next
+
+If fGetPgVal("fix_repo_OutSht") = "" Then
+    Set ws = ActiveSheet
+Else
+    Set ws = Sheets(fGetPgVal("fix_repo_OutSht"))
+    If ws.Name <> fGetPgVal("fix_repo_OutSht") Then MsgBox "does not exist  : " & fGetPgVal("fix_repo_OutSht"): Exit Sub
+End If
+
+With ws
+    .Activate
+    C.reloadPath
+    C.uploadFixFilterXml
+End With
+
+MsgBox "uploaFixReport :" & fGetPgVal("fix_repo_OutPath")
+
+Set C = Nothing
+Application.ScreenUpdating = True
+End Sub
+
+Sub uploadFixReportB()
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+Dim C As clsXapDebug: Set C = New clsXapDebug
+Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectFiles As FileDialogSelectedItems
+Dim vCnt As Long
+Dim sRet As String
+Dim wb As Workbook
+
+With vFiles
+    .Filters.Clear
+'    .Filters.Add "pictureFile", "*.*", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = fGetPgVal("fix_repo_dir")
+    .Show
+End With
+
+On Error Resume Next
+If vFiles.SelectedItems.Count = 0 Then Exit Sub: Exit Sub
+Set wb = Workbooks.Add: wb.Activate
+
+For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
+    With wb.Worksheets.Add
+        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+        sRet = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
+        sRet = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
+        C.reloadPath
+        C.downloadFixReport
+        .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
+        C.uploadFixFilterXml
+    End With
+Next vCnt
+wb.Sheets("Sheet1").Delete
+
+Set C = Nothing
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+End Sub
+        
+Sub downloadPartsXmlOnSht()
+
+Dim d As clsXapDebug
+Set d = New clsXapDebug
+d.downloadPartsXmlOnSht
+
+End Sub
 
 'CONVERT EXCEL 2 DB==========================================================
 
@@ -64,7 +214,6 @@ Call Excel2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
 
 End Sub
 
-
 Function RetCDirTmpPath(inptPath As String) As String
 Dim sPath As String: sPath = inptPath
 Dim sTmpPath As String
@@ -73,12 +222,21 @@ Dim sTmpPath As String
     RetCDirTmpPath = sTmpPath
     
 End Function
+
+Function RetCDirWbPath() As String
+Dim sTmpPath As String
     
+    sTmpPath = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    RetCDirWbPath = sTmpPath
     
-Sub ADD_FACEPLATE_CSV(inptWb As Workbook)
+End Function
+
+
+Sub ADD_FACEPLATE_MASTER()
+
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -95,9 +253,21 @@ With oWb
     With .Worksheets(sWs)
         .Range("A1:B1").Value2 = Array("GROUP_NAME", "STRUCT_TAG_ADR")
         Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
+    End With
+End With
     Workbooks(Dir(sWb)).Close False
     
+End Sub
+
+Sub ADD_FACEPLATE_CSV()
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = ThisWorkbook
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI ")
     Call CloseWb(Dir(sWb))
     FileCopy sWb, RetCDirTmpPath(sWb)
@@ -241,7 +411,6 @@ Call DebugOut("REM", ">>>does not match , check csv3 header")
             .Range("BF1").Value = "DECIMAL"
             .Range("CZ1").Value = "SV_MAX"
             .Range("DA1").Value = "SV_MIN"
-
         
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
@@ -304,10 +473,10 @@ End With
 End Sub
 
 
-Sub ADD_FIELDMASTER_TAG(inptWb As Workbook)
+Sub ADD_FIELDMASTER_TAG()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -377,10 +546,10 @@ End With
 End Sub
 
 
-Sub ADD_ALIAS(inptWb As Workbook)
+Sub ADD_ALIAS()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -404,10 +573,10 @@ End Sub
 
 
 
-Sub ADD_C(inptWb As Workbook)
+Sub ADD_C()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -440,10 +609,10 @@ End Sub
 
 
 
-Sub ADD_OP(inptWb As Workbook)
+Sub ADD_OP()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -476,10 +645,10 @@ End With
 End Sub
 
 
-Sub ADD_KONDO(inptWb As Workbook)
+Sub ADD_KONDO()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = thiswrokbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -525,10 +694,10 @@ End With
 End Sub
 
 
-Sub ADD_IO(inptWb As Workbook)
+Sub ADD_IO()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -579,10 +748,10 @@ With oWb
 End With
 End Sub
 
-Sub ADD_TYOUGOU(inptWb As Workbook)
+Sub ADD_TYOUGOU()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -607,10 +776,10 @@ End With
 End Sub
 
 
-Sub ADD_HIRANO(inptWb As Workbook)
+Sub ADD_HIRANO()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -664,10 +833,10 @@ End With
 End Sub
 
 
-Sub ADD_ANALOG(inptWb As Workbook)
+Sub ADD_ANALOG()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -683,33 +852,36 @@ With oWb
     sWs = "DB_PLC00_ANALOG"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-'PLC_DEV => COMMENT ONLY
-        .Range("A1:AR1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
-        .Range("AE1").Value = "MODE_DEVICE"
-        .Range("AL1").Value = "AL_HH_DEVICE"
-        .Range("AM1").Value = "AL_H_DEVICE"
-        .Range("AN1").Value = "AL_L_DEVICE"
-        .Range("AO1").Value = "AL_LL_DEVICE"
-        .Range("AP1").Value = "AL_CAL_DEVICE"
+    'PLC_DEV => COMMENT ONLY
+    'ALIAS => x PLC HL DEV ,  o SCADA HL DEV
+    Call DebugOut("MUST", ">>>>>>> LinSht Update >>>>>>  A1:AT ")
+        .Range("A1:AT1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "PV_MIN", "PV_MAX", "SV_MIN", "SV_MAX", "UNITS", "FP_TYPE", "WORD_SIZE", _
+                                                                "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", _
+                                                                "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", _
+                                                                "MH_DEVICE", "ML_DEVICE", _
+                                                                "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "MODE_DEVICE", "", _
+                                                                "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", _
+                                                                "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", _
+                                                                "DECIMAL")
         Call Excel2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 43), "=IF(NOT(fLenOfDecimal(RC4)=fLenOfDecimal(RC5)),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
+        Call FixFormula(rRng.Offset(0, 45), "=IF(NOT(fLenOfDecimal(RC4)=fLenOfDecimal(RC5)),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
    End With
 
-        sWs = "DB_PLC03_ANALOG"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
+    sWs = "DB_PLC03_ANALOG"
+    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-        .Range("A1:AR1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "MIN", "MAX", "UNITS", "FP_TYPE", "WORD_SIZE", "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", "MH_DEVICE", "ML_DEVICE", "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "AM_DEVICE", "", "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", "DECIMAL")
-        .Range("AE1").Value = "MODE_DEVICE"
-        .Range("AL1").Value = "AL_HH_DEVICE"
-        .Range("AM1").Value = "AL_H_DEVICE"
-        .Range("AN1").Value = "AL_L_DEVICE"
-        .Range("AO1").Value = "AL_LL_DEVICE"
-        .Range("AP1").Value = "AL_CAL_DEVICE"
+                .Range("A1:AT1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "PV_MIN", "PV_MAX", "SV_MIN", "SV_MAX", "UNITS", "FP_TYPE", "WORD_SIZE", _
+                                                                "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", _
+                                                                "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", _
+                                                                "MH_DEVICE", "ML_DEVICE", _
+                                                                "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "MODE_DEVICE", "", _
+                                                                "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", _
+                                                                "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", _
+                                                                "DECIMAL")
         Call Excel2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 43), "=IF(fLenOfDecimal(RC4)<>fLenOfDecimal(RC5),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
+        Call FixFormula(rRng.Offset(0, 45), "=IF(fLenOfDecimal(RC4)<>fLenOfDecimal(RC5),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
    End With
 End With
 
@@ -718,10 +890,10 @@ End With
 End Sub
 
 
-Sub ADD_WARITUKE(inptWb As Workbook)
+Sub ADD_WARITUKE()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -794,10 +966,10 @@ End With
 End Sub
 
 
-Sub ADD_SERVER_CSV(inptWb As Workbook)
+Sub ADD_SERVER_CSV()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -859,10 +1031,10 @@ End Sub
 
 
 
-Sub ADD_TREND_PENINFO(inptWb As Workbook)
+Sub ADD_TREND_PENINFO()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim sTmpPath As String
 Dim rRng As Range
@@ -921,10 +1093,10 @@ End With
 End Sub
 
     
-Sub ADD_ALM_MASTER(inptWb As Workbook)
+Sub ADD_ALM_MASTER()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = inptWb
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -950,6 +1122,82 @@ End With
 End Sub
 
     
+    
+Sub JoinLogCsv(inptSelect As String)
+Application.DisplayAlerts = False
+Application.ScreenUpdating = False
+
+Dim oWbDst As Workbook: Set oWbDst = ThisWorkbook
+Dim sTargetPath As String
+Dim swsNameBase As String
+Dim sWsName As String
+Dim sSelect As String: sSelect = "[" & fReplace(inptSelect, ",", "],[") & "]"
+Dim vCsvFiles As FileDialog: Set vCsvFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelected As FileDialogSelectedItems
+Dim lFrmRSt As Long: lFrmRSt = 1
+Dim lFrmREnd As Long
+Dim lFrmCEnd As Long
+Dim lDstRSt As Long: lDstRSt = 2
+Dim lDstREnd As Long
+Dim lCnt As Long
+
+With vCsvFiles
+    .Filters.Clear
+    .Filters.Add "csvFile", "*.csv", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = "C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\log\alarmlog"
+    .Show
+End With
+
+On Error Resume Next
+     
+If vCsvFiles.SelectedItems.Count = 0 Then Exit Sub
+
+swsNameBase = "TMP_JOIN_LOG_CSV"
+sWsName = swsNameBase & "1"
+Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+'thisworkbook.Sheets(sWsName).Cells.Clear
+
+With ThisWorkbook.Sheets(sWsName)
+    For lCnt = 1 To vCsvFiles.SelectedItems.Count
+        sTargetPath = vCsvFiles.SelectedItems(lCnt)
+        Call CloseWb(Dir(sTargetPath))
+        OpenFileAsWb (sTargetPath)
+                       
+        lFrmREnd = Workbooks(Dir(sTargetPath)) _
+                            .Sheets(fReplace(Dir(sTargetPath), ".csv", "")) _
+                            .Cells(Rows.Count, 1).End(xlUp).Row
+                            
+        lFrmCEnd = Workbooks(Dir(sTargetPath)) _
+                            .Sheets(fReplace(Dir(sTargetPath), ".csv", "")) _
+                            .Cells(1, Columns.Count).End(xlToLeft).Column
+                   
+        Workbooks(Dir(sTargetPath)) _
+                            .Sheets(fReplace(Dir(sTargetPath), ".csv", "")) _
+                            .Range(Cells(lFrmRSt, 1), Cells(lFrmREnd, lFrmCEnd)).Select
+        Selection.Copy
+       
+        lDstREnd = oWbDst.Sheets(sWsName).Cells(Rows.Count, 1).End(xlUp).Row + 1
+        If lDstREnd < lDstRSt Then lDstREnd = lDstRSt
+
+        If lDstREnd + lFrmREnd > Rows.Count Then
+            sWsName = swsNameBase & CInt(fReplace(sWsName, swsNameBase, "")) + 1
+            Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+            lDstREnd = lDstRSt
+        End If
+        
+        oWbDst.Sheets(sWsName).Cells(lDstREnd, 1).PasteSpecial
+        
+        Workbooks(Dir(sTargetPath)).Close False
+    Next lCnt
+End With
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+End Sub
+
+
 Function fSplitCsvPrmDec(inptStr As String, inptRetCol As Long) As String
 
 Dim lCol As Long: lCol = inptRetCol
