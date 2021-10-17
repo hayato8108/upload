@@ -1,43 +1,48 @@
 Option Explicit
-'SQL
+'SQL 20211018
 
 Sub CreateDFR3DBTable()
 Dim oWb As Workbook: Set oWb = ThisWorkbook
 Application.ScreenUpdating = False
-
 Call ChangeShtVisible(True, "PRE,DIFF,DB,PRG")
 
 Debug.Print ""
 Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
 Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
 
-'   Call ADD_FACEPLATE_CSV(oWb)
-'   Call ADD_FIELDMASTER_TAG(oWb)
-'    Call ADD_ALIAS(oWb)
-'    Call ADD_OP(oWb)
-'    Call ADD_KONDO(oWb)
-'    Call ADD_IO(oWb)
-'    Call ADD_TYOUGOU(oWb)
-'    Call ADD_HIRANO(oWb)
-'    Call ADD_ANALOG(oWb)
-'    Call ADD_WARITUKE(oWb)
-'    Call ADD_SERVER_CSV(oWb)
-'    Call ADD_TREND_PENINFO(oWb)
-'    Call ADD_ALM_MASTER(oWb)
-'    Call ADD_C(oWb)
+'   Call ADD_FACEPLATE_MASTER()
+'   Call ADD_FACEPLATE_CSV()
+'   Call ADD_FIELDMASTER_TAG()
+'    Call ADD_ALIAS()
+'    Call ADD_OP()
+'    Call ADD_KONDO()
+'    Call ADD_IO()
+'    Call ADD_TYOUGOU()
+'    Call ADD_HIRANO()
+'    Call ADD_ANALOG
+'    Call ADD_WARITUKE()
+'    Call ADD_SERVER_CSV()
+'    Call ADD_TREND_PENINFO()
+'    Call ADD_ALM_MASTER()
+'    Call ADD_C()
+
+
+'Call JoinLogCsv("F1,F2,F3")
+'Call GetQueryResultsOnSht("SELECT " & sSelect & " FROM [TMP_LOG_CSV1$]" _
+                                            , thisworkbook.path & "\" & thisworkbook.Name _
+                                            , "JOIN_LOG_CSV")
+
 
 'Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
-'Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
+Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
 'Call updatePreAnalogTable
-'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID"))
-
+'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID","DB_FP_SUM"))
 
 'Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
 'Call CheckServerComment
-Call CheckAlarmMaster
+'Call CheckAlarmMaster
 'Call CheckAnalog2ServerPrm
 'Call CheckAnalog2ActionPrm
-'=> ? check contain all table
 
 'CLEAR TEMP TABLE
 Call DeleteTableByPrefix("TMP")
@@ -327,7 +332,6 @@ Sub CheckAnalog2ActionPrm()
 End Sub
 
 
-
 Sub updatePreAnalogTable()
 
 End Sub
@@ -483,7 +487,7 @@ sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
              RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-      
+
       'PID
     sField = "[P_DEVICE]"
     sType = "P"
@@ -568,14 +572,15 @@ sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
             "UNION ALL " & _
                           RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
-    sField = "[AL_CAL_DEVICE]"
-    sType = "AL_CAL"
+    sField = "[AL_CAL_M_DEVICE]"
+    sType = "AL_CAL_M"
     sSqlQuery = sSqlQuery & _
             "UNION ALL " & _
                           RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
 
     sWsName = "TMP_PRE_ANALOG_M"
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
     sSqlQuery = ""
     
     sSqlQuery = sSqlQuery & _
@@ -600,6 +605,18 @@ Dim sType As String: sType = inptType
 Dim sSelect As String
 Dim vSelect(20) As Variant
       
+'    sSqlQuery = " SELECT" & _
+'                          "   [NO] AS [NO]" & _
+'                          ", 'PLC00.R.' & [PV_DEVICE] AS [FULL_ADR]" & _
+'                          ", 'PLC00_ANALOG' AS [SHEET]" & _
+'                          ",  [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                          ",  [ALIAS_BASE]  & '_PV' AS [ALIAS]" & _
+'                          ",  'PV' AS [TYPE]" & _
+'                          ",  [COMMENT] & '_PV' AS [COMMENT]" & _
+'                          ",  [PV_MIN] , [PV_MAX], [SV_MIN] , [SV_MAX] , [UNITS], [DECIMAL], [FP_TYPE]" & _
+'                          ",  IIF([WORD_SIZE]='', '', IIF([WORD_SIZE]='1W',  'BIN-16',  'BIN-32')) AS [BINALY]" & _
+'                  " FROM [DB_PLC00_ANALOG$] WHERE [ALIAS_BASE] IS NOT NULL AND [PV_DEVICE] IS NOT NULL  "
+'
 '1 : 'PV , RAW, sH, sL, P, CAL, d, Db, H, HH, HYS, i, l, LL
 ' NORMAL
     vSelect(0) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
@@ -608,7 +625,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", [MIN] ,[MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
+                        ", [PV_MIN] ,[PV_MAX], '' AS [SV_MIN] ,'' AS [SV_MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
                         ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
 '2 : SV
 'xRANGE
@@ -618,7 +635,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", [MIN] , [MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
+                        ", [PV_MIN] ,[PV_MAX], [SV_MIN] ,[SV_MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
                         ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
 '3 : MH  ML  MV  MV1 MV2
 '0.0 100.0 %
@@ -628,7 +645,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0.0', '100.0','%','1',[FP_TYPE]" & _
+                        ", '0.0', '100.0', '', '', '%','1',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '4 : (BIT) AL_CAL    AL_H    AL_HH   AL_L    AL_LL
 'BIT o ALIAS oCOMMENT (SCADAL)
@@ -638,7 +655,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0', '0','','0',[FP_TYPE]" & _
+                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
                         ", 'BIT' AS [BINALY] "
 '5 : (BIT) PLC_CAL_M , PLC_H, PLC_HH, PLC_L, PLC_LL
 'BIT x ALIAS oCOMMENT (PLC)
@@ -648,7 +665,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0', '0','','0',[FP_TYPE]" & _
+                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
                         ", 'BIT' AS [BINALY] "
 '6 : MODE
 'ALIAS => MODE, COMMENT => A/M
@@ -658,7 +675,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_A/M" & "' AS [COMMENT]" & _
-                        ", '0', '0','','0',[FP_TYPE]" & _
+                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
                         ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
 '7 : P (DEC 0)
     vSelect(6) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
@@ -667,7 +684,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '_' ,'_' ,'_','0',[FP_TYPE]" & _
+                        ", '', '', '' , '' , '','0',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '8 : I (DEC 1)
     vSelect(7) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
@@ -676,7 +693,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '_' ,'_' ,'_','1',[FP_TYPE]" & _
+                        ", '' , '' , '', '', '','1',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '9 : D (DEC 2)
     vSelect(8) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
@@ -685,7 +702,7 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '_' ,'_' ,'_','2',[FP_TYPE]" & _
+                        ", '' , '' , '', '', '','2',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY] "
 '10 : CAL_M
     vSelect(9) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
@@ -694,8 +711,9 @@ Dim vSelect(20) As Variant
                         ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
                         ", '" & sType & "' AS [TYPE]" & _
                         ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0', '0','','0',[FP_TYPE]" & _
+                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
                         ", 'BIN-16' AS [BINALY]  "
+
 
 '1 : 'PV , RAW, sH, sL, P, CAL, d, Db, H, HH, HYS, i, l, LL,DB
 '2 : SV
@@ -714,7 +732,7 @@ Dim vSelect(20) As Variant
         sSelect = vSelect(1)
     ElseIf WorksheetFunction.Or(sType = "MH", sType = "ML", sType = "MV", sType = "MV1", sType = "MV2") Then
         sSelect = vSelect(2)
-    ElseIf WorksheetFunction.Or(sType = "AL_CAL", sType = "AL_H", sType = "AL_HH", sType = "AL_L", sType = "AL_LL") Then
+    ElseIf WorksheetFunction.Or(sType = "AL_CAL_M", sType = "AL_H", sType = "AL_HH", sType = "AL_L", sType = "AL_LL") Then
         sSelect = vSelect(3)
     ElseIf WorksheetFunction.Or(sType = "PLC_CAL_M", sType = "PLC_H", sType = "PLC_HH", sType = "PLC_L", sType = "PLC_LL") Then
         sSelect = vSelect(4)
@@ -1172,32 +1190,6 @@ Call DebugOut("SUB_ST", "CheckAlarmMaster")
     sWsName = "TMP_FULLJOIN_LST&MST"
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     sSqlQuery = ""
-
-'    sSqlQuery = " SELECT" & _
-'                        " LST.[FULL_ADR] AS [LST_FULLADR]" & _
-'                        ",MST.[FULL_ADR] AS [MST_FULLADR]" & _
-'                        ",LST.[SHEET]" & _
-'                        ",LST.[COMMENT]" & _
-'                        ",MST.[COMMENT]" & _
-'                        ",[ALIAS] AS [MST_NOTE]" & _
-'                        ",LST.[CATEGORY]" & _
-'                        ",MST.[CATEGORY]" & _
-'                    " FROM" & _
-'                        " [" & sWsName & "$] AS LST" & _
-'                        ""
-'    sSqlQuery = _
-'                        sSqlQuery & _
-'                        " LEFT OUTER JOIN [DB_SERVER_CSV$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
-'                    " UNION ALL " & _
-'                        sSqlQuery & _
-'                        " RIGHT OUTER JOIN [DB_SERVER_CSV$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
-'                        " WHERE LST.[COMMENT] IS NULL" & _
-'                        " "
-'
-'    sWsName = "TMP_JOIN_MST<=LST"
-'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-'    sSqlQuery = ""
-'
     
     Call SelectOrAddWs("PRG_ALM_DELETE", ThisWorkbook.Name)
     If Not RetAColValues("PRG_ALM_DELETE") = "" Then
@@ -1231,6 +1223,27 @@ End Function
 
 
 Sub ★BKM_SAMPLES(): End Sub
+
+Sub sample_count()
+Call GetQueryResultsOnSht("SELECT COUNT([FP_TYPE]) FROM [PRE_FP_TABLE$]" _
+                                            , ThisWorkbook.path & "\" & ThisWorkbook.Name _
+                                            , "SQL_OUT")
+'=>286
+End Sub
+
+
+Sub sample_distinct()
+Call GetQueryResultsOnSht("SELECT DISTINCT [FP_TYPE] FROM [PRE_FP_TABLE$]" _
+                                            , ThisWorkbook.path & "\" & ThisWorkbook.Name _
+                                            , "SQL_OUT")
+'=> unique fp_type names
+'AI_SV,,,
+Call GetQueryResultsOnSht("SELECT COUNT(*) AS DistinctCountries  FROM (SELECT DISTINCT [FP_TYPE] FROM [PRE_FP_TABLE$])" _
+                                            , ThisWorkbook.path & "\" & ThisWorkbook.Name _
+                                            , "SQL_OUT")
+'=> num of unique fp_type
+'7
+End Sub
 
 Sub sample_parentasis()
     Dim sSqlQuery As String
@@ -1442,7 +1455,7 @@ End Sub
 
 Sub ★BKM_UTILS(): End Sub
 
-Sub joinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
+Sub fjoinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
 Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
 Dim sWsName As String: sWsName = inptSht
 Dim sSqlQuery As String
@@ -1516,7 +1529,7 @@ sResult = _
 " FROM " & _
         sSht & " "
 
-If sWbDBPath <> "" Then sResult = sResult & "IN " & sWbDBPath & " "
+If sWbDBPath <> "" Then sResult = sResult & "IN '" & sWbDBPath & "'" & " " & "'Excel 12.0 Xml;HDR=YES'"
 
 RetQuerySelectFrom = sResult
 
