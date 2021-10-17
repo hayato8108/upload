@@ -1,10 +1,13 @@
 Option Explicit
-'common
+'common 20211018
 
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
 Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
 Dim i As Integer
+
+
+oArr.Add "MUST"
 
 oArr.Add "ROOT"
 oArr.Add "SUB_ST"
@@ -114,7 +117,6 @@ With Workbooks(sWbName).Worksheets(sWsName)
 
     fSetPgVal = True
 End With
-
 
 End Function
 
