@@ -10,39 +10,39 @@ Debug.Print ""
 Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
 Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
 
-'   Call ADD_FACEPLATE_MASTER()
-'   Call ADD_FACEPLATE_CSV()
-'   Call ADD_FIELDMASTER_TAG()
-'    Call ADD_ALIAS()
-'    Call ADD_OP()
-'    Call ADD_KONDO()
-'    Call ADD_IO()
-'    Call ADD_TYOUGOU()
-'    Call ADD_HIRANO()
-'    Call ADD_ANALOG
-'    Call ADD_WARITUKE()
-'    Call ADD_SERVER_CSV()
-'    Call ADD_TREND_PENINFO()
-'    Call ADD_ALM_MASTER()
-'    Call ADD_C()
+   Call ADD_FACEPLATE_MASTER
+   Call ADD_FACEPLATE_CSV
+   Call ADD_FIELDMASTER_TAG
+    Call ADD_ALIAS
+    Call ADD_OP
+    Call ADD_KONDO
+    Call ADD_IO
+    Call ADD_TYOUGOU
+    Call ADD_HIRANO
+    Call ADD_ANALOG
+    Call ADD_WARITUKE
+    Call ADD_SERVER_CSV
+    Call ADD_TREND_PENINFO
+    Call ADD_ALM_MASTER
+    Call ADD_C
 
 
-'Call JoinLogCsv("F1,F2,F3")
-'Call GetQueryResultsOnSht("SELECT " & sSelect & " FROM [TMP_LOG_CSV1$]" _
+''Call JoinLogCsv("F1,F2,F3")
+''Call GetQueryResultsOnSht("SELECT " & sSelect & " FROM [TMP_LOG_CSV1$]" _
                                             , thisworkbook.path & "\" & thisworkbook.Name _
                                             , "JOIN_LOG_CSV")
 
 
-'Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
+Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
 Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
-'Call updatePreAnalogTable
-'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID","DB_FP_SUM"))
+Call updatePreAnalogTable
+Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID", "DB_FP_SUM"))
 
-'Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
-'Call CheckServerComment
-'Call CheckAlarmMaster
-'Call CheckAnalog2ServerPrm
-'Call CheckAnalog2ActionPrm
+Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
+Call CheckServerComment
+Call CheckAlarmMaster
+Call CheckAnalog2ServerPrm
+Call CheckAnalog2ActionPrm
 
 'CLEAR TEMP TABLE
 Call DeleteTableByPrefix("TMP")
@@ -98,7 +98,6 @@ Dim sWbPath As String
 Dim sWbName As String
 Dim sWsName As String
 Dim sWbDBPath As String
-
 Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
 Dim sOutSht As String: sOutSht = inptOutSht
 Dim sShtObjName As String: sShtObjName = inptShtName
@@ -112,71 +111,69 @@ Dim vSelect(10) As Variant
     ''1 : AI_Q
     ''2 : DB_FP_AI_SV, DB_FP_AI_SV2, DB_FP_AI_SV3
     ''3 : DB_FP_PID
-
-'vSelect = Array( _
-                        " [FP_TYPE],[ALIAS_BASE]" & _
-                        ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
-                        ", [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & _
-                        ",'_' AS [RESET]" & _
-                        ", '_' AS [SV_MAX]" & _
-                        ", '_' AS [SV_MIN]" _
-                        , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",[RESET]" & ", '_', '_' " _
-                        , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ",[SV_MAX],[SV_MIN]" _
-                        , "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT], [PV_MAX], [PV_MIN], [TREND_MAX], [TREND_MIN], [UNITS], [DECIMAL]" & ",'_'" & ", '_', '_' ")
-
-vSelect(0) = " [FP_TYPE],[ALIAS_BASE]" & _
-                        ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
-                        ", [PV_MAX], [PV_MIN]" & _
-                        ", '_' AS [SV_MAX], '_' AS [SV_MIN]" & _
-                        ", [TREND_MAX], [TREND_MIN]" & _
-                        ", [UNITS], [DECIMAL]" & _
-                        ",'_' AS [RESET]" & _
-                        ""
-vSelect(1) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
-                    ",[PV_MAX], [PV_MIN]" & _
-                    ", '_', '_' " & _
-                    ",[TREND_MAX], [TREND_MIN]" & _
-                    ", [UNITS], [DECIMAL],[RESET]"
-vSelect(2) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
-                    ",[PV_MAX], [PV_MIN]" & _
-                    ",[SV_MAX],[SV_MIN]" & _
-                    ", [TREND_MAX], [TREND_MIN]" & _
-                    ", [UNITS], [DECIMAL],'_'"
-vSelect(3) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
-                    ",[PV_MAX], [PV_MIN]" & _
-                    ", '_', '_' " & _
-                    ", [TREND_MAX], [TREND_MIN]" & _
-                    ", [UNITS], [DECIMAL],'_'"
+'
+'vSelect(0) = " [FP_TYPE],[ALIAS_BASE]" & _
+'                        ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
+'                        ", [PV_MAX], [PV_MIN]" & _
+'                        ", '' AS [SV_MAX], '' AS [SV_MIN]" & _
+'                        ", [TREND_MAX], [TREND_MIN]" & _
+'                        ", [UNITS], [DECIMAL]" & _
+'                        ",'' AS [RESET]" & _
+'                        ""
+'vSelect(1) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
+'                    ",[PV_MAX], [PV_MIN]" & _
+'                    ", '', '' " & _
+'                    ",[TREND_MAX], [TREND_MIN]" & _
+'                    ", [UNITS], [DECIMAL],[RESET]"
+'vSelect(2) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
+'                    ",[PV_MAX], [PV_MIN]" & _
+'                    ",[SV_MAX],[SV_MIN]" & _
+'                    ", [TREND_MAX], [TREND_MIN]" & _
+'                    ", [UNITS], [DECIMAL],''"
+'vSelect(3) = "[FP_TYPE],[ALIAS_BASE],[COMMENT1] & ' ' & [COMMENT2]" & _
+'                    ",[PV_MAX], [PV_MIN]" & _
+'                    ", '', '' " & _
+'                    ", [TREND_MAX], [TREND_MIN]" & _
+'                    ", [UNITS], [DECIMAL],''"
+'
 
 
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+'If sShtObjName = "[DB_FP_AI $]" Or sShtObjName = "[DB_FP_AI_AL4$]" Then
+'    ''0 : AI, AI_AL4
+'    sSqlQuery = _
+'             RetQuerySelectFrom(CStr(vSelect(0)), sShtObjName)
+'
+'ElseIf sShtObjName = "[DB_FP_AI_Q$]" Then
+'    ''1 : AI_Q
+'    sSqlQuery = _
+'             RetQuerySelectFrom(CStr(vSelect(1)), sShtObjName)
+'
+'ElseIf sShtObjName = "[DB_FP_AI_SV $]" Or sShtObjName = "[DB_FP_AI_SV2$]" Or sShtObjName = "[DB_FP_AI_SV3$]" Then
+'    ''2 : DB_FP_AI_SV, DB_FP_AI_SV2, DB_FP_AI_SV3
+'    sSqlQuery = _
+'             RetQuerySelectFrom(CStr(vSelect(2)), sShtObjName)
+'
+'ElseIf sShtObjName = "[DB_FP_PID$]" Then
+'    ''3 : DB_FP_PID
+'    sSqlQuery = _
+'             RetQuerySelectFrom(CStr(vSelect(3)), sShtObjName)
+'Else
+'    Stop
+'
+'End If
+    
+    sSelect = " [FP_TYPE],[ALIAS_BASE]" & _
+                ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
+                ", [PV_MAX], [PV_MIN]" & _
+                ", [SV_MAX], [SV_MIN]" & _
+                ", [TREND_MAX], [TREND_MIN]" & _
+                ", [UNITS], [DECIMAL]" & _
+                ",[RESET]" & _
+                ""
+    sWbName = RetCDirWbPath
     sWsName = sOutSht
-    Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
-
-If sShtObjName = "[DB_FP_AI $]" Or sShtObjName = "[DB_FP_AI_AL4$]" Then
-    ''0 : AI, AI_AL4
-    sSqlQuery = _
-             RetQuerySelectFrom(CStr(vSelect(0)), sShtObjName)
-
-ElseIf sShtObjName = "[DB_FP_AI_Q$]" Then
-    ''1 : AI_Q
-    sSqlQuery = _
-             RetQuerySelectFrom(CStr(vSelect(1)), sShtObjName)
-
-ElseIf sShtObjName = "[DB_FP_AI_SV $]" Or sShtObjName = "[DB_FP_AI_SV2$]" Or sShtObjName = "[DB_FP_AI_SV3$]" Then
-    ''2 : DB_FP_AI_SV, DB_FP_AI_SV2, DB_FP_AI_SV3
-    sSqlQuery = _
-             RetQuerySelectFrom(CStr(vSelect(2)), sShtObjName)
-             
-ElseIf sShtObjName = "[DB_FP_PID$]" Then
-    ''3 : DB_FP_PID
-    sSqlQuery = _
-             RetQuerySelectFrom(CStr(vSelect(3)), sShtObjName)
-Else
-    Stop
-
-End If
-
+    'Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+    sSqlQuery = RetQuerySelectFrom(sSelect, sShtObjName)
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Function
@@ -1222,6 +1219,45 @@ Function RetAColValues(inptSht As String) As String
 End Function
 
 
+Sub test()
+Dim sSqlQuery As String
+Dim sWbPath As String
+Dim sWbName As String
+Dim sWsName As String
+Dim sWbDBPath As String
+Dim sCsvWbPath As String
+Dim sCsvWsName As String
+
+sCsvWbPath = "C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\TREND01\DB\RAW\SMR_RAW_1_20211020.csv"
+sCsvWsName = fReplace(Dir(sCsvWbPath), ".csv", "")
+'sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB_211004.xlsm' 'Excel 12.0 Xml;HDR=YES' "
+
+'Out Setting
+sWsName = "SQL_OUT"
+sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+
+Dim sTable1 As String
+Dim sHeader1 As String
+
+sHeader1 = "[DATETIME]" & _
+                    ",[AI_Q#FQI_P302115#PV]" & _
+                    ",[AI_Q#FQI_P303175#PV]" & _
+                    ""
+Dim sStartDate As String: sStartDate = "2021/10/20 05:30:00"
+Dim sEndDate As String: sEndDate = "2021/10/20 05:40:00"
+
+sSqlQuery = _
+        RetQuerySelectFrom(sHeader1, "[" & sCsvWsName & "$]", sCsvWbPath) & _
+        "WHERE [DATETIME] BETWEEN #" & _
+        Format(sStartDate, "MM/dd/yy hh:mm:ss") & _
+        "# AND #" & _
+        Format(sEndDate, "MM/dd/yy hh:mm:ss") & "#"
+
+    'Run the query with the SQL string
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    
+End Sub
+
 Sub ★BKM_SAMPLES(): End Sub
 
 Sub sample_count()
@@ -1508,12 +1544,12 @@ Sub GetQueryResultsOnSht(sSqlQuery As String, sWbName As String, sWsName As Stri
 End Sub
 
 
-Function RetQuerySelectFrom(inptSels As String, inptSht As String, Optional inptWbPath As String = "")
+Function RetQuerySelectFrom(inptSels As String, inptSht As String, Optional inptwbpath As String = "")
 Call DebugOut("RET_QUERY_SELECT", "RetQuerySelectFrom")
 Dim sResult As String
 Dim aSels As Variant: aSels = Split(inptSels, ",")
 Dim sSht As String: sSht = inptSht
-Dim sWbDBPath As String: sWbDBPath = inptWbPath
+Dim sWbDBPath As String: sWbDBPath = inptwbpath
 Dim v As Variant
 Dim vSels As String
 
@@ -1534,62 +1570,6 @@ If sWbDBPath <> "" Then sResult = sResult & "IN '" & sWbDBPath & "'" & " " & "'E
 RetQuerySelectFrom = sResult
 
 End Function
-
-
-Function RetQuerySelectFromCnd(inptSels As String, inptSht As String, Optional inptCondition As String = "", Optional inptWbPath As String = "")
-Dim sResult As String
-Dim aSels As Variant: aSels = Split(inptSels, ",")
-Dim sSht As String: sSht = inptSht
-Dim sWbDBPath As String: sWbDBPath = inptWbPath
-Dim sCondition As String: sCondition = inptCondition
-Dim v As Variant
-Dim vSels As String
-
-For Each v In aSels
-    vSels = vSels & v & ", "
-Next v
-
-vSels = Left(vSels, Len(vSels) - 2)
-
-sResult = _
-"SELECT " & _
-         vSels & " " & _
-"FROM " & _
-        sSht & " "
-
-If sWbDBPath <> "" Then sResult = sResult & "IN " & sWbDBPath & " "
-
-sResult = sResult & " " & sCondition
-
-RetQuerySelectFromCnd = sResult
-
-End Function
-
-
-Function RetQuerySelect(inptSels As String)
-Call DebugOut("RET_QUERY_SELECT", "RetQuerySelect")
-Dim sResult As String
-Dim aSels As Variant: aSels = Split(inptSels, ",")
-Dim sSht As String: sSht = inptSht
-Dim sWbDBPath As String: sWbDBPath = inptWbPath
-Dim v As Variant
-Dim vSels As String
-
-For Each v In aSels
-    vSels = vSels & v & ", "
-Next v
-
-vSels = Left(vSels, Len(vSels) - 2)
-
-sResult = _
-"SELECT " & _
-         vSels & " " & _
-         ""
-RetQuerySelect = sResult
-
-End Function
-
-
 
 
 ''MEMO===============================================
