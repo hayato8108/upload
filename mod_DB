@@ -217,57 +217,24 @@ End Sub
 Function RetCDirTmpPath(inptPath As String) As String
 Dim sPath As String: sPath = inptPath
 Dim sTmpPath As String
-    
     sTmpPath = fReplace(ThisWorkbook.path & "\DB_TmpFile\" & Dir(sPath), ".txt", ".csv")
     RetCDirTmpPath = sTmpPath
-    
 End Function
 
 Function RetCDirWbPath() As String
 Dim sTmpPath As String
-    
     sTmpPath = ThisWorkbook.path & "\" & ThisWorkbook.Name
     RetCDirWbPath = sTmpPath
-    
 End Function
 
-
-Sub ADD_FACEPLATE_MASTER()
-
+Sub LocalOverWriteHeader()
 Dim sWb As String
 Dim sWs As String
 Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
-
+      
 With oWb
-   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FACEPLATE_MASTER")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_FACEPLATE_MASTER"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:B1").Value2 = Array("GROUP_NAME", "STRUCT_TAG_ADR")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-End With
-    Workbooks(Dir(sWb)).Close False
-    
-End Sub
-
-Sub ADD_FACEPLATE_CSV()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI ")
     Call CloseWb(Dir(sWb))
     FileCopy sWb, RetCDirTmpPath(sWb)
@@ -287,6 +254,76 @@ With oWb
             .Range("AK1").Value = "TREND_MIN"
             .Range("AT1").Value = "UNITS"
             .Range("AW1").Value = "DECIMAL"
+            .Range("ZZ1").Value = "RESET"
+            .Range("ZX1").Value = "SV_MAX"
+            .Range("ZY1").Value = "SV_MIN"
+        Call Excel2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
+End Sub
+    
+    
+Sub ADD_FACEPLATE_MASTER()
+
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = ThisWorkbook
+Dim oWbTmp As Workbook
+Dim rRng As Range
+
+With oWb
+   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FACEPLATE_MASTER")
+    Call CloseWb(Dir(sWb))
+    FileCopy sWb, RetCDirTmpPath(sWb)
+    sWb = RetCDirTmpPath(sWb)
+    OpenFileAsWb (sWb)
+
+    sWs = "DB_FACEPLATE_MASTER"
+    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
+    With .Worksheets(sWs)
+        .Range("A1").Value = "GROUP_NAME"
+        .Range("B1").Value = "STRUCT_TAG_ADR"
+        Call Excel2DbShtRefresh(oWb.Name, sWs)
+    End With
+End With
+    Workbooks(Dir(sWb)).Close False
+    
+End Sub
+
+Sub ADD_FACEPLATE_CSV()
+Dim sWb As String
+Dim sWs As String
+Dim oWb As Workbook: Set oWb = ThisWorkbook
+Dim oWbTmp As Workbook
+Dim rRng As Range
+      
+With oWb
+   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI ")
+    Call CloseWb(Dir(sWb))
+    FileCopy sWb, RetCDirTmpPath(sWb)
+    sWb = RetCDirTmpPath(sWb)
+    OpenFileAsWb (sWb)
+    sWs = "DB_FP_AI "
+    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
+    With .Worksheets(sWs)
+            .Cells.Clear
+            .Range("A1").Value = "STRUCT_TAG_DR"
+            .Range("B1").Value = "FP_TYPE"
+            .Range("G1").Value = "ALIAS_BASE"
+            .Range("J1").Value = "COMMENT1"
+            .Range("M1").Value = "COMMENT2"
+            .Range("AB1").Value = "PV_MAX"
+            .Range("AE1").Value = "PV_MIN"
+            .Range("AH1").Value = "TREND_MAX"
+            .Range("AK1").Value = "TREND_MIN"
+            .Range("AT1").Value = "UNITS"
+            .Range("AW1").Value = "DECIMAL"
+            .Range("AX1").Value = "RESET"
+            .Range("AY1").Value = "SV_MAX"
+            .Range("AZ1").Value = "SV_MIN"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -299,6 +336,7 @@ With oWb
     sWs = "DB_FP_AI_AL4"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -310,6 +348,9 @@ With oWb
             .Range("AK1").Value = "TREND_MIN"
             .Range("AT1").Value = "UNITS"
             .Range("AW1").Value = "DECIMAL"
+            .Range("AX1").Value = "RESET"
+            .Range("AY1").Value = "SV_MAX"
+            .Range("AZ1").Value = "SV_MIN"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -322,6 +363,7 @@ With oWb
     sWs = "DB_FP_AI_Q"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -333,7 +375,9 @@ With oWb
             .Range("AK1").Value = "TREND_MIN"
             .Range("AT1").Value = "UNITS"
             .Range("AW1").Value = "DECIMAL"
-            .Range("CN1").Value = "RESET"
+            .Range("AX1").Value = "RESET"
+            .Range("AY1").Value = "SV_MAX"
+            .Range("AZ1").Value = "SV_MIN"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -346,6 +390,7 @@ With oWb
     sWs = "DB_FP_AI_SV "
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -357,8 +402,9 @@ With oWb
             .Range("AN1").Value = "SV_MIN"
             .Range("AQ1").Value = "TREND_MAX"
             .Range("AT1").Value = "TREND_MIN"
-            .Range("BC1").Value = "UNITS"
-            .Range("BF1").Value = "DECIMAL"
+            .Range("AU1").Value = "UNITS"
+            .Range("AV1").Value = "DECIMAL"
+            .Range("AW1").Value = "RESET"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -371,6 +417,7 @@ With oWb
     sWs = "DB_FP_AI_SV2"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -384,6 +431,9 @@ With oWb
             .Range("AT1").Value = "TREND_MIN"
             .Range("BC1").Value = "UNITS"
             .Range("BF1").Value = "DECIMAL"
+            .Range("BG1").Value = "SV_MAX"
+            .Range("BH1").Value = "SV_MIN"
+            .Range("BI1").Value = "RESET"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -396,6 +446,7 @@ With oWb
     sWs = "DB_FP_AI_SV3"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -411,7 +462,7 @@ Call DebugOut("REM", ">>>does not match , check csv3 header")
             .Range("BF1").Value = "DECIMAL"
             .Range("CZ1").Value = "SV_MAX"
             .Range("DA1").Value = "SV_MIN"
-        
+            .Range("DB1").Value = "RESET"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -425,6 +476,7 @@ Call DebugOut("REM", ">>>does not match , check csv3 header")
     sWs = "DB_FP_PID"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -436,6 +488,9 @@ Call DebugOut("REM", ">>>does not match , check csv3 header")
             .Range("AW1").Value = "TREND_MIN"
             .Range("BL1").Value = "UNITS"
             .Range("BO1").Value = "DECIMAL"
+            .Range("BP1").Value = "SV_MAX"
+            .Range("BQ1").Value = "SV_MIN"
+            .Range("BR1").Value = "RESET"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -449,6 +504,7 @@ Call DebugOut("REM", ">>>does not match , check csv3 header")
     sWs = "DB_FP_PR_B"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+            .Cells.Clear
             .Range("A1").Value = "STRUCT_TAG_DR"
             .Range("B1").Value = "FP_TYPE"
             .Range("G1").Value = "ALIAS_BASE"
@@ -459,10 +515,42 @@ Call DebugOut("REM", ">>>does not match , check csv3 header")
             .Range("AK1").Value = "TREND_MAX"
             .Range("AN1").Value = "TREND_MIN"
             .Range("AW1").Value = "UNITS"
-            .Range("AZ1").Value = "DECIMAL"
+            .Range("AX1").Value = "DECIMAL"
+            .Range("AY1").Value = "SV_MAX"
+            .Range("AZ1").Value = "SV_MIN"
+            .Range("BA1").Value = "RESET"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
+    
+                
+    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_SUM")
+    Call CloseWb(Dir(sWb))
+    FileCopy sWb, RetCDirTmpPath(sWb)
+    sWb = RetCDirTmpPath(sWb)
+    OpenFileAsWb (sWb)
+
+    sWs = "DB_FP_SUM"
+    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
+    With .Worksheets(sWs)
+            .Cells.Clear
+            .Range("A1").Value = "ALIAS_BASE"
+            .Range("B1").Value = "COMMENT1 "
+            .Range("C1").Value = "COMMENT2 "
+            .Range("D1").Value = "DECIMAL"
+            .Range("E1").Value = "FP_TYPE"
+            .Range("F1").Value = "PV_MAX"
+            .Range("G1").Value = "PV_MIN"
+            .Range("H1").Value = "TREND_MAX"
+            .Range("I1").Value = "TREND_MIN"
+            .Range("J1").Value = "UNITS"
+            .Range("K1").Value = "RESET"
+            .Range("L1").Value = "SV_MAX"
+            .Range("M1").Value = "SV_MIN"
+        Call Excel2DbShtRefresh(oWb.Name, sWs)
+   End With
+    Workbooks(Dir(sWb)).Close False
+    
     
 '    NOT USE
 '    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PVI_D")
@@ -492,7 +580,12 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG "
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "TREND_NAME"
+        .Range("B1").Value = "ALIAS"
+        .Range("C1").Value = "COMMENT"
+        .Range("F1").Value = "DECIMAL"
+        .Range("K1").Value = "ALIAS_BASE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -507,7 +600,12 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG_PV"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "TREND_NAME"
+        .Range("B1").Value = "ALIAS"
+        .Range("C1").Value = "COMMENT"
+        .Range("F1").Value = "DECIMAL"
+        .Range("K1").Value = "ALIAS_BASE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -521,8 +619,12 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG_SV"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "TREND_NAME"
+        .Range("B1").Value = "ALIAS"
+        .Range("C1").Value = "COMMENT"
+        .Range("F1").Value = "DECIMAL"
+        .Range("K1").Value = "ALIAS_BASE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -537,7 +639,12 @@ With oWb
     sWs = "DB_FIELDMASTER_TAG_PRT"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:K1").Value2 = Array("TREND_NAME", "ALIAS", "COMMENT", "_", "_", "DECIMAL", "_", "_", "_", "_", "ALIAS_BASE", "_", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "TREND_NAME"
+        .Range("B1").Value = "ALIAS"
+        .Range("C1").Value = "COMMENT"
+        .Range("F1").Value = "DECIMAL"
+        .Range("K1").Value = "ALIAS_BASE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -564,7 +671,9 @@ With oWb
     sWs = "DB_ALIAS"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:B1").Value2 = Array("ALIAS", "FULL_ADR")
+        .Cells.Clear
+        .Range("A1").Value = "ALIAS"
+        .Range("B1").Value = "FULL_ADR"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
    End With
     Workbooks(Dir(sWb)).Close False
@@ -591,15 +700,15 @@ With oWb
     sWs = "DB_C "
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
+        .Cells.Clear
         .Range("A1").Value = "GROUP"
         .Range("B1").Value = "ALIAS_BASE"
-        .Range("C1").Value = "COMMENT"
-        .Range("D1").Value = "MIN"
-        .Range("E1").Value = "MAX"
-        .Range("F1").Value = "UNIT"
-        .Range("G1").Value = "_"
-        .Range("H1").Value = "FP_TYPE"
-        .Range("I1").Value = "WORD_SIZE"
+'        .Range("C1").Value = "COMMENT"
+'        .Range("D1").Value = "MIN"
+'        .Range("E1").Value = "MAX"
+'        .Range("F1").Value = "UNIT"
+'        .Range("H1").Value = "FP_TYPE"
+'        .Range("I1").Value = "WORD_SIZE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
     End With
     Workbooks(Dir(sWb)).Close False
@@ -627,7 +736,11 @@ With oWb
     sWs = "DB_OP00_X"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:E1").Value2 = Array("DEVICE", "_", "COMMENT1", "COMMENT2", "CATEGORY")
+        .Cells.Clear
+        .Range("A1").Value = "DEVICE"
+        .Range("C1").Value = "COMMENT1"
+        .Range("D1").Value = "COMMENT2"
+        .Range("E1").Value = "CATEGORY"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
         Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")")
@@ -636,7 +749,11 @@ With oWb
     sWs = "DB_OP00_Y"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:E1").Value2 = Array("DEVICE", "_", "COMMENT1", "COMMENT2", "CATEGORY")
+        .Cells.Clear
+        .Range("A1").Value = "DEVICE"
+        .Range("C1").Value = "COMMENT1"
+        .Range("D1").Value = "COMMENT2"
+        .Range("E1").Value = "CATEGORY"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
     End With
     Workbooks(Dir(sWb)).Close False
@@ -648,7 +765,7 @@ End Sub
 Sub ADD_KONDO()
 Dim sWb As String
 Dim sWs As String
-Dim oWb As Workbook: Set oWb = thiswrokbook
+Dim oWb As Workbook: Set oWb = ThisWorkbook
 Dim oWbTmp As Workbook
 Dim rRng As Range
 
@@ -663,21 +780,31 @@ With oWb
     sWs = "DB_KONDO_K2A_B"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:L1").Value2 = Array("Index", "_", "_", "_", "CATEGORY", "_", "COMMENT", "Device", "_", "_", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "INDEX"
+        .Range("E1").Value = "CATEGORY"
+        .Range("G1").Value = "COMMENT"
+        .Range("H1").Value = "DEVICE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
     End With
 
     sWs = "DB_KONDO_A2K_B"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:G1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "INDEX"
+        .Range("D1").Value = "COMMENT"
+        .Range("E1").Value = "DEVICE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
     End With
 
     sWs = "DB_KONDO_K2A_W"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:I1").Value2 = Array("Index", "_", "_", "COMMENT", "Device", "_", "_", "_", "_")
+        .Cells.Clear
+        .Range("A1").Value = "INDEX"
+        .Range("D1").Value = "COMMENT"
+        .Range("E1").Value = "DEVICE"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
     End With
 
@@ -685,7 +812,13 @@ With oWb
     sWs = "DB_KONDO_A2K_W"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
-        .Range("A1:J1").Value2 = Array("Index", "???", "_", "COMMENT", "Device", "_", "Min", "Max", "Unit", "_")
+        .Cells.Clear
+        .Range("A1").Value = "INDEX"
+        .Range("D1").Value = "COMMENT"
+        .Range("E1").Value = "DEVICE"
+        .Range("G1").Value = "MIN"
+        .Range("H1").Value = "MAX"
+        .Range("I1").Value = "UNIT"
         Call Excel2DbShtRefresh(oWb.Name, sWs)
     End With
     Workbooks(Dir(sWb)).Close False
@@ -847,7 +980,9 @@ With oWb
     FileCopy sWb, RetCDirTmpPath(sWb)
     sWb = RetCDirTmpPath(sWb)
     OpenFileAsWb (sWb)
-
+    
+MsgBox ("※expand DB_XXX rng, sv_max, sv_min")
+  
   'PLC00 PLC03 ANALOG
     sWs = "DB_PLC00_ANALOG"
     Call SelectOrAddWs(sWs, ThisWorkbook.Name)
@@ -914,7 +1049,6 @@ With oWb
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
    End With
 
-
         sWs = "DB_PLC00_R"
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
     With .Worksheets(sWs)
@@ -922,7 +1056,6 @@ With oWb
         Call Excel2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
    End With
-
 
     'PLC03
         sWs = "DB_PLC03_M"
@@ -941,7 +1074,6 @@ With oWb
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
    End With
 
-
     'CC LINK
         sWs = "DB_CCL03_B"
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
@@ -950,7 +1082,6 @@ With oWb
         Call Excel2DbShtRefresh(oWb.Name, sWs)
         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
    End With
-   
    
         sWs = "DB_CCL03_W"
         Call SelectOrAddWs(sWs, ThisWorkbook.Name)
@@ -1310,6 +1441,8 @@ Dim sWsLD As String: sWsLD = "LinkData"
 Dim sWb As String
 Dim sWs As String
 Dim sStCell As String
+
+
 Dim sEndCell As String
 Dim lEndDst As Integer
                 
