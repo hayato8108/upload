@@ -1,5 +1,5 @@
 Option Explicit
-'common 20211018
+'common 20211024
 
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
@@ -19,6 +19,9 @@ oArr.Add "REM"
 oArr.Add "SQL_ERR"
 oArr.Add "ERR"
 oArr.Add "XML_PROC"
+
+oArr.Add "DEBUG"
+
 
 For Each v In oArr
     If v = UCase(inptCategory) Then
@@ -66,93 +69,84 @@ Function fGetPlcUnitData()
 End Function
 
 'Linker===============================================================
-'xml_in_path
-'xml_out_path
-'fix_repo_path
-'fix_repo_dir
+
 '
-'xml_dl_FolderName
-'xml_dl_HiddenCol
+'Function fGetPgVal(inptKey As String) As String
+'Dim sKey As String: sKey = inptKey
+'Dim sResult As Variant
+'Dim lIndex As Long
 '
-'fix_repo_InPath
-'fix_repo_OutPath
+'Dim sWb As String: sWb = ThisWorkbook.Name
+'Dim sWs As String: sWs = "pgParams"
+'Dim sKeyCol As String: sKeyCol = "A"
+'Dim sRtnCol As String: sRtnCol = "B"
 '
-'fix_repo_OutSht
+'sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
+'fGetPgVal = sResult
+'
+'End Function
+'
+'Function fSetPgVal(inptKey As String, inptVal As String) As Boolean
+'Dim sWbName As String:  sWbName = ThisWorkbook.Name
+'Dim sWsName As String:  sWsName = "pgParams"
+'Dim sKey As String: sKey = inptKey
+'Dim sMatchRow As String
+'Dim sRslt As String
+'On Error Resume Next
+'
+'With Workbooks(sWbName).Worksheets(sWsName)
+'    Dim rRow As Range
+'    Set rRow = .Columns(1)
+'        If rRow Is Nothing Then fSetPgVal = False: Exit Function  ' "Book or Sheet name is wrong"
+'        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+'        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+'
+'        If sMatchRow <> "" Then
+'            .Cells(sMatchRow, 2).Value = inptVal
+'        Else
+'            fSetPgVal = False: Exit Function
+'        End If
+'
+'    fSetPgVal = True
+'End With
+'
+'End Function
 
-Function fGetPgVal(inptKey As String) As String
-Dim sKey As String: sKey = inptKey
-Dim sResult As Variant
-Dim lIndex As Long
-
-Dim sWb As String: sWb = ThisWorkbook.Name
-Dim sWs As String: sWs = "pgParams"
-Dim sKeyCol As String: sKeyCol = "A"
-Dim sRtnCol As String: sRtnCol = "B"
-
-sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
-fGetPgVal = sResult
-
-End Function
-
-Function fSetPgVal(inptKey As String, inptVal As String) As Boolean
-Dim sWbName As String:  sWbName = ThisWorkbook.Name
-Dim sWsName As String:  sWsName = "pgParams"
-Dim sKey As String: sKey = inptKey
-Dim sMatchRow As String
-Dim sRslt As String
-On Error Resume Next
-
-With Workbooks(sWbName).Worksheets(sWsName)
-    Dim rRow As Range
-    Set rRow = .Columns(1)
-        If rRow Is Nothing Then fSetPgVal = False: Exit Function  ' "Book or Sheet name is wrong"
-        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
-        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
-
-        If sMatchRow <> "" Then
-            .Cells(sMatchRow, 2).Value = inptVal
-        Else
-            fSetPgVal = False: Exit Function
-        End If
-
-    fSetPgVal = True
-End With
-
-End Function
-
-Function fSetVal(inptKey As String, inptVal As String) As Boolean
-Dim sWbName As String:  sWbName = ThisWorkbook.Name
-Dim sWsName As String:  sWsName = "Params"
-Dim sKey As String: sKey = inptKey
-Dim sMatchRow As String
-Dim sRslt As String
-On Error Resume Next
-
-With Workbooks(sWbName).Worksheets(sWsName)
-    Dim rRow As Range
-    Set rRow = .Columns(1)
-        If rRow Is Nothing Then fSetVal = False: Exit Function
-        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
-        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
-
-        If sMatchRow <> "" Then
-            .Cells(sMatchRow, 2).Value = inptVal
-        Else
-            fSetVal = False: Exit Function
-        End If
-
-    fSetVal = True
-End With
-
-End Function
+'
+'Function fSetVal(inptKey As String, inptVal As String) As Boolean
+'Dim sWbName As String:  sWbName = ThisWorkbook.Name
+'Dim sWsName As String:  sWsName = "Params"
+'Dim sKey As String: sKey = inptKey
+'Dim sMatchRow As String
+'Dim sRslt As String
+'On Error Resume Next
+'
+'With Workbooks(sWbName).Worksheets(sWsName)
+'    Dim rRow As Range
+'    Set rRow = .Columns(1)
+'        If rRow Is Nothing Then fSetVal = False: Exit Function
+'        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+'        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+'
+'        If sMatchRow <> "" Then
+'            .Cells(sMatchRow, 2).Value = inptVal
+'        Else
+'            fSetVal = False: Exit Function
+'        End If
+'
+'    fSetVal = True
+'End With
+'
+'End Function
 
 
-Function fKey2Val(inptLabel As String, inptKey As String) As String
+Function fKey2Val(inptLabel As String, inptKey As String, Optional inptsht As String = "LinkSht") As String
 Dim sLabel As String: sLabel = inptLabel
 Dim sKey As String: sKey = inptKey
 Dim sData As Variant
 Dim sResult As Variant
-Dim rRng As Range: Set rRng = ThisWorkbook.Sheets("LinkData").Rows(1)
+Dim sShtName As String: sShtName = inptsht
+Dim rRng As Range: Set rRng = ThisWorkbook.Sheets(sShtName).Rows(1)
 Dim lIndex As Long
 Dim bMatch As Boolean
 
@@ -171,9 +165,9 @@ fKey2Val = sResult
 End Function
 
 
-Function fPref2Val(inptPref As String, inptKey As String, inptMatch As Boolean) As String
-'itelate linkdata sheet and match then return value and exit function
-Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("LinkData")
+Function fPref2firstMatch(inptPref As String, inptKey As String, inptMatch As Boolean, Optional inptsht = "LinkSht") As String
+'itelate LinkSht sheet and match then return value and exit function
+Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(inptsht)
 Dim l As Long
 Dim lEnd As Long
 Dim sPrf As String: sPrf = inptPref
@@ -186,14 +180,14 @@ lEnd = .Cells(Rows.Count, 1).End(xlUp).Row
     For l = 1 To lEnd
         If Not .Cells(l, 1).Value = "" Then
                 If Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then
-                        sRslt = pKey2Val(.Cells(l, 1).Value, sKey)
-                If Not sRslt = "#N/A#" Then fPref2Val = sRslt: Exit Function
+                        sRslt = fKey2Val(.Cells(l, 1).Value, sKey)
+                If Not sRslt = "#N/A#" Then fPref2firstMatch = sRslt: Exit Function
             End If
         End If
     Next l
 End With
 
-    fPref2Val = sRslt
+    fPref2firstMatch = sRslt
 
 End Function
 
@@ -269,9 +263,11 @@ End Function
 
 
 'DEBUG OUT===============================================================
-Sub out(ByVal inptArr As Variant, Optional inptLimit As Long = 10)
+Sub out(ByVal inptArr As Variant, Optional inptLimit As Long = 30)
     Dim v As Variant
     Dim cnt As Long: cnt = 0
+
+If UBound(inptArr) > inptLimit Then Call DebugOut("ERR", "out limit : " & inptLimit)
 
     If CndOrEq(Array("IMatchCollection2", "Variant()", "ArrayList", "String()"), TypeName(inptArr)) Then
         For Each v In inptArr
@@ -417,7 +413,61 @@ fSplit = sRslt
 End Function
 
 
-Function fSplitBetween(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptMatch As Boolean = False) As String
+Function fSplitBetweenWithDelimiter(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, inptDelimiter) As String
+Dim sStr As String: sStr = inptStr
+Dim lCol As Long: lCol = inptCol
+Dim sDLeft As String: sDLeft = inptLeft
+Dim sDMid As String: sDMid = inptRight & inptDelimiter & inptLeft
+Dim sDRight As String: sDRight = inptRight
+Dim sResult As String
+
+If lCol = 1 Then
+    sResult = fSplit(sStr, inptCol, sDMid)
+    sResult = Right(sResult, Len(sResult) - Len(sDLeft))
+ElseIf lCol = UBound(Split(sStr, sDMid)) + 1 Then
+    sResult = fSplit(sStr, inptCol, sDMid)
+    sResult = Left(sResult, Len(sResult) - Len(sDRight))
+Else
+    sResult = fSplit(sStr, inptCol, sDMid)
+End If
+
+fSplitBetweenWithDelimiter = sResult
+
+End Function
+
+
+Function fSplitBetween(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptDelimiter As String = "") As String
+Dim sStr As String: sStr = inptStr
+Dim l As Long
+Dim ll As Long
+Dim lLenL As Long: lLenL = Len(inptLeft)
+Dim lLenR As Long: lLenR = Len(inptRight)
+Dim lCnt As Long: lCnt = 0
+Dim sResult As String
+
+For l = 1 To Len(sStr)
+    If Mid(sStr, l, lLenL) = inptLeft Then
+        l = l + lLenL
+        lCnt = lCnt + 1
+        ll = l
+        sResult = ""
+            Do Until Mid(sStr, ll, lLenR) = inptRight
+                sResult = sResult + Mid(sStr, ll, 1)
+                ll = ll + 1
+                If ll = 100 Then Stop
+            Loop
+        l = ll
+        If lCnt = inptCol Then fSplitBetween = sResult: Exit Function
+        End If
+Next l
+
+End Function
+
+
+Function fSplitBetweenAlter(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptMatch As Boolean = False) As String
+Dim sStr As String: sStr = inptStr
+Dim l As Long
+
 Dim sResult As String
 Dim bFlag As Boolean: bFlag = False
 
@@ -429,9 +479,10 @@ If sResult = inptStr Then bFlag = True
 
 If inptMatch = True And bFlag = True Then sResult = ""
 
-fSplitBetween = sResult
+fSplitBetweenAlter = sResult
 
 End Function
+
 
 Function fLenOfSplited(inptStr As String, inptSplt As String, inptCol As Long) As String
 'for Decimal
@@ -931,8 +982,8 @@ End With
 End Sub
 
 
-Sub SelectOrOpenWb(inptWbPath As String)
-Dim sWbPath As String: sWbPath = inptWbPath
+Sub SelectOrOpenWb(inptwbpath As String)
+Dim sWbPath As String: sWbPath = inptwbpath
 Dim w As Workbook
 
 For Each w In Workbooks
@@ -988,7 +1039,23 @@ Application.DisplayAlerts = True
 End Sub
 
 
-Sub FixFormula(inptRng As Range, inptFormula As String)
+Sub fFixFormula(inptWbName As String, inptShtName As String, inptBaseCol As String, inptPasteCol As String, inptFormula As String)
+Dim rRng As Range
+Dim lEnd As Long
+Dim lBaseCol As Long: lBaseCol = Columns(inptBaseCol).Column
+Dim lPasteCol As Long: lPasteCol = Columns(inptPasteCol).Column
+With Workbooks(inptWbName).Sheets(inptShtName)
+Call DebugOut("UTIL", "fFixFormula :" & inptShtName & " " & inptFormula)
+Set rRng = .Range( _
+                      .Cells(2, lBaseCol) _
+                    , .Cells(.Cells(.Rows.Count, lBaseCol).End(xlUp).Row, lBaseCol))
+
+Call FixFormula(rRng.Offset(0, lPasteCol - lBaseCol), inptFormula)
+End With
+
+End Sub
+
+Private Sub FixFormula(inptRng As Range, inptFormula As String)
     Call FillFormula(inptRng, inptFormula)
     inptRng.Copy
     inptRng.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
