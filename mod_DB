@@ -1,35 +1,9 @@
 Option Explicit
 'DB 20211018
 
+Dim gTmp As String
 
 'CONVERT XML 2 DB==========================================================
-
-'[ CLIENT DB SETTING ],,,,
-'PGPRM_DB_CLIENT_ROOT , DFR3_DB_211014.xlsm, LinkData, B, C
-'*,[ KEY ],[ VAL ],,
-'*,//Download xml setting,,,
-'*,PGPRM_PATH_LOAD_XML,REPLACE_XMLPATH,,
-'*,PGPRM_PATH_SAVE_XML,REPLACE_XMLPATH,,
-'*,,,,
-'*,,,,
-'*,PGPRM_XML_LOAD_FOLDER,_Graphic,,
-'*,,,,
-'*,PGPRM_XML_OUT_SHT,CLT_XML_OUT,,
-'*,,,,
-'*,PGPRM_CLIENT_ITEMS,p_r_value,p_r_Pump,,
-'*,,,,
-'*,PGPRM_EXPAND_CHILD,FALSE,,
-'
-'*,PGPRM_SHEET_PREF,CLT_,,
-',,,,
-',,,,
-',,,,
-',,,,
-'[ PARTS DATA ],[ ATTRIBUTES ],[ LIBRALYCLASS ],,
-'CLT_p_r_valve,Form,Folder,Top,Left,Height,Width,_TagIn,p_r_valve,,
-'CLT_p_r_pump,Form,Folder,Top,Left,Height,Width,_TagIn,p_r_pump,,
-'CLT_p_r_pvsv,Form,Folder,Top,Left,Height,Width,_TagInPV,_TagOutPV,_TagInSV,_TagOutSV,_Decimal,p_r_pvsv,,
-
 
 Sub uploadNumberingXml()
 Application.ScreenUpdating = False
@@ -59,7 +33,7 @@ Dim sCid As String
 Dim l As Long
 Dim sRet As String
 Dim sOutWsName As String
-sOutWsName = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT")
+sOutWsName = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT", "LinkShtDB")
 On Error Resume Next
 
 If sOutWsName = "" Then
@@ -70,7 +44,7 @@ Else
 End If
     ws.Activate
 
-sFol = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_LOAD_FOLDER")
+sFol = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_LOAD_FOLDER", "LinkShtDB")
 d.reloadPath
 Set f = d.getFolder(sFol)
 
@@ -214,11 +188,11 @@ Call Excel2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
 
 End Sub
 
-Function RetCDirTmpPath(inptPath As String) As String
+Function RetCDirTmpWbPath(inptPath As String) As String
 Dim sPath As String: sPath = inptPath
 Dim sTmpPath As String
     sTmpPath = fReplace(ThisWorkbook.path & "\DB_TmpFile\" & Dir(sPath), ".txt", ".csv")
-    RetCDirTmpPath = sTmpPath
+    RetCDirTmpWbPath = sTmpPath
 End Function
 
 Function RetCDirWbPath() As String
@@ -227,1034 +201,8 @@ Dim sTmpPath As String
     RetCDirWbPath = sTmpPath
 End Function
 
-Sub LocalOverWriteHeader()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-      
-With oWb
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI ")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI "
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AB1").Value = "PV_MAX"
-            .Range("AE1").Value = "PV_MIN"
-            .Range("AH1").Value = "TREND_MAX"
-            .Range("AK1").Value = "TREND_MIN"
-            .Range("AT1").Value = "UNITS"
-            .Range("AW1").Value = "DECIMAL"
-            .Range("ZZ1").Value = "RESET"
-            .Range("ZX1").Value = "SV_MAX"
-            .Range("ZY1").Value = "SV_MIN"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-End Sub
-    
-    
-Sub ADD_FACEPLATE_MASTER()
 
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FACEPLATE_MASTER")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_FACEPLATE_MASTER"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1").Value = "GROUP_NAME"
-        .Range("B1").Value = "STRUCT_TAG_ADR"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-End With
-    Workbooks(Dir(sWb)).Close False
-    
-End Sub
-
-Sub ADD_FACEPLATE_CSV()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-      
-With oWb
-   Debug.Print "FACEPLATE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI ")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI "
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AB1").Value = "PV_MAX"
-            .Range("AE1").Value = "PV_MIN"
-            .Range("AH1").Value = "TREND_MAX"
-            .Range("AK1").Value = "TREND_MIN"
-            .Range("AT1").Value = "UNITS"
-            .Range("AW1").Value = "DECIMAL"
-            .Range("AX1").Value = "RESET"
-            .Range("AY1").Value = "SV_MAX"
-            .Range("AZ1").Value = "SV_MIN"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_AL4")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI_AL4"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AB1").Value = "PV_MAX"
-            .Range("AE1").Value = "PV_MIN"
-            .Range("AH1").Value = "TREND_MAX"
-            .Range("AK1").Value = "TREND_MIN"
-            .Range("AT1").Value = "UNITS"
-            .Range("AW1").Value = "DECIMAL"
-            .Range("AX1").Value = "RESET"
-            .Range("AY1").Value = "SV_MAX"
-            .Range("AZ1").Value = "SV_MIN"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_Q")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI_Q"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AB1").Value = "PV_MAX"
-            .Range("AE1").Value = "PV_MIN"
-            .Range("AH1").Value = "TREND_MAX"
-            .Range("AK1").Value = "TREND_MIN"
-            .Range("AT1").Value = "UNITS"
-            .Range("AW1").Value = "DECIMAL"
-            .Range("AX1").Value = "RESET"
-            .Range("AY1").Value = "SV_MAX"
-            .Range("AZ1").Value = "SV_MIN"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-       
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_SV ")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI_SV "
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AE1").Value = "PV_MAX"
-            .Range("AH1").Value = "PV_MIN"
-            .Range("AK1").Value = "SV_MAX"
-            .Range("AN1").Value = "SV_MIN"
-            .Range("AQ1").Value = "TREND_MAX"
-            .Range("AT1").Value = "TREND_MIN"
-            .Range("AU1").Value = "UNITS"
-            .Range("AV1").Value = "DECIMAL"
-            .Range("AW1").Value = "RESET"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-           
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_SV2")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI_SV2"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AE1").Value = "PV_MAX"
-            .Range("AH1").Value = "PV_MIN"
-            .Range("AK1").Value = "SV_MAX"
-            .Range("AN1").Value = "SV_MIN"
-            .Range("AQ1").Value = "TREND_MAX"
-            .Range("AT1").Value = "TREND_MIN"
-            .Range("BC1").Value = "UNITS"
-            .Range("BF1").Value = "DECIMAL"
-            .Range("BG1").Value = "SV_MAX"
-            .Range("BH1").Value = "SV_MIN"
-            .Range("BI1").Value = "RESET"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-           
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_AI_SV3")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    sWs = "DB_FP_AI_SV3"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AE1").Value = "PV_MAX"
-            .Range("AH1").Value = "PV_MIN"
-            .Range("AQ1").Value = "TREND_MAX"
-            .Range("AT1").Value = "TREND_MIN"
-            
-Call DebugOut("REM", ">>>does not match , check csv3 header")
-            .Range("BC1").Value = "UNITS"
-            .Range("BF1").Value = "DECIMAL"
-            .Range("CZ1").Value = "SV_MAX"
-            .Range("DA1").Value = "SV_MIN"
-            .Range("DB1").Value = "RESET"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-            
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PID")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    
-    sWs = "DB_FP_PID"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AH1").Value = "PV_MAX"
-            .Range("AK1").Value = "PV_MIN"
-            .Range("AT1").Value = "TREND_MAX"
-            .Range("AW1").Value = "TREND_MIN"
-            .Range("BL1").Value = "UNITS"
-            .Range("BO1").Value = "DECIMAL"
-            .Range("BP1").Value = "SV_MAX"
-            .Range("BQ1").Value = "SV_MIN"
-            .Range("BR1").Value = "RESET"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-                
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PR_B")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_FP_PR_B"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "STRUCT_TAG_DR"
-            .Range("B1").Value = "FP_TYPE"
-            .Range("G1").Value = "ALIAS_BASE"
-            .Range("J1").Value = "COMMENT1"
-            .Range("M1").Value = "COMMENT2"
-            .Range("AE1").Value = "PV_MAX"
-            .Range("AH1").Value = "PV_MIN"
-            .Range("AK1").Value = "TREND_MAX"
-            .Range("AN1").Value = "TREND_MIN"
-            .Range("AW1").Value = "UNITS"
-            .Range("AX1").Value = "DECIMAL"
-            .Range("AY1").Value = "SV_MAX"
-            .Range("AZ1").Value = "SV_MIN"
-            .Range("BA1").Value = "RESET"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-                
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_SUM")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_FP_SUM"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-            .Cells.Clear
-            .Range("A1").Value = "ALIAS_BASE"
-            .Range("B1").Value = "COMMENT1 "
-            .Range("C1").Value = "COMMENT2 "
-            .Range("D1").Value = "DECIMAL"
-            .Range("E1").Value = "FP_TYPE"
-            .Range("F1").Value = "PV_MAX"
-            .Range("G1").Value = "PV_MIN"
-            .Range("H1").Value = "TREND_MAX"
-            .Range("I1").Value = "TREND_MIN"
-            .Range("J1").Value = "UNITS"
-            .Range("K1").Value = "RESET"
-            .Range("L1").Value = "SV_MAX"
-            .Range("M1").Value = "SV_MIN"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-    
-'    NOT USE
-'    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_PVI_D")
-'    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_SI")
-'    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FP_SW_A")
-
-End With
-End Sub
-
-
-Sub ADD_FIELDMASTER_TAG()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-   Debug.Print "FIELDMASTER_TAG START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG ")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    
-    sWs = "DB_FIELDMASTER_TAG "
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "TREND_NAME"
-        .Range("B1").Value = "ALIAS"
-        .Range("C1").Value = "COMMENT"
-        .Range("F1").Value = "DECIMAL"
-        .Range("K1").Value = "ALIAS_BASE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-    
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG_PV")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    
-    sWs = "DB_FIELDMASTER_TAG_PV"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "TREND_NAME"
-        .Range("B1").Value = "ALIAS"
-        .Range("C1").Value = "COMMENT"
-        .Range("F1").Value = "DECIMAL"
-        .Range("K1").Value = "ALIAS_BASE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-    
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG_SV")
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    
-    sWs = "DB_FIELDMASTER_TAG_SV"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "TREND_NAME"
-        .Range("B1").Value = "ALIAS"
-        .Range("C1").Value = "COMMENT"
-        .Range("F1").Value = "DECIMAL"
-        .Range("K1").Value = "ALIAS_BASE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-        
-    
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_FIELDMASTER_TAG_PRT")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    
-    sWs = "DB_FIELDMASTER_TAG_PRT"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "TREND_NAME"
-        .Range("B1").Value = "ALIAS"
-        .Range("C1").Value = "COMMENT"
-        .Range("F1").Value = "DECIMAL"
-        .Range("K1").Value = "ALIAS_BASE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-    
-End With
-End Sub
-
-
-Sub ADD_ALIAS()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-   Debug.Print "ALIST START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_ALIAS")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_ALIAS"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "ALIAS"
-        .Range("B1").Value = "FULL_ADR"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-End With
-End Sub
-
-
-
-Sub ADD_C()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "C : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_C ")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_C "
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "GROUP"
-        .Range("B1").Value = "ALIAS_BASE"
-'        .Range("C1").Value = "COMMENT"
-'        .Range("D1").Value = "MIN"
-'        .Range("E1").Value = "MAX"
-'        .Range("F1").Value = "UNIT"
-'        .Range("H1").Value = "FP_TYPE"
-'        .Range("I1").Value = "WORD_SIZE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-    Workbooks(Dir(sWb)).Close False
-End With
-
-End Sub
-
-
-
-Sub ADD_OP()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC00 OP START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_OP")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_OP00_X"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "DEVICE"
-        .Range("C1").Value = "COMMENT1"
-        .Range("D1").Value = "COMMENT2"
-        .Range("E1").Value = "CATEGORY"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 2), .Cells(Rows.Count, 2).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 3), "=IF(OR(RC2=""X080"", RC2=""X088"",RC2=""X089"",RC2=""X08A"", RC2=""X08B"", RC2=""X08C"", RC2=""X08D"", RC2=""X095"", RC2=""X096"", RC2=""X097"", RC2=""X098"", RC2=""X099"", RC2=""X09A"", RC2=""X09B"", RC2=""X09C"" ),""ALM"","""")")
-    End With
-
-    sWs = "DB_OP00_Y"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "DEVICE"
-        .Range("C1").Value = "COMMENT1"
-        .Range("D1").Value = "COMMENT2"
-        .Range("E1").Value = "CATEGORY"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-    Workbooks(Dir(sWb)).Close False
-End With
-
-End Sub
-
-
-Sub ADD_KONDO()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC03 KONDO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_KONDO")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_KONDO_K2A_B"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "INDEX"
-        .Range("E1").Value = "CATEGORY"
-        .Range("G1").Value = "COMMENT"
-        .Range("H1").Value = "DEVICE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-
-    sWs = "DB_KONDO_A2K_B"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "INDEX"
-        .Range("D1").Value = "COMMENT"
-        .Range("E1").Value = "DEVICE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-
-    sWs = "DB_KONDO_K2A_W"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "INDEX"
-        .Range("D1").Value = "COMMENT"
-        .Range("E1").Value = "DEVICE"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-
-    '?? 1C701
-    sWs = "DB_KONDO_A2K_W"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.Clear
-        .Range("A1").Value = "INDEX"
-        .Range("D1").Value = "COMMENT"
-        .Range("E1").Value = "DEVICE"
-        .Range("G1").Value = "MIN"
-        .Range("H1").Value = "MAX"
-        .Range("I1").Value = "UNIT"
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-    Workbooks(Dir(sWb)).Close False
-
-End With
-End Sub
-
-
-Sub ADD_IO()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC00 PLC03 IO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_IO")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_PLC00_X"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
-   End With
-
-    sWs = "DB_PLC00_Y"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-         Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-   End With
-
-
-    sWs = "DB_PLC03_X"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:E1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3", "CATEGORY")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 4), "=IF(OR(NOT(fSplit(RC3,1,""異常"")=RC3),NOT(fSplit(RC4,1,""異常"")=RC4)),""ALM"","""")") 'CATEGORY
-   End With
-   
-    sWs = "DB_PLC03_Y"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:D1").Value2 = Array("DEVICE", "COMMENT1", "COMMENT2", "COMMENT3")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-    End With
-    Workbooks(Dir(sWb)).Close False
-
-End With
-End Sub
-
-Sub ADD_TYOUGOU()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC03 TYOUGOU START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_TYOUGOU")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_TYOUGOU_R"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:O1").Value2 = Array("_", "_", "_", "_", "_", "ALIAS", "_", "_", "_", "_", "COMMENT", "_", "_", "_", "DEVICE")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 6), .Cells(Rows.Count, 6).End(xlUp))
-   End With
-   Workbooks(Dir(sWb)).Close False
-
-End With
-End Sub
-
-
-Sub ADD_HIRANO()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC03 HIRANO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_HIRANO")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_HIRANO_DI_B"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:F1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-
-    sWs = "DB_HIRANO_ALM_W"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:G1").Value2 = Array("INDEX", "_", "_", "COMMENT", "_", "_", "DEVICE")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 6), "=RetXAPBitDevFormat(RC5,TRUE)") 'TREND_NAME
-   End With
-
-    sWs = "DB_HIRANO_DO_B"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:F1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "_")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-
-    sWs = "DB_HIRANO_PV_W"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:J1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "MIN", "MAX", "UNITS", "_", "_")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-
-    sWs = "DB_HIRANO_SV_W"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:J1").Value2 = Array("INDEX", "_", "_", "COMMENT", "DEVICE", "MIN", "MAX", "UNITS", "_", "_")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-   End With
-    Workbooks(Dir(sWb)).Close False
-
-End With
-End Sub
-
-
-Sub ADD_ANALOG()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC 00 PLC03 WARITUKE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_WARITUKE")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-    
-MsgBox ("※expand DB_XXX rng, sv_max, sv_min")
-  
-  'PLC00 PLC03 ANALOG
-    sWs = "DB_PLC00_ANALOG"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-    'PLC_DEV => COMMENT ONLY
-    'ALIAS => x PLC HL DEV ,  o SCADA HL DEV
-    Call DebugOut("MUST", ">>>>>>> LinSht Update >>>>>>  A1:AT ")
-        .Range("A1:AT1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "PV_MIN", "PV_MAX", "SV_MIN", "SV_MAX", "UNITS", "FP_TYPE", "WORD_SIZE", _
-                                                                "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", _
-                                                                "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", _
-                                                                "MH_DEVICE", "ML_DEVICE", _
-                                                                "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "MODE_DEVICE", "", _
-                                                                "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", _
-                                                                "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", _
-                                                                "DECIMAL")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 45), "=IF(NOT(fLenOfDecimal(RC4)=fLenOfDecimal(RC5)),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
-   End With
-
-    sWs = "DB_PLC03_ANALOG"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-                .Range("A1:AT1").Value2 = Array("NO", "ALIAS_BASE", "COMMENT", "PV_MIN", "PV_MAX", "SV_MIN", "SV_MAX", "UNITS", "FP_TYPE", "WORD_SIZE", _
-                                                                "PV_DEVICE", "SV_DEVICE", "MV_DEVICE", _
-                                                                "SH_DEVICE", "SL_DEVICE", "", "MV1_DEVICE", "MV2_DEVICE", "DB_DEVICE", _
-                                                                "MH_DEVICE", "ML_DEVICE", _
-                                                                "HH_DEVICE", "H_DEVICE", "L_DEVICE", "LL_DEVICE", "HYS_DEVICE", "CAL_DEVICE", "CAL_M_DEVICE", "RAW_DEVICE", "P_DEVICE", "I_DEVICE", "D_DEVICE", "MODE_DEVICE", "", _
-                                                                "PLC_HH_DEVICE", "PLC_H_DEVICE", "PLC_L_DEVICE", "PLC_LL_DEVICE", "PLC_CAL_M_DEVICE", _
-                                                                "AL_HH_DEVICE", "AL_H_DEVICE", "AL_L_DEVICE", "AL_LL_DEVICE", "AL_CAL_M_DEVICE", "", _
-                                                                "DECIMAL")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        Call FixFormula(rRng.Offset(0, 45), "=IF(fLenOfDecimal(RC4)<>fLenOfDecimal(RC5),""NG"",fLenOfDecimal(SUBSTITUTE(RC5,""-"","""")))") 'DECIMAL
-   End With
-End With
-
-    Workbooks(Dir(sWb)).Close False
-    
-End Sub
-
-
-Sub ADD_WARITUKE()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "PLC 00 PLC03 WARITUKE START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_WARITUKE")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    'PLC00
-        sWs = "DB_PLC00_M"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-   End With
-
-        sWs = "DB_PLC00_R"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-   End With
-
-    'PLC03
-        sWs = "DB_PLC03_M"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-   End With
-
-        sWs = "DB_PLC03_R"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "CATEGORY")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-   End With
-
-    'CC LINK
-        sWs = "DB_CCL03_B"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-   End With
-   
-        sWs = "DB_CCL03_W"
-        Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:C1").Value2 = Array("DEVICE", "COMMENT", "_")
-        Call Excel2DbShtRefresh(oWb.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-    End With
-    Workbooks(Dir(sWb)).Close False
-
-End With
-
-End Sub
-
-
-Sub ADD_SERVER_CSV()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
- Debug.Print "SERVER START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_SERVER")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_SERVER_CSV"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Cells.NumberFormatLocal = "@"
-        .Range("A1:N1").Value2 = Array( _
-                                                                "CSV1", "CSV2", "CSV3", _
-                                                                "PLC", "FOLDER", "NAME", "FULL_ADR", "UNITS", "COMMENT", "DEC1", "DEC2", "DEC3", "DECIMAL", "BINALY" _
-                                                                )
-        Call Excel2DbShtRefresh(oWb.Name, sWs) 'buffer sht
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-
-        Debug.Print "   CSV1  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 3), "=IF(RC1=""*"",R[-1]C,fSplit(RC1,1,""#""))") 'CSV1
-
-        Debug.Print "   CSV2  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 4), "=IF(RC2=""*"",R[-1]C,fSplit(RC2,1,""#""))") 'CSV2
-
-        Debug.Print "   CSV3  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 5), "=IF(RC3=""*"",R[-1]C,fSplit(RC3,1,""#""))") 'CSV3
-
-        Debug.Print "   FULL_ADR  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 6), "=RC4 & ""."" & RC5 & ""."" & RC6") 'FULL_ADR
-
-        Debug.Print "   UNITS  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 7), "=fSplitBetween(RC3,2,""+EU="",""+C="",TRUE)") 'UNITS
-
-        Debug.Print "   COMMENT  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 8), "=fSplit(RC3,2,""+C="",TRUE)") 'COMMENT
-
-        Debug.Print "   DEC1  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 9), "=fSplitCsvPrmDec(RC3,1)") 'DEC1
-
-        Debug.Print "   DEC2  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 10), "=fSplitCsvPrmDec(RC3,2)") 'DEC2
-
-        Debug.Print "   DEC3  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 11), "=fSplitCsvPrmDec(RC3,3)") 'DEC3
-        
-        Debug.Print "   DECIMAL START : " & Now()
-        Call FixFormula(rRng.Offset(0, 12), "=IF(NOT(SUBSTITUTE(RC10,""-"","""")=SUBSTITUTE(RC11,""-"","""")),""NG"",SUBSTITUTE(RC10,""-"",""""))") 'DECIMAL
-  
-        Debug.Print "   BIN  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 13), "=fSplitCsvPrmBin(RC3)") 'BIN
-        End With
-    Workbooks(Dir(sWb)).Close False
-End With
-End Sub
-
-
-
-Sub ADD_TREND_PENINFO()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim sTmpPath As String
-Dim rRng As Range
-
-With oWb
-    Debug.Print "TREND_PENINFO START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_TREND_PENINFO ")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_TREND_PENINFO "
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:P1").Value2 = Array( _
-                                                "TREND_COMMENT", "UNITS", "_", "_", "_", "MIN", "MAX", "_", "_", "DATA_SOURCE", "DECIMAL", "SIZE", _
-                                                "TREND_NAME", "FP_TYPE", "ALIAS", "COMMENT")
-        Call Excel2DbShtRefresh(ThisWorkbook.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-
-        Debug.Print "   COL SPLIT  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 12), "=SUBSTITUTE(fSplit(RC10,2,""::""),fSplit(fSplit(RC10,2,""::""),1,""."") &""."","""")") 'TREND_NAME
-        Call FixFormula(rRng.Offset(0, 13), "=fSplitBetween(RC10,2,""::"",""."")") 'FP_TYPE
-        Call FixFormula(rRng.Offset(0, 14), "=IF(NOT(LEFT(RC1,1)=""[""),fSplit(RC1,1,"" ""),"""")") 'CMT_ALIAS
-        Call FixFormula(rRng.Offset(0, 15), "=IF(NOT(LEFT(RC1,1)=""[""),TRIM(SUBSTITUTE(RC1,fSplit(RC1,1,"" ""),"""")),"""")") 'CMT_DESC
-        .Move before:=oWb.Sheets(oWb.Sheets.Count)
-   End With
-    Workbooks(Dir(sWb)).Close False
-
-  Debug.Print "TREND_PENINFO_ONEPOINT START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_TREND_PENINFO_ONEPOINT")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_TREND_PENINFO_ONEPOINT"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:F1").Value2 = Array("SRC", "_", "_", "TREND_NAME", "FP_TYPE", "ALIAS")
-
-        Call Excel2DbShtRefresh(ThisWorkbook.Name, sWs)
-        Set rRng = .Range(.Cells(2, 1), .Cells(Rows.Count, 1).End(xlUp))
-        
-        Debug.Print "   COL SPLIT  START : " & Now()
-        Call FixFormula(rRng.Offset(0, 3), "=SUBSTITUTE(fSplit(RC1,2,""::""),fSplit(fSplit(RC1,2,""::""),1,""."") &""."","""")") 'TREND_NAME
-        Call FixFormula(rRng.Offset(0, 4), "=fSplitBetween(RC1,2,""::"",""."")") 'FP_TYPE
-        Call FixFormula(rRng.Offset(0, 5), "=fSplit(RC4,1,""."")") 'FP_TYPE
-        .Move before:=oWb.Sheets(oWb.Sheets.Count)
-   End With
-    Workbooks(Dir(sWb)).Close False
-
-End With
-
-End Sub
-
-    
-Sub ADD_ALM_MASTER()
-Dim sWb As String
-Dim sWs As String
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Dim oWbTmp As Workbook
-Dim rRng As Range
-
-With oWb
-    Debug.Print "ALM_MASTER START : " & Now() ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    sWb = fKey2Val("PGPRM_DB_PATH_ROOT", "PGPRM_DB_PATH_ALARM_MASTER")
-    Call CloseWb(Dir(sWb))
-    FileCopy sWb, RetCDirTmpPath(sWb)
-    sWb = RetCDirTmpPath(sWb)
-    OpenFileAsWb (sWb)
-
-    sWs = "DB_ALM_MASTER"
-    Call SelectOrAddWs(sWs, ThisWorkbook.Name)
-    With .Worksheets(sWs)
-        .Range("A1:L1").Value2 = Array("ALARMID", "_", "_", "FULL_ADR", "COMMENT", "_", "_", "_", "ALIAS", "_", "CATEGORY", "_")
-
-    Call Excel2DbShtRefresh(oWb.Name, sWs)
-    End With
-    Workbooks(Dir(sWb)).Close False
-
-End With
-
-End Sub
-
-    
-    
-Sub JoinLogCsv(inptSelect As String)
+Sub JoinLogCsv(inptSelect As String) 'fileld1,field2 ...
 Application.DisplayAlerts = False
 Application.ScreenUpdating = False
 
@@ -1330,7 +278,6 @@ End Sub
 
 
 Function fSplitCsvPrmDec(inptStr As String, inptRetCol As Long) As String
-
 Dim lCol As Long: lCol = inptRetCol
 Dim sStr As String: sStr = inptStr
 Dim sDec As String: sDec = fSplit(sStr, 2, "DEC:")
@@ -1403,7 +350,7 @@ Dim sResult As String
 If fSplit(sStr, 2, "FLT") <> sStr Then
     sResult = "FLT"
 ElseIf fSplit(sStr, 2, "BIN") <> sStr Then
-    sResult = "BIN" & fSplitBetween(sStr, 2, "BIN", "+")
+    sResult = "BIN" & fSplitBetweenAlter(sStr, 2, "BIN", "+")
 Else
     sResult = ""
 End If
@@ -1425,26 +372,93 @@ End Function
 'End Sub
 
 
-Sub Excel2DbShtRefresh(inptWb As String, inptWs As String) ' DstWb, DstWs
-Application.ScreenUpdating = False
+Private Sub PasteShtData(inptWbName As String, inptShtName As String, inptHeader As Variant) 'A:DEVICE,C:COMMENT1,D:COMMENT2
+Dim vHeader As Variant: vHeader = inptHeader
+Dim v As Variant
+Dim s As String
 
+With Workbooks(inptWbName).Sheets(inptShtName)
+For Each v In vHeader
+    If Left(Trim(fSplit(v, 1, ":")), 1) = "_" Then
+        s = fReplace(v, fSplit(v, 1, ":") & ":", "")
+        '_A:Fix;BaseCol;PasteCol;=Formula
+        If fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") = "Fix" Then
+            .Range(fReplace(fSplit(v, 1, ":"), "_", "") & "1").Value = fSplitBetweenWithDelimiter(s, 1, "[", "]", ",")
+            Call fFixFormula(inptWbName _
+                                        , inptShtName _
+                                        , fSplitBetweenWithDelimiter(s, 3, "[", "]", ",") _
+                                        , Trim(fReplace(fSplit(v, 1, ":"), "_", "")) _
+                                        , fSplitBetweenWithDelimiter(s, 4, "[", "]", ","))
+        ElseIf fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") = "Fill" Then
+            Call DebugOut("ERR", "not yet")
+        Else
+            Call DebugOut("ERR", "fail PasteShtData")
+        End If
+    Else
+        If Not v = "" Then
+            .Range(fSplit(v, 1, ":") & "1").Value = _
+                fSplit(v, 2, ":")
+        End If
+    End If
+             
+Next v
+End With
+End Sub
+
+
+Sub DB_EXE_CREATESHT()
+Application.ScreenUpdating = False
+Dim v As Variant
+Dim sShts As Variant
+sShts = Split(fKey2Val("PGPRM_DB_EXE_ROOT", "PGPRM_DB_EXE_CREATESHT", "LinkShtDB"), ",")
+
+gTmp = ""
+For Each v In sShts
+    Call SelectOrAddWs(CStr(v), ThisWorkbook.Name)
+    Call Excel2DbShtRefresh(ThisWorkbook.Name, CStr(v))
+Next v
+Workbooks(Dir(gTmp)).Close False
+ThisWorkbook.Sheets("LinkShtDB").Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+Function retArrayBetween(inptArray As Variant, inptSt As Long, inptEnd As Long) As Variant
+Dim vOld As Variant: vOld = inptArray
+Dim vNew As Variant: vNew = Array()
+Dim v As Variant
+Dim l As Long
+
+For l = inptSt To inptEnd
+    If Not vOld(l) = "" Then
+        ReDim Preserve vNew(l - inptSt)
+        vNew(l - inptSt) = vOld(l)
+    Else
+        retArrayBetween = vNew: Exit Function
+    End If
+Next l
+
+retArrayBetween = vNew
+
+End Function
+
+Sub Excel2DbShtRefresh(inptWb As String, inptWs As String) ' DstWb, DstWs
 Dim wbSRC As Workbook
 Dim wbDst As Workbook: Set wbDst = Workbooks(inptWb)
 Dim wsDst As Worksheet: Set wsDst = wbDst.Worksheets(inptWs)
-Dim sData As Variant
+Dim vData As Variant
 Dim l As Long
 Dim lEnd As Long
 Dim sPrf As String: sPrf = inptWs 'DB_PLC00_M
-
 Dim sWbLD As String: sWbLD = ThisWorkbook.Name
-Dim sWsLD As String: sWsLD = "LinkData"
+Dim sWsLD As String: sWsLD = "LinkShtDB"
 Dim sWb As String
 Dim sWs As String
 Dim sStCell As String
-
-
 Dim sEndCell As String
 Dim lEndDst As Integer
+Dim vRest As Variant
+Dim sPrvWbName As String: sPrvWbName = ""
                 
 wsDst.Rows("2:" & Rows.Count).Clear
 wsDst.Rows("2:" & Rows.Count).NumberFormat = "@"
@@ -1454,28 +468,42 @@ lEnd = .Cells(.Rows.Count, 1).End(xlUp).Row
     For l = 1 To lEnd
         'search link key
         If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then ' DB_XXX_XX
-            
             'append range
-            sData = fGetRowData(sWbLD, sWsLD, .Cells(l, 1).Value, "A")  'row => [link parameter]
-            If UBound(sData) = -1 Then Debug.Print "does not match": Exit Sub
-                sWb = RetCDirTmpPath(CStr(sData(2)))
-                sWs = CStr(sData(3))
-                sStCell = CStr(sData(4))
-                sEndCell = CStr(sData(5))
-                    
+            vData = fGetRowData(sWbLD, sWsLD, .Cells(l, 1).Value, "A")  'row => [link parameter]
+            If UBound(vData) = -1 Then Debug.Print "does not match": Exit Sub
+                sWb = CStr(vData(2))
+                sWs = CStr(vData(3))
+                sStCell = CStr(vData(4))
+                sEndCell = CStr(vData(5))
+                vRest = retArrayBetween(vData, 6, UBound(vData))
+
+                If Not gTmp = RetCDirTmpWbPath(sWb) Then
+                    Call CloseWb(Dir(gTmp))
+                    Call CloseWb(Dir(sWb))
+                    Call CloseWb(Dir(RetCDirTmpWbPath(sWb)))
+                    FileCopy sWb, RetCDirTmpWbPath(sWb)
+                    sWb = RetCDirTmpWbPath(sWb)
+                    OpenFileAsWb (sWb)
+                    gTmp = sWb
+                End If
+
                 Set wbSRC = Workbooks(Dir(sWb))
                 lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
                 wbSRC.Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
                 wsDst.Activate
                 wsDst.Cells(lEndDst, 1).Select
                 wsDst.PasteSpecial
+                
+                ThisWorkbook.Sheets(sPrf).Rows(1).Clear
+                 Call PasteShtData(ThisWorkbook.Name, sPrf, vRest)
+
+                wsDst.Columns.AutoFit
                 wbSRC.Sheets(sWs).Range("A1").Copy
         End If
     Next l
 End With
 
 wsDst.Range("A1").Activate
-Application.ScreenUpdating = True
 End Sub
 
 
@@ -1512,4 +540,126 @@ Next v
 End Sub
 
 
+'=========================================================
+'COL END => AZ
+'
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'PGPRM_DB_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtDB】【B】【C】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【[ KEY ]】【[ SHEETS ]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【】【TRUEDB_PLC00_OP_XDB_PLC00_OP_YDB_PLC03_KONDO_K2A_BDB_PLC03_KONDO_A2K_BDB_PLC03_KONDO_K2A_WDB_PLC00_AEC_XDB_PLC00_AEC_YDB_PLC03_AEC_XDB_PLC03_AEC_YDB_PLC03_HIRANO_DI_BDB_PLC03_HIRANO_ALM_WDB_PLC03_HIRANO_DO_BDB_PLC03_HIRANO_PV_WDB_PLC03_HIRANO_SV_WDB_PLC03_TYOUGOU_RDB_PLC00_AEC_ANALOGDB_PLC03_AEC_ANALOGDB_PLC03_AEC_BDB_PLC03_AEC_WDB_FP_AI DB_FP_AI_AL4DB_FP_AI_QDB_FP_AI_SV DB_FP_AI_SV2DB_FP_AI_SV3DB_FP_PIDDB_FP_SUMDB_LST_ALIASDB_LST_ALM_MASTERDB_LST_C DB_LST_FACEPL
+'*】【PGPRM_DB_EXE_CREATESHT】【DB_LST_ALIAS,DB_LST_C ,DB_LST_TREND_PENINFO ,DB_LST_TREND_PENINFO_ONEPOINT,DB_LST_ALM_MASTER,DB_LST_FIELDMASTER_TAG ,DB_LST_FIELDMASTER_TAG_PV,DB_LST_FIELDMASTER_TAG_SV,DB_LST_FIELDMASTER_TAG_PRT,DB_LST_FACEPLATE_MASTER】【】【DB_LST_ALIAS】【DB_LST_C 】【】【】【DB_LST_TREND_PENINFO 】【DB_LST_TREND_PENINFO_ONEPOINT】【】【DB_LST_ALM_MASTER】【】【DB_LST_FIELDMASTER_TAG 】【DB_LST_FIELDMASTER_TAG_PV】【DB_LST_FIELDMASTER_TAG_SV】【DB_LST_FIELDMASTER_TAG_PRT】【】【DB_LST_FACEPLATE_MASTER】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'//Sheet Setting】【】【】【】【】【NotEmpty => Fill Header】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'[ KEY ]】【[WorkBookName]】【[WorkSheetName]】【[KeyCol]】【[RtnCol]】【[Header] >> 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_OP_X200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●OP盤_警報PLC_Ｉ／Ｏ設計_20210811.xlsx】【DI,DO】【C3】【G34】【A:DEVICE】【C:COMMENT1】【D:COMMENT2】【E:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_OP_Y0A0】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●OP盤_警報PLC_Ｉ／Ｏ設計_20210811.xlsx】【DI,DO】【D35】【G42】【A:DEVICE】【C:COMMENT1】【D:COMMENT2】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_KONDO_K2A_B1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ビット(近藤殿→旭)】【B5】【M260】【E:CATEGORY】【G:COMMENT】【H:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_KONDO_A2K_B1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ビット(旭→近藤殿)】【B5】【H300】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_KONDO_K2A_W1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ワード(近藤殿→旭)】【B5】【J300】【D:COMMENT】【E:DEVICE】【F:PV_MIN】【G:PV_MAX】【H:UNITS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_KONDO_A2K_W1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ワード(旭→近藤殿)】【B5】【K300】【//Ignore】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_X】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(共通)】【D3】【G194】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【E:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_Y】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(共通)】【D195】【G322】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_X】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(3系)】【D3】【G322】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【E:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_Y】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(3系)】【D323】【G578】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_HIRANO_DI_B1300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(DI)】【B5】【G400】【A:INDEX】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_HIRANO_ALM_W13E0】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(DI)アラーム】【B5】【G400】【A:INDEX】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_HIRANO_DO_B1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(DO)】【B5】【H150】【A:INDEX】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_HIRANO_PV_W1300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(PV)】【B5】【K300】【A:INDEX】【D:COMMENT】【E:DEVICE】【F:MIN】【G:MAX】【H:UNITS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_HIRANO_SV_W1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(SV)】【B5】【K200】【A:INDEX】【D:COMMENT】【E:DEVICE】【F:MIN】【G:MAX】【H:UNITS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_TYOUGOU_R8000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\外部インターフェイス.xlsx】【3系PLC項目リスト】【A2】【O800】【F:ALIAS】【K:COMMENT】【O:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_ANALOG_1W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_共通)】【C7】【AT156】【A:NO】【B:ALIAS_BASE】【C:COMMENT】【D:PV_MIN】【E:PV_MAX】【F:SV_MIN】【G:SV_MAX】【H:UNITS】【I:FP_TYPE】【J:WORD_SIZE】【K:PV_DEVICE】【L:SV_DEVICE】【M:MV_DEVICE】【N:SH_DEVICE】【O:SL_DEVICE】【】【】【R:MV2_DEVICE】【S:DB_DEVICE】【T:MH_DEVICE】【U:ML_DEVICE】【V:HH_DEVICE】【W:H_DEVICE】【X:L_DEVICE】【Y:LL_DEVICE】【Z:HYS_DEVICE】【AA:CAL_DEVICE】【AB:CAL_M_DEVICE】【AC:RAW_DEVICE】【AD:P_DEVICE】【AE:I_DEVICE】【AF:D_DEVICE】【AG:MODE_DEVICE】【】【AI:PLC_HH_DEVICE】【AJ:PLC_H_DEVICE】【AK:PLC_L_DEVICE】【AL:PLC_LL_DEVICE】【AM:PLC_CAL_M_DEVICE】【AN:AL_HH_DEVICE】【AO:AL_H_DEVICE】【AP:AL_L_DEVICE】【AQ:AL_LL_DEVICE】【AR:AL_CAL_M_DEVICE】【】【AT:DECIMAL
+'DB_PLC00_AEC_ANALOG_2W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_共通)】【C159】【AT183】【A:NO】【B:ALIAS_BASE】【C:COMMENT】【D:PV_MIN】【E:PV_MAX】【F:SV_MIN】【G:SV_MAX】【H:UNITS】【I:FP_TYPE】【J:WORD_SIZE】【K:PV_DEVICE】【L:SV_DEVICE】【M:MV_DEVICE】【N:SH_DEVICE】【O:SL_DEVICE】【】【】【R:MV2_DEVICE】【S:DB_DEVICE】【T:MH_DEVICE】【U:ML_DEVICE】【V:HH_DEVICE】【W:H_DEVICE】【X:L_DEVICE】【Y:LL_DEVICE】【Z:HYS_DEVICE】【AA:CAL_DEVICE】【AB:CAL_M_DEVICE】【AC:RAW_DEVICE】【AD:P_DEVICE】【AE:I_DEVICE】【AF:D_DEVICE】【AG:MODE_DEVICE】【】【AI:PLC_HH_DEVICE】【AJ:PLC_H_DEVICE】【AK:PLC_L_DEVICE】【AL:PLC_LL_DEVICE】【AM:PLC_CAL_M_DEVICE】【AN:AL_HH_DEVICE】【AO:AL_H_DEVICE】【AP:AL_L_DEVICE】【AQ:AL_LL_DEVICE】【AR:AL_CAL_M_DEVICE】【】【AT:DECIMAL
+'DB_PLC03_AEC_ANALOG_1W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_3系)】【C7】【AT456】【A:NO】【B:ALIAS_BASE】【C:COMMENT】【D:PV_MIN】【E:PV_MAX】【F:SV_MIN】【G:SV_MAX】【H:UNITS】【I:FP_TYPE】【J:WORD_SIZE】【K:PV_DEVICE】【L:SV_DEVICE】【M:MV_DEVICE】【N:SH_DEVICE】【O:SL_DEVICE】【】【】【R:MV2_DEVICE】【S:DB_DEVICE】【T:MH_DEVICE】【U:ML_DEVICE】【V:HH_DEVICE】【W:H_DEVICE】【X:L_DEVICE】【Y:LL_DEVICE】【Z:HYS_DEVICE】【AA:CAL_DEVICE】【AB:CAL_M_DEVICE】【AC:RAW_DEVICE】【AD:P_DEVICE】【AE:I_DEVICE】【AF:D_DEVICE】【AG:MODE_DEVICE】【】【AI:PLC_HH_DEVICE】【AJ:PLC_H_DEVICE】【AK:PLC_L_DEVICE】【AL:PLC_LL_DEVICE】【AM:PLC_CAL_M_DEVICE】【AN:AL_HH_DEVICE】【AO:AL_H_DEVICE】【AP:AL_L_DEVICE】【AQ:AL_LL_DEVICE】【AR:AL_CAL_M_DEVICE】【】【AT:DECIMAL
+'DB_PLC03_AEC_ANALOG_2W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_3系)】【C459】【AT483】【A:NO】【B:ALIAS_BASE】【C:COMMENT】【D:PV_MIN】【E:PV_MAX】【F:SV_MIN】【G:SV_MAX】【H:UNITS】【I:FP_TYPE】【J:WORD_SIZE】【K:PV_DEVICE】【L:SV_DEVICE】【M:MV_DEVICE】【N:SH_DEVICE】【O:SL_DEVICE】【】【】【R:MV2_DEVICE】【S:DB_DEVICE】【T:MH_DEVICE】【U:ML_DEVICE】【V:HH_DEVICE】【W:H_DEVICE】【X:L_DEVICE】【Y:LL_DEVICE】【Z:HYS_DEVICE】【AA:CAL_DEVICE】【AB:CAL_M_DEVICE】【AC:RAW_DEVICE】【AD:P_DEVICE】【AE:I_DEVICE】【AF:D_DEVICE】【AG:MODE_DEVICE】【】【AI:PLC_HH_DEVICE】【AJ:PLC_H_DEVICE】【AK:PLC_L_DEVICE】【AL:PLC_LL_DEVICE】【AM:PLC_CAL_M_DEVICE】【AN:AL_HH_DEVICE】【AO:AL_H_DEVICE】【AP:AL_L_DEVICE】【AQ:AL_LL_DEVICE】【AR:AL_CAL_M_DEVICE】【】【AT:DECIMAL
+'DB_PLC00_AEC_M800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系操作フラグ】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_M700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系操作フラグ】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_M900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_M1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_M1100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【I3】【K150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_M1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【M3】【O150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_R3500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通設定値】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_R3600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通設定値】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_R4000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通設定値】【I3】【K150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_R2000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通各種設定値】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_R2100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通各種設定値】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC00_AEC_R2600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通各種設定値】【I3】【K150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【A3】【C102】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R1700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【E3】【G102】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R1800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【I3】【K102】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R1900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【M3】【O102】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【Q3】【S102】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【A106】【C205】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【E106】【G205】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2400】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【I106】【K205】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【M106】【O205】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【Q106】【S205】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【A209】【C308】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3400】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【E209】【G308】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【I209】【K308】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【M209】【O308】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【Q209】【S308】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R4200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系塗工洗浄履歴】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R4300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系塗工洗浄履歴】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R2600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【I3】【K150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【M3】【O150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【Q3】【S150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_R3200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【U3】【W150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1400】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【I3】【K150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【M3】【O150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【E3】【G150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【I3】【K150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【M3】【O150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【Q3】【S150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M3700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【U3】【W150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【Y3】【AA150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【AC3】【AE150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M5100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【AG3】【AI150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_M1800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【AK3】【AM150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_B0000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【CC-Link IE Control(Fﾌﾟﾛ)】【G2】【I800】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_PLC03_AEC_W0000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【CC-Link IE Control(Fﾌﾟﾛ)】【L2】【N800】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_C 】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\c210609.xlsm】【FP修正原本】【E5】【M300】【A:GROUP】【B:ALIAS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_ALIAS】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\Alias\Alias.csv】【Alias】【A1】【B90000】【A:ALIAS】【B:FULL_ADR】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_SERVER_CSV】【C:\Users\Owner\Documents\workspace\PRJ\リスト\server_csv.csv】【server_csv】【A1】【C90000】【A:CSV1】【B:CSV2】【C:CSV3】【_D:[PLC],[Fix],[A],[=IF(RC1="*",R[-1]C,fSplit(RC1,1,"#"))]】【_E:[FOLDER],[Fix],[A],[=IF(RC2="*",R[-1]C,fSplit(RC2,1,"#"))]】【_F:[NAME],[Fix],[A],[=IF(RC3="*",R[-1]C,fSplit(RC3,1,"#"))]】【_G:[FULL_ADR],[Fix],[A],[=RC4 & "." & RC5 & "." & RC6]】【_H:[UNITS],[Fix],[A],[=fSplitBetween(RC3,1,"+EU=","+C=")]】【_I:[COMMENT],[Fix],[A],[=fSplit(RC3,2,"+C=",TRUE)]】【_ J:[DEC1],[Fix],[A],[=fSplitCsvPrmDec(RC3,1)]】【_K:[DEC2],[Fix],[A],[=fSplitCsvPrmDec(RC3,2)]】【_L:[DEC3],[Fix],[A],[=fSplitCsvPrmDec(RC3,3)]】【_M:[DECIMAL],[Fix],[A],[=IF(NOT(SUBSTITUTE(RC10,"-","")=SUBSTITUTE(RC11,"-","")),"NG",SUBSTITUTE(RC10,"-",""))]】【_N:[BINALY],[Fix],[A],[=fSplitCsvPrmBin(RC3)]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_TREND_PENINFO 】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\config\trend_peninfo.txt】【trend_peninfo】【A1】【L500】【A:TREND_COMMENT】【B: UNITS】【F: MIN】【G: MAX】【J: DATA_SOURCE】【K: DECIMAL】【L: SIZE】【_N:[TREND_NAME],[Fix],[A],[=SUBSTITUTE(fSplit(RC10,2,"::"),fSplit(fSplit(RC10,2,"::"),1,".") &".","")]】【_O:[FP_TYPE],[Fix],[A],[=fSplitBetween(RC10,1,"::",".")]】【_P:[ALIAS],[Fix],[A],[=IF(NOT(LEFT(RC1,1)="["),fSplit(RC1,1," "),"")]】【_Q:[COMMENT],[Fix],[A],[=IF(NOT(LEFT(RC1,1)="["),TRIM(SUBSTITUTE(RC1,fSplit(RC1,1," "),"")),"")]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_TREND_PENINFO_ONEPOINT】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\config\trend_peninfo_onepoint.txt】【trend_peninfo_onepoint】【A1】【C400】【A:SRC】【_D:[TREND_NAME],[Fix],[A],[=SUBSTITUTE(fSplit(RC1,2,"::"),fSplit(fSplit(RC1,2,"::"),1,".") &".","")]】【_E:[FP_TYPE],[Fix],[A],[=fSplitBetween(RC1,1,"::",".")]】【_F:[ALIAS],[Fix],[A],[=fSplit(RC4,1,".")]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_ALM_MASTER】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\config\alarm_master.csv】【alarm_master】【A3】【L10000】【A:ALARMID】【D:FULL_ADR】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_FIELDMASTER_TAG 】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND01\fieldmaster_tag.csv】【fieldmaster_tag】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_FIELDMASTER_TAG_PV】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND02\fieldmaster_tag_pv.csv】【fieldmaster_tag_pv】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_FIELDMASTER_TAG_SV】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND02\fieldmaster_tag_sv.csv】【fieldmaster_tag_sv】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_FIELDMASTER_TAG_PRT】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND02\fieldmaster_tag_prt.csv】【fieldmaster_tag_prt】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_LST_FACEPLATE_MASTER】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\config\faceplate_master.csv】【faceplate_master】【A2】【B500】【A:GROUP_NAME】【B:STRUCT_TAG_ADR】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_AI 】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI.csv】【AI】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AB: PV_MAX】【AE: PV_MIN】【AH: TREND_MAX】【AK: TREND_MIN】【AT: UNITS】【AW: DECIMAL】【ZZ: RESET】【ZX: SV_MAX】【ZY: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_AI_AL4】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_AL4.csv】【AI_AL4】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AB: PV_MAX】【AE: PV_MIN】【AH: TREND_MAX】【AK: TREND_MIN】【AT: UNITS】【AW: DECIMAL】【AX: RESET】【AY: SV_MAX】【AZ: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_AI_Q】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_Q.csv】【AI_Q】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AB: PV_MAX】【AE: PV_MIN】【AH: TREND_MAX】【AK: TREND_MIN】【AT: UNITS】【AW: DECIMAL】【AX: RESET】【AY: SV_MAX】【AZ: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_AI_SV 】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SV.csv】【AI_SV】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AE: PV_MAX】【AH: PV_MIN】【AK: SV_MAX】【AN: SV_MIN】【AQ: TREND_MAX】【AT: TREND_MIN】【AU: UNITS】【AV: DECIMAL】【AW: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_AI_SV2】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SV2.csv】【AI_SV2】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AE: PV_MAX】【AH: PV_MIN】【AK: SV_MAX】【AN: SV_MIN】【AQ: TREND_MAX】【AT: TREND_MIN】【BC: UNITS】【BF: DECIMAL】【BG: SV_MAX】【BH: SV_MIN】【BI: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_AI_SV3】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SV3.csv】【AI_SV3】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AE: PV_MAX】【AH: PV_MIN】【AQ: TREND_MAX】【AT: TREND_MIN】【BC: UNITS】【BF: DECIMAL】【CZ: SV_MAX】【DA: SV_MIN】【DB: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_PID】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\PID.csv】【PID】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AH: PV_MAX】【AK: PV_MIN】【AT: TREND_MAX】【AW: TREND_MIN】【BL: UNITS】【BO: DECIMAL】【BP: SV_MAX】【BQ: SV_MIN】【BR: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+'DB_FP_SUM】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SUM.csv】【AI_SUM】【A2】【ED500】【A: ALIAS_BASE】【B: COMMENT1 】【C: COMMENT2 】【D: DECIMAL】【E: FP_TYPE】【F: PV_MAX】【G: PV_MIN】【H: TREND_MAX】【I: TREND_MIN】【J: UNITS】【K: RESET】【L: SV_MAX】【M: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
 
