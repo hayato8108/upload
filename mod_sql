@@ -1,5 +1,5 @@
 Option Explicit
-'SQL 20211024
+'SQL 20211028
 
 Sub CreateDFR3DBTable()
 Dim oWb As Workbook: Set oWb = ThisWorkbook
@@ -41,12 +41,16 @@ Application.ScreenUpdating = True
 End Sub
 
 
+'BSQL_TSTOUT2_SELECT TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2],'=A1' AS FRM1,'=A2' AS FRM2
+'BSQL_TSTOUT2_FORMULACOL FRM1, FRM2
+
 Sub BSQL_EXE_CREATESHT()
 Application.ScreenUpdating = False
 Dim sShtName As String
 Dim sShtTmpName As String
 Dim sShtSqlLink As String: sShtSqlLink = "LinkShtSQL"
 Dim v As Variant
+Dim vv As Variant
 Dim sShts As Variant
 Dim sQueryCondition As String
 
@@ -61,6 +65,16 @@ For Each v In sShts
     
     Call GetQueryResultsOnSht(GetSqlQueryByLinkShtSQL(CStr(v)), RetCDirWbPath(), sShtTmpName)
     Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryCondition, RetCDirWbPath(), sShtName)
+
+    For Each vv In Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_TSTOUT2_FORMULACOL", sShtSqlLink), ",")
+        If Not retHeaderCol(sShtName, CStr(vv)) = 0 Then Sheets(sShtName).Columns(retHeaderCol(sShtName, CStr(vv))).NumberFormat = "General"
+    Next vv
+
+    Call calcFormula(sShtName)
+    ThisWorkbook.Sheets(sShtName).Cells.Copy
+    ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+    ThisWorkbook.Sheets(sShtName).Range("A1").Select
+    
 Next v
 
 If fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink) = "T" Then Call DeleteTableByPrefix("TMP_")
@@ -95,7 +109,6 @@ sQuerySelect = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
 sQueryFrom = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
 sQueryJoin = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
 sQueryFree = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
-
 
 For l = 1 To UBound(vJoin)
     v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, "AS"), " ", "")
@@ -1843,141 +1856,3 @@ End Function
 
 '=========================================================
 'COL END => H
-
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'PGPRM_BSQL_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtSQL】【B】【C】【】【
-'】【[ KEY }】【[ SHEETS ]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【】【】【】【】【】【
-'*】【】【】【】【】【】【
-'*】【】【】【】【】【】【
-'*】【】【】【】【】【】【
-'*】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'//BSQL_BATCH-NAME_TYPE】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'PGPRM_BSQL_QUERY_ROOT】【DFR3_DB_211014.xlsm】【LinkShtSQL】【B】【C】【】【
-'*】【[Key]】【[Param]】【】【】【】【
-'*】【BSQL_PGPRM_JOINTMAX】【20】【】【】【】【
-'*】【BSQL_PGPRM_DELETE_TEMPSHT】【T】【】【】【】【
-'*】【】【】【】【】【】【
-'*】【BSQL_TEST1_OUTSHT】【[SQL_OUT$]】【】【】【】【
-'*】【BSQL_TEST1_SELECT】【[MAIN].[COL1] , [MAIN].[COL2] , ''】【】【】【】【
-'*】【BSQL_TEST1_FROM】【[TEST_SHT$] AS [MAIN]】【】【】【】【
-'*】【BSQL_TEST1_UNION-1_SELECT】【[COL1] & ' ' & [COL2] AS [COL1]  ,   'UNION1'  ,  ''】【】【】【】【
-'*】【BSQL_TEST1_UNION-1_FROM】【[TEST_MAIN$] AS [UNION1]】【】【】【】【
-'*】【BSQL_TEST1_UNION-2_SELECT】【[COL1] & ' ' & [COL2] AS [COL1], 'UNION2',''】【】【】【】【
-'*】【BSQL_TEST1_UNION-2_FROM】【[TEST_SUB$] AS [UNION3]】【】【】【】【
-'*】【】【】【】【】【】【
-'】【BSQL_TEST1_FREE】【】【】【】【】【
-'】【BSQL_TEST1_CONDITION】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【//】【】【】【】【】【
-'】【BSQL_TEST2_OUTSHT】【[SQL_OUT$]】【】【】【】【
-'】【BSQL_TEST2_SELECT】【*】【】【】【】【
-'】【BSQL_TEST2_FROM】【[TEST_SHT$] AS [MAIN]】【】【】【】【
-'】【BSQL_TEST2_FREE】【LEFT OUTER JOIN [TEST_OUTER$] AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1]】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【[ KEY ]】【[ SQL ]】【】【】【】【
-'//PRESHT-BITDEV】【BSQL_PRESHT-BITDEV_OUTSHT】【[PRE_BIT_DEV$]】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_CONDITION】【WHERE [DEVICE] IS NOT NULL】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_FROM】【[DB_PLC00_OP_X$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-1_FROM】【[DB_PLC00_OP_Y$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-2_FROM】【[DB_PLC03_KONDO_K2A_B$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-3_FROM】【[DB_PLC03_KONDO_A2K_B$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-4_FROM】【[DB_PLC00_AEC_X$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-5_FROM】【[DB_PLC00_AEC_Y$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-6_FROM】【[DB_PLC03_AEC_X$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-7_FROM】【[DB_PLC03_AEC_Y$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-8_FROM】【[DB_PLC03_HIRANO_DI_B$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-9_FROM】【[DB_PLC03_HIRANO_ALM_W$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-10_FROM】【[DB_PLC03_HIRANO_DO_B$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-11_FROM】【[DB_PLC00_AEC_M$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-12_FROM】【[DB_PLC00_AEC_R$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-13_FROM】【[DB_PLC03_AEC_R$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-14_FROM】【[DB_PLC03_AEC_M$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-15_FROM】【[DB_PLC03_AEC_B$]】【】【】【】【
-'】【】【】【】【】【】【
-'*】【BSQL_PRESHT-BITDEV_UNION-16_FROM】【[DB_PLC03_AEC_W$]】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【TST1_COL1】【TST2_COL1】【】【
-'】【】【】【】【】【】【
-'//SAMPLE_FULL_JOIN】【BSQL_TSTOUT1_OUTSHT】【[TSTOUT1$]】【】【】【】【
-'】【BSQL_TSTOUT1_CONDITION】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【BSQL_TSTOUT1_FROM】【[TST1$] AS TST1】【】【】【】【
-'】【BSQL_TSTOUT1_FULLJOIN-1_FROM】【[TST2$] AS TST2】【】【】【】【
-'】【BSQL_TSTOUT1_FULLJOIN-1_KEY】【[COL1]】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'//SAMPLE_INNER_JOIN】【BSQL_TSTOUT2_OUTSHT】【[TSTOUT2$]】【】【】【】【
-'】【BSQL_TSTOUT2_CONDITION】【ORDER BY [TST2_Col1] ASC】【】【】【】【
-'】【】【】【】【】【】【
-'】【BSQL_TSTOUT2_FROM】【[TST1$] AS TST1】【】【】【】【
-'】【BSQL_TSTOUT2_INNERJOIN-1_FROM】【[TST2$] AS TST2】【】【】【】【
-'】【BSQL_TSTOUT2_INNERJOIN-1_KEY】【[COL1]】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_ALIAS$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_SERVER_CSV$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_TREND_PENINFO $]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_TREND_PENINFO_ONEPOINT$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_ALM_MASTER$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_FIELDMASTER_TAG $]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_FIELDMASTER_TAG_PV$]】【】【】【】【】【】【
-'[DB_LST_FIELDMASTER_TAG_SV$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_FIELDMASTER_TAG_PRT$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_LST_FACEPLATE_MASTER$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_FP_AI $]】【】【】【】【】【】【
-'[DB_FP_AI_AL4$]】【】【】【】【】【】【
-'[DB_FP_AI_Q$]】【】【】【】【】【】【
-'[DB_FP_AI_SV $]】【】【】【】【】【】【
-'[DB_FP_AI_SV2$]】【】【】【】【】【】【
-'[DB_FP_AI_SV3$]】【】【】【】【】【】【
-'[DB_FP_PID$]】【】【】【】【】【】【
-'[DB_FP_PR_B$]】【】【】【】【】【】【
-'[DB_FP_PVI_D$]】【】【】【】【】【】【
-'[DB_FP_SI$]】【】【】【】【】【】【
-'[DB_FP_SW_A$]】【】【】【】【】【】【
-'[DB_FP_SUM$]】【】【】【】【】【】【
-'】【】【】【】【】【】【
-'[DB_C $]】【】【】【】【】【】【
-
