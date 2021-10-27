@@ -1,5 +1,5 @@
 Option Explicit
-'common 20211024
+'common 20211028
 
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
@@ -454,7 +454,9 @@ For l = 1 To Len(sStr)
             Do Until Mid(sStr, ll, lLenR) = inptRight
                 sResult = sResult + Mid(sStr, ll, 1)
                 ll = ll + 1
-                If ll = 100 Then Stop
+                
+                If ll > Len(sResult) Then fSplitBetween = "": Call DebugOut("ERR", "fSplitBetween ll > Len(sResult) " & inptStr): Exit Function
+                If ll = 100 Then fSplitBetween = "": Exit Function
             Loop
         l = ll
         If lCnt = inptCol Then fSplitBetween = sResult: Exit Function
@@ -1081,8 +1083,11 @@ Range2String = sResult
 End Function
 
 
-Sub reload()
-    Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
+Sub calcFormula(Optional inptWsName As String = "")
+    Dim sWs As String
+    sWs = inptWsName
+    If sWs = "" Then sWs = ActiveSheet.Name
+    Sheets(inptWsName).Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
         :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
 End Sub
 
