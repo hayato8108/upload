@@ -1,5 +1,5 @@
 Option Explicit
-'common 20211028
+'common 20211101
 
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
@@ -11,9 +11,10 @@ oArr.Add "MUST"
 
 oArr.Add "ROOT"
 oArr.Add "SUB_ST"
-oArr.Add "GET_QUERY" 'from GetQueryOnSht
+'oArr.Add "GET_QUERY" 'from GetQueryOnSht
 oArr.Add "MARK"
 oArr.Add "UTIL"
+oArr.Add "MSG" 'external workbook
 oArr.Add "REM"
 'oArr.Add "RET_QUERY_SELECT"
 oArr.Add "SQL_ERR"
@@ -33,6 +34,19 @@ Next v
 
 End Sub
 
+Sub createNewWindow()
+     ActiveWindow.NewWindow
+End Sub
+
+
+Sub SetKeyBindByPGPRM()
+Dim v As Variant
+Dim s As String: s = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_SETKEYBIND", "LinkSht")
+Dim sD As String: sD = ","
+    For Each v In Split(s, sD)
+        Application.OnKey fSplit(v, 1, ":"), fSplit(v, 2, ":")
+    Next v
+End Sub
 
 'PRJ PARAM===============================================================
 'Sub LoadKeyBind()
@@ -112,40 +126,42 @@ End Function
 '
 'End Function
 
-'
-'Function fSetVal(inptKey As String, inptVal As String) As Boolean
-'Dim sWbName As String:  sWbName = ThisWorkbook.Name
-'Dim sWsName As String:  sWsName = "Params"
-'Dim sKey As String: sKey = inptKey
-'Dim sMatchRow As String
-'Dim sRslt As String
-'On Error Resume Next
-'
-'With Workbooks(sWbName).Worksheets(sWsName)
-'    Dim rRow As Range
-'    Set rRow = .Columns(1)
-'        If rRow Is Nothing Then fSetVal = False: Exit Function
-'        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
-'        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
-'
-'        If sMatchRow <> "" Then
-'            .Cells(sMatchRow, 2).Value = inptVal
-'        Else
-'            fSetVal = False: Exit Function
-'        End If
-'
-'    fSetVal = True
-'End With
-'
-'End Function
+Function fSetVal(inptKeyCol As String, inptKey As String, inptValCol As String, inptVal As String, inptWsName As String)
+Dim sWsName As String:  sWsName = inptWsName
+Dim sKeyCol As String: sKeyCol = inptKeyCol
+Dim sKey As String: sKey = inptKey
+Dim sValCol As String: sValCol = inptValCol
+Dim sVal As String: sVal = inptVal
+Dim sMatchRow As String
+Dim sRslt As String
+Dim rRow As Range
+On Error Resume Next
+
+With ThisWorkbook.Worksheets(sWsName)
+
+    Set rRow = .Columns(.Columns(sKeyCol).Column)
+        If rRow Is Nothing Then fSetVal = False: Call DebugOut("ERR", "fail fSetVal"): Exit Function
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+
+        If sMatchRow <> "" Then
+            .Cells(sMatchRow, .Columns(sValCol).Column).Value = inptVal
+        Else
+            fSetVal = False: Exit Function
+        End If
+
+    fSetVal = True
+End With
+
+End Function
 
 
-Function fKey2Val(inptLabel As String, inptKey As String, Optional inptsht As String = "LinkSht") As String
+Function fKey2Val(inptLabel As String, inptKey As String, Optional inptSht As String = "LinkSht") As String
 Dim sLabel As String: sLabel = inptLabel
 Dim sKey As String: sKey = inptKey
 Dim sData As Variant
 Dim sResult As Variant
-Dim sShtName As String: sShtName = inptsht
+Dim sShtName As String: sShtName = inptSht
 Dim rRng As Range: Set rRng = ThisWorkbook.Sheets(sShtName).Rows(1)
 Dim lIndex As Long
 Dim bMatch As Boolean
@@ -165,9 +181,9 @@ fKey2Val = sResult
 End Function
 
 
-Function fPref2firstMatch(inptPref As String, inptKey As String, inptMatch As Boolean, Optional inptsht = "LinkSht") As String
+Function fPref2firstMatch(inptPref As String, inptKey As String, inptMatch As Boolean, Optional inptSht = "LinkSht") As String
 'itelate LinkSht sheet and match then return value and exit function
-Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(inptsht)
+Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(inptSht)
 Dim l As Long
 Dim lEnd As Long
 Dim sPrf As String: sPrf = inptPref
@@ -444,6 +460,7 @@ Dim lLenL As Long: lLenL = Len(inptLeft)
 Dim lLenR As Long: lLenR = Len(inptRight)
 Dim lCnt As Long: lCnt = 0
 Dim sResult As String
+Dim lCntInner As Long: lCntInner = 0
 
 For l = 1 To Len(sStr)
     If Mid(sStr, l, lLenL) = inptLeft Then
@@ -451,17 +468,35 @@ For l = 1 To Len(sStr)
         lCnt = lCnt + 1
         ll = l
         sResult = ""
-            Do Until Mid(sStr, ll, lLenR) = inptRight
+            Do Until (Mid(sStr, ll, lLenR) = inptRight) And (lCntInner = 0)
                 sResult = sResult + Mid(sStr, ll, 1)
-                ll = ll + 1
-                
-                If ll > Len(sResult) Then fSplitBetween = "": Call DebugOut("ERR", "fSplitBetween ll > Len(sResult) " & inptStr): Exit Function
+                ll = ll + 1 ' add per one char
+                'check current
+                If lCntInner > 0 _
+                        And (Mid(sStr, ll - 1, lLenR) = inptRight _
+                        Or Mid(sStr, ll - 1, 1) = """" _
+                        Or Mid(sStr, ll - 1, 1) = "'") _
+                        Then
+                    lCntInner = lCntInner - 1
+                End If
+                'check next
+                If Mid(sStr, ll + 1, lLenL) = inptLeft _
+                        Or Mid(sStr, ll + 1, 1) = """" _
+                        Or Mid(sStr, ll + 1, 1) = "'" _
+                        Then
+                    lCntInner = lCntInner + 1
+                End If
+                'check error
+                If ll > Len(sStr) + lLenR Then
+                    fSplitBetween = "": Call DebugOut("ERR", "fSplitBetween : count or match was fail" & inptStr)
+                    Exit Function
+                End If
                 If ll = 100 Then fSplitBetween = "": Exit Function
-            Loop
+            Loop 'Do Until (Mid(sStr, ll, lLenR) = inptRight) And (lCntInner = 0)
         l = ll
         If lCnt = inptCol Then fSplitBetween = sResult: Exit Function
         End If
-Next l
+Next l 'l = 1 To Len(sStr)
 
 End Function
 
@@ -782,6 +817,15 @@ Function fReplace(ByVal inptStr As String, ByVal inptSearch As String, ByVal inp
     fReplace = Replace(inptStr, inptSearch, inptReplace)
 End Function
 
+Function fReplaces(ByVal inptStr As String, ByVal inptReplace As String, Optional inptDelimiter As String = ",") As String ' SRC1:RPL1, SRC2:RPL2
+Dim v As Variant
+Dim s As String: s = inptStr
+Dim sD As String: sD = inptDelimiter
+    For Each v In Split(inptReplace, sD)
+        s = Replace(s, fSplit(v, 1, ":"), fSplit(v, 2, ":"))
+    Next v
+fReplaces = s
+End Function
 
 Function fReplaceRegx(ByVal inptStr As String, ByVal inptPattern As String, ByVal inptReplace As String, Optional inptGlobal As Boolean = False) As String
 
@@ -873,55 +917,6 @@ Public Function fIIf(inptExp As Boolean, inptT As String, inptF As String)
 End Function
 
 
-
-Private Sub fMerge()
-    With Selection
-    .Merge
-    .HorizontalAlignment = xlCenter
-    .VerticalAlignment = xlCenter
-    End With
-End Sub
-
-
-Private Sub fUMerge()
-    With Selection
-        .UnMerge
-        With .Interior
-            .Pattern = xlNone
-            .TintAndShade = 0
-            .PatternTintAndShade = 0
-        End With
-    End With
-End Sub
-
-
-Private Sub fInsertV()
-    Selection.Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
-End Sub
-
-
-Private Sub fDeleteV()
-    Selection.Delete Shift:=xlToLeft
-End Sub
-
-Private Sub fInsertH()
-    Selection.Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
-End Sub
-
-
-Private Sub fDeleteH()
-    Selection.Delete Shift:=xlUp
-End Sub
-
-Private Sub fCalc()
-    ActiveSheet.Calculate
-End Sub
-
-Sub copyPasteAsVal()
-Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
-'Selection.NumberFormatLocal = "@"
-End Sub
-
 Function Clipboard(Optional StoreText As String) As String
 'PURPOSE: Read/Write to Clipboard
 'Source: ExcelHero.com (Daniel Ferry)
@@ -948,6 +943,30 @@ Dim x As Variant
 End Function
 
 
+Sub ★BKM_WSFUNC(): End Sub
+
+Sub DownloadWsListByPGPRM()
+Dim sOutShtName As String: sOutShtName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLWSLST_OUTSHT", "LinkSht")
+Dim vCnt As Long
+Dim lHdr As Long: lHdr = retHeaderCol(sOutShtName, fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLWSLST_OUTHDR", "LinkSht"))
+Dim s As Worksheet
+
+If lHdr = 0 Then: Call DebugOut("ERR", "haedr missing"): Exit Sub
+Call SelectOrAddWs(sOutShtName, ThisWorkbook.Name)
+
+With ThisWorkbook.Sheets(sOutShtName)
+.Range(Cells(2, lHdr), Cells(.Rows.Count, lHdr)).Clear
+.Cells(2, lHdr).Activate
+    For Each s In ThisWorkbook.Worksheets
+        ActiveCell.Value = s.Name
+        ActiveCell.Offset(1, 0).Activate
+    Next s
+End With
+
+End Sub
+
+
+
 Sub FillFormula(inptRng As Range, inptFormula As String)
     Dim rRng As Range: Set rRng = inptRng
         
@@ -966,6 +985,9 @@ Sub SelectOrAddWs(inptShtName As String, inptWb As String)
 Dim sSht As String: sSht = inptShtName
 Dim sWb As String: sWb = inptWb
 Dim s As Worksheet
+
+If sSht = "" Then Call DebugOut("ERR", "sheet name is empty : SelectOrAddWs"): Exit Sub
+If Not sWb = ThisWorkbook.Name Then Call DebugOut("MSG", "External Workbook : SelectOrAddWs")
 
 For Each s In Workbooks(sWb).Sheets
     If s.Name = sSht Then
@@ -1019,11 +1041,29 @@ Dim s As Worksheet
 Application.DisplayAlerts = False
 For Each s In Workbooks(sWb).Sheets
     If UCase(Left(s.Name, 3)) = "TMP" Then
+        Call DebugOut("UTIL", "DeleteTmpTable : " & s.Name)
         Workbooks(sWb).Sheets(s.Name).Delete
     End If
 Next s
 Application.DisplayAlerts = True
 
+End Sub
+
+Sub DeleteShtByPGPRM()
+Application.ScreenUpdating = False
+Dim s As Worksheet
+Dim sName As String
+Dim v As Variant
+Dim sLSht As String: sLSht = "LinkSht"
+Dim vShts As Variant: vShts = Split(fKey2Val("PGPRM_WSFUNC_ROOT", _
+                                                                        "PGPRM_DELSHT", _
+                                                                        sLSht), ",")
+For Each v In vShts
+    Call DeleteTableByPrefix(CStr(v))
+Next v
+
+ThisWorkbook.Sheets(sLSht).Activate
+Application.ScreenUpdating = True
 End Sub
 
 
@@ -1033,6 +1073,7 @@ Dim s As Worksheet
 Application.DisplayAlerts = False
 For Each s In Workbooks(sWb).Sheets
     If UCase(Left(s.Name, Len(inptPrefix))) = UCase(inptPrefix) Then
+        Call DebugOut("UTIL", "DeleteTableByPrefix : " & s.Name)
         Workbooks(sWb).Sheets(s.Name).Delete
     End If
 Next s
@@ -1090,5 +1131,249 @@ Sub calcFormula(Optional inptWsName As String = "")
     Sheets(inptWsName).Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
         :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
 End Sub
+
+
+Function retThisWbName() As String
+    retThisWbName = ThisWorkbook.Name
+End Function
+
+
+Sub ★BKM_DOCUMENT(): End Sub
+
+
+Private Sub fMerge()
+    With Selection
+    .Merge
+    .HorizontalAlignment = xlCenter
+    .VerticalAlignment = xlCenter
+    End With
+End Sub
+
+
+Private Sub fUMerge()
+    With Selection
+        .UnMerge
+        With .Interior
+            .Pattern = xlNone
+            .TintAndShade = 0
+            .PatternTintAndShade = 0
+        End With
+    End With
+End Sub
+
+
+Private Sub fInsertV()
+    Selection.Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
+End Sub
+
+
+Private Sub fDeleteV()
+    Selection.Delete Shift:=xlToLeft
+End Sub
+
+Private Sub fInsertH()
+    Selection.Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+End Sub
+
+
+Private Sub fDeleteH()
+    Selection.Delete Shift:=xlUp
+End Sub
+
+Private Sub fCalc()
+    ActiveSheet.Calculate
+End Sub
+
+Sub copyPasteAsVal()
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+'Selection.NumberFormatLocal = "@"
+End Sub
+
+
+Sub insertPict()
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+Dim vPctName As String
+Dim vPctPath As String
+Dim vPathPict As String
+Dim vCnt As Long
+Dim sGrpRngName As String: sGrpRngName = "PCT_GRP"
+Dim sGrpRngRange As String: sGrpRngRange = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_GRPRNG_RANGE", "LinkSht")
+Dim lGrpSpnRangeCnt As Long: lGrpSpnRangeCnt = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_SPNRNG_ROWCNT", "LinkSht")
+Dim oWs As Worksheet: Set oWs = ThisWorkbook.Sheets(fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_OUTSHT", "LinkSht"))
+Dim oShape As Shape
+Dim vPictFiles As FileDialog: Set vPictFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectedPict As FileDialogSelectedItems
+
+With vPictFiles
+    .Filters.Clear
+    .Filters.Add "pictureFile", "*.*", 1
+    .Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_PATH_DIR", "LinkSht")
+    .Show
+End With
+
+On Error Resume Next
+
+Call SelectOrAddWs(oWs.Name, ThisWorkbook.Name)
+If Not vPictFiles.SelectedItems.Count = 1 Then
+    'Call clearShps
+End If
+
+For vCnt = 1 To vPictFiles.SelectedItems.Count ' 1 base array
+    With oWs
+         .Range(sGrpRngRange).Merge
+         .Names.Add Name:=sGrpRngName, RefersTo:=.Range(sGrpRngRange)
+         .Shapes.AddPicture(Filename:=vPictFiles.SelectedItems(vCnt), linktofile:=False, savewithdocument:=msoCTrue, Top:=100, Left:=100, Width:=-1, Height:=-1).Select
+        Set oShape = Selection.ShapeRange.Item(1)
+        oShape.LockAspectRatio = msoTrue
+        oShape.Top = CDbl(.Range(sGrpRngName).Top) + (vCnt - 1) * CDbl(.Range(sGrpRngName).Top + .Range(sGrpRngName).Height + .Rows(1).Height * lGrpSpnRangeCnt)
+        oShape.Left = CDbl(.Range(sGrpRngName).Left) 'always fix
+        oShape.Width = .Range(sGrpRngName).Width
+       If oShape.Height > .Range(sGrpRngName).Height Then
+            oShape.Height = .Range(sGrpRngName).Height
+       End If
+     End With
+Next vCnt
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+
+End Sub
+
+
+Function retHeaderCol(inptSht As String, inptKey As String) As Long
+Dim sWbName As String:  sWbName = ThisWorkbook.Name
+Dim sWsName As String:  sWsName = inptSht
+Dim sKey As String: sKey = inptKey
+Dim sMatchRow As String
+Dim sRslt As String
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsName)
+    Dim rRow As Range
+    Set rRow = .Rows(1)
+    If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+        If sMatchRow <> "" Then
+                sRslt = sMatchRow
+            Else
+                sRslt = 0
+        End If
+End With
+
+retHeaderCol = CLng(sRslt)
+
+End Function
+
+
+Sub DownloadFileListByPGPRM()
+Dim sOutShtName As String: sOutShtName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLFILELST_OUTSHT", "LinkSht")
+Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectFiles As FileDialogSelectedItems
+Dim vCnt As Long
+Dim lHdr As Long: lHdr = retHeaderCol(sOutShtName, fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLFILELST_OUTHDR", "LinkSht"))
+If lHdr = 0 Then: Call DebugOut("ERR", "haedr missing"): Exit Sub
+
+With vFiles
+    .Filters.Clear
+'    .Filters.Add "pictureFile", "*.*", 1
+    .Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    '.InitialFileName = path
+    .Show
+End With
+
+On Error Resume Next
+
+With ThisWorkbook.Sheets(sOutShtName)
+    Call SelectOrAddWs(.Name, ThisWorkbook.Name)
+    .Range(Cells(2, lHdr), Cells(.Rows.Count, lHdr)).Clear
+    .Cells(2, lHdr).Activate
+    For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
+        ActiveCell.Value = Dir(vFiles.SelectedItems(vCnt))
+        ActiveCell.Offset(1, 0).Activate
+    Next vCnt
+'    .Columns.AutoFit
+End With
+
+End Sub
+
+
+'==============================================================
+'J
+'
+'】【】【】【】【】【】【OUT_FILE】【OUT_WS】【REN_FILE】【
+'】【】【】【】【】【】【pict1.jpg】【LinkSht】【】【
+'】【】【】【】【】【】【pict2.jpg】【LinkShtDB】【】【
+'PGPRM_WSFUNC_ROOT】【DFR3_DB_211014.xlsm】【LinkSht】【B】【C】【】【pict3.jpg】【LinkShtSQL】【】【
+'*】【[ KEY ]】【[ PRM ]】【】【】【】【】【PRE_PLC_ANLG】【】【
+'*】【】【】【】【】【】【】【DB_PLC00_AEC_M】【】【
+'*】【PGPRM_SORTSHT】【LinkSht,LinkShtDB,LinkShtSQL,LinkShtClt,DIFF,PRE,DB】【】【】【】【】【DB_PLC03_X】【】【
+'*】【】【LinkSht】【】【】【】【】【DB_PLC03_Y】【】【
+'*】【】【LinkShtDB】【】【】【】【】【DB_PLC03_M】【】【
+'*】【】【LinkShtSQL】【】【】【】【】【DB_PLC03_R】【】【
+'*】【】【LinkShtClt】【】【】【】【】【DB_PLC00_X】【】【
+'*】【】【DIFF】【】【】【】【】【DB_PLC00_Y】【】【
+'*】【】【PRE】【】【】【】【】【DB_PLC00_M】【】【
+'*】【】【DB】【】【】【】【】【DB_PLC00_R】【】【
+'*】【】【】【】【】【】【】【DB_PLC03_AEC_R】【】【
+'*】【】【】【】【】【】【】【DB_PLC03_AEC_M】【】【
+'*】【】【】【】【】【】【】【DB_PLC00_AEC_R】【】【
+'*】【PGPRM_SHTHDN_BOOL】【1】【】【】【】【】【DB_LST_TREND_PENINFO_ONEPOINT】【】【
+'*】【PGPRM_SHTHDN_SHT】【DB,PRE,DIFF】【】【】【】【】【DB_LST_TREND_PENINFO 】【】【
+'*】【】【DB】【】【】【】【】【DB_LST_SERVER_CSV】【】【
+'*】【】【PRE】【】【】【】【】【DB_LST_FIELDMASTER_TAG_SV】【】【
+'*】【】【DIFF】【】【】【】【】【DB_LST_FIELDMASTER_TAG_PV】【】【
+'*】【】【】【】【】【】【】【DB_LST_FIELDMASTER_TAG_PRT】【】【
+'*】【】【】【】【】【】【】【DB_LST_FIELDMASTER_TAG 】【】【
+'*】【】【】【】【】【】【】【DB_LST_FACEPLATE_MASTER】【】【
+'*】【】【】【】【】【】【】【DB_LST_C 】【】【
+'*】【】【】【】【】【】【】【DB_CCL03_W】【】【
+'*】【PGPRM_PCT_OUTSHT】【Sheet2】【】【】【】【】【DB_LST_ALM_MASTER】【】【
+'*】【PGPRM_PCT_PATH_DIR】【"C:\Users\Owner\Documents\workspace\tmpPict\*.*"】【】【】【】【】【DB_LST_ALIAS】【】【
+'*】【PGPRM_PCT_GRPRNG_RANGE】【B2:E20】【】【】【】【】【DB_FP_SUM】【】【
+'*】【PGPRM_PCT_SPNRNG_ROWCNT】【20】【】【】【】【】【DB_FP_PID】【】【
+'*】【】【】【】【】【】【】【DB_FP_AI_SV3】【】【
+'*】【】【】【】【】【】【】【DB_FP_AI_SV2】【】【
+'*】【】【】【】【】【】【】【DB_FP_AI_SV 】【】【
+'*】【PGPRM_DLFILELST_OUTSHT】【LinkSht】【】【】【】【】【DB_FP_AI_Q】【】【
+'】【PGPRM_DLFILELST_OUTHDR】【OUT_FILE】【】【】【】【】【DB_FP_AI_AL4】【】【
+'】【】【】【】【】【】【】【DB_FP_AI 】【】【
+'】【】【YET!!!!】【】【】【】【】【DB_CCL03_B】【】【
+'】【HEADER】【】【】【】【】【】【DB_PLC03_AEC_W】【】【
+'】【//PGPRM_UDFILENAME_WORKSHT】【Sheet3】【】【】【】【】【DB_PLC03_AEC_B】【】【
+'】【】【】【】【】【】【】【DB_PLC03_TYOUGOU_R】【】【
+'DownloadWsListByPGPRM】【】【】【】【】【】【】【DB_PLC03_HIRANO_SV_W】【】【
+'】【PGPRM_DLWSLST_OUTSHT】【LinkSht】【】【】【】【】【DB_PLC03_HIRANO_PV_W】【】【
+'】【PGPRM_DLWSLST_OUTHDR】【OUT_WS】【】【】【】【】【DB_PLC03_HIRANO_DO_B】【】【
+'】【】【】【】【】【】【】【DB_PLC03_HIRANO_ALM_W】【】【
+'】【】【】【】【】【】【】【DB_PLC03_HIRANO_DI_B】【】【
+'】【】【】【】【】【】【】【DB_PLC03_AEC_Y】【】【
+'】【】【】【】【】【】【】【DB_PLC03_AEC_X】【】【
+'】【】【】【】【】【】【】【DB_PLC00_AEC_Y】【】【
+'】【PGPRM_SETKEYBIND】【^n:createNewWindow】【[ KEY ]】【[ FUNC ]】【】【】【DB_PLC00_AEC_X】【】【
+'】【】【^n:createNewWindow】【^n】【createNewWindow】【】【】【DB_PLC03_KONDO_K2A_W】【】【
+'】【】【】【】【】【】【】【DB_PLC03_KONDO_A2K_B】【】【
+'】【】【】【】【】【】【】【DB_PLC03_KONDO_K2A_B】【】【
+'】【】【】【】【】【】【】【DB_PLC00_OP_Y】【】【
+'】【】【】【】【】【】【】【DB_PLC00_OP_X】【】【
+'】【】【】【】【】【】【】【DB_PLC00_AEC_ANALOG】【】【
+'DeleteShtByPGPRM】【】【】【】【】【】【】【DB_PLC03_AEC_ANALOG】【】【
+'】【PGPRM_DELSHT】【DB】【】【】【】【】【PRE_BITDEV】【】【
+'】【】【】【】【】【】【】【DIFF_PLC03_KONDO_K2A_B】【】【
+'】【】【】【】【】【】【】【LinkShtClt】【】【
+'】【】【】【】【】【】【】【TEST_OUTER】【】【
+'】【】【】【】【】【】【】【TEST_OUTER2】【】【
+'】【WINMERGE】【】【】【】【】【】【TEST_SUB】【】【
+'】【】【】【】【】【】【】【TEST_SHT】【】【
+'】【】【】【】【】【】【】【TEST_MAIN】【】【
+'】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【
+
+
 
 
