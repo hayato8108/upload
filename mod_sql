@@ -1,15 +1,13 @@
 Option Explicit
-'SQL 20211028
+'SQL 20211101
 
 Sub CreateDFR3DBTable()
 Dim oWb As Workbook: Set oWb = ThisWorkbook
 Application.ScreenUpdating = False
-Call ChangeShtVisible(True, "PRE,DIFF,DB,PRG")
+Call ShtHdn(True, "PRE,DIFF,DB,PRG")
 
 Debug.Print ""
 Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
-Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
-
 
 ''Call JoinLogCsv("F1,F2,F3")
 ''Call GetQueryResultsOnSht("SELECT " & sSelect & " FROM [TMP_LOG_CSV1$]" _
@@ -18,9 +16,12 @@ Call DebugOut("REM", "blank cell in pre_fp_table in pv_max trend_max")
 
 
 Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
-Call JointPreAnalogTable(Array("DB_PLC00_ANALOG", "DB_PLC03_ANALOG"))
+Call JointPreAnalogTable(Array("DB_PLC00_AEC_ANALOG", "DB_PLC03_AEC_ANALOG"))
+Exit Sub
+
+
 Call updatePreAnalogTable
-Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID", "DB_FP_SUM"))
+'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID", "DB_FP_SUM"))
 
 Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
 Call CheckServerComment
@@ -36,7 +37,7 @@ Call SortSht("DB,PRG,PRE,DIFF")
 Call DebugOut("ROOT", "PROC END >>>" & Now())
 Debug.Print WorksheetFunction.Rept(vbNewLine, 2)
 
-'Call ChangeShtVisible(False, "PRE,DB,PRG")
+'Call ShtHdn(False, "PRE,DB,PRG")
 Application.ScreenUpdating = True
 End Sub
 
@@ -52,7 +53,7 @@ Dim sShtSqlLink As String: sShtSqlLink = "LinkShtSQL"
 Dim v As Variant
 Dim vv As Variant
 Dim sShts As Variant
-Dim sQueryCondition As String
+Dim sQueryFilter As String
 
 sShts = Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "PGPRM_BSQL_EXE_CREATESHT", sShtSqlLink), ",")
 
@@ -61,15 +62,16 @@ For Each v In sShts
     sShtName = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
     sShtName = fSplitBetweenAlter(sShtName, 2, "[", "$]")
     sShtTmpName = "TMP_" & sShtName
-    sQueryCondition = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_CONDITION", sShtSqlLink): If sQueryCondition = "#N/A#" Then sQueryCondition = ""
-    
-    Call GetQueryResultsOnSht(GetSqlQueryByLinkShtSQL(CStr(v)), RetCDirWbPath(), sShtTmpName)
-    Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryCondition, RetCDirWbPath(), sShtName)
+    sQueryFilter = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink): If sQueryFilter = "#N/A#" Then sQueryFilter = ""
 
+    'create temp sheet
+    Call GetQueryResultsOnSht(GetSqlQueryByLinkShtSQL(CStr(v)), RetCDirWbPath(), sShtTmpName)
+    'condition
+    Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryFilter, RetCDirWbPath(), sShtName)
+    'refresh and paste formula column
     For Each vv In Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_TSTOUT2_FORMULACOL", sShtSqlLink), ",")
         If Not retHeaderCol(sShtName, CStr(vv)) = 0 Then Sheets(sShtName).Columns(retHeaderCol(sShtName, CStr(vv))).NumberFormat = "General"
     Next vv
-
     Call calcFormula(sShtName)
     ThisWorkbook.Sheets(sShtName).Cells.Copy
     ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
@@ -78,6 +80,8 @@ For Each v In sShts
 Next v
 
 If fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink) = "T" Then Call DeleteTableByPrefix("TMP_")
+If fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_SORTSHT", sShtSqlLink) = "T" Then Call SortShtByPGPRM
+ThisWorkbook.Sheets(sShtSqlLink).Activate
 Application.ScreenUpdating = True
 End Sub
 
@@ -94,11 +98,11 @@ Dim vJoin As Variant
 Dim sResult As String
 Dim sQuerySelect As String: sQuerySelect = ""
 Dim sQueryFrom As String: sQueryFrom = ""
+Dim sQueryCondition As String: sQueryCondition = ""
 Dim sQueryUnion As String: sQueryUnion = ""
 Dim sQueryJoin As String: sQueryJoin = ""
 Dim sQueryFree As String: sQueryFree = ""
 Dim sSqlJoinQuery As String: sSqlJoinQuery = ""
-
 Dim bCloseUnion As Boolean
 Dim bCloseJoin As Boolean
 
@@ -107,15 +111,16 @@ ReDim vJoin(CLng(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_JOINTMAX", sWsSql
 
 sQuerySelect = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
 sQueryFrom = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
+sQueryCondition = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Then sQueryCondition = ""
 sQueryJoin = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
 sQueryFree = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
 
 For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, "AS"), " ", "")
+    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
     v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_KEY", sWsSql)
-    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, "AS"), " ", "")
+    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
     v(5) = sQuerySelect
-    If v(0) = "#N/A#" Or v(0) = "" Then Exit For
+    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
         vJoin(l) = _
                         "INNER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
@@ -124,11 +129,11 @@ For l = 1 To UBound(vJoin)
 Next l
 
 For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FULLJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, "AS"), " ", "")
+    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FULLJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
     v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FULLJOIN-" & CStr(l) & "_KEY", sWsSql)
-    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, "AS"), " ", "")
+    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
     v(5) = sQuerySelect
-    If v(0) = "#N/A#" Or v(0) = "" Then Exit For
+    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
         vJoin(l) = _
                         "LEFT OUTER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
@@ -144,34 +149,36 @@ For l = 1 To UBound(vJoin)
                         ""
 Next l
 
-
 For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, "AS"), " ", "")
+    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
     v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN-" & l & "_KEY", sWsSql)
-    If v(0) = "#N/A#" Or v(0) = "" Then Exit For
+    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
     Call DebugOut("ERR", "not use, outer join")
 '        vJoin(l) = _
 '                        "LEFT OUTER JOIN " & vbLf & _
 '                        "    " & v(0) & vbLf & _
 '                        "                ON " & _
-'                                 fReplace(fSplit(sQueryFrom, 2, "AS"), " ", "") & "." & v(2) & _
+'                                 fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "") & "." & v(2) & _
 '                        " = " & _
 '                                 v(1) & "." & v(2) & _
 '                        ""
 Next l
 
+'UNION ALL SELECT
 For l = 1 To UBound(vJoin)
     v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
     v(1) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
-    If v(0) = "#N/A#" Or v(0) = "" Then Exit For
-        
-        Call checkHeader(CStr(v(0)), CStr(v(1)))
-    
+    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
+    v(3) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    If v(0) = "#N/A#" Or v(0) = "" Or v(1) = "#N/A#" Or v(1) = "" Or v(3) = "//" Then Exit For
+
+        Call checkSqlHeader(CStr(v(0)), CStr(v(1)))
         vJoin(l) = vJoin(l) & vbLf & _
                         " UNION ALL SELECT " & vbLf & _
                         "    " & v(0) & vbLf & _
                         " FROM " & vbLf & _
                         "    " & v(1) & _
+                        "    " & v(2) & _
                         ""
 Next l
 
@@ -182,111 +189,79 @@ sResult = _
                 "        " & sQuerySelect & vbLf & _
                 " FROM " & vbLf & _
                 "        " & sQueryFrom & vbLf & _
+                "        " & sQueryCondition & vbLf & _
                 sQueryJoin & _
                 sQueryFree & _
                 sSqlJoinQuery & vbLf & _
                 ""
-                
-                
-'sResult = _
-" SELECT " & _
-"    [MAIN].[COL1] , [MAIN].[COL2], '_' " & _
-" FROM " & _
-"    [TEST_SHT$] AS [MAIN] " & _
-" UNION ALL (SELECT " & _
-"    [COL1] & ' ' & [COL2] AS [COL1], 'UNION1','' " & _
-" FROM " & _
-"    [TEST_MAIN$] AS TESTMAIN " & _
-" LEFT OUTER JOIN " & _
-"    [TEST_OUTER$] AS [OUTER] " & _
-" ON [OUTER].[COL1] = [MAIN].[COL1] )" & _
-""
-
-'SELECT FROM [MAIN$] AS MAIN _
- INNNER JOIN (SELECT FROM) AS SUB _
- ON SUB.[KEY] = MAIN.[KEY]
-
-'sResult = _
-" (SELECT " & _
-"    [MAIN].[COL1] , [MAIN].[COL2], [OUTER].[COL3] " & _
-" FROM " & _
-"    [TEST_SHT$] AS [MAIN] " & _
-" INNER JOIN " & _
-"   (SELECT [COL1],[COL3] FROM [TEST_OUTER$] )  AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1] )" & _
-" UNION ALL " & _
-" (SELECT " & _
-"    [MAIN].[COL1] , [MAIN].[COL2], [OUTER].[COL3] " & _
-" FROM " & _
-"    [TEST_SHT$] AS [MAIN] " & _
-" INNER JOIN " & _
-"(SELECT [COL1],[COL3] FROM [TEST_OUTER$] )  AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1] )" & _
-""
-
+            
 If sQuerySelect = "" Or sQueryFrom = "" Then Call DebugOut("ERR", "error, empty select or from"): sResult = ""
 
 GetSqlQueryByLinkShtSQL = sResult
 
 End Function
 
+'
+'
+'Sub JointPreFPTable(inptShts As Variant)
+'Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+'Dim sWsName As String
+'Dim sSqlQuery As String
+'Dim vWb As Variant
+'Dim v As Variant
+'vWb = inptShts
+'
+'sWsName = "TMP_FP_TABLE"
+'For Each v In vWb
+'Stop
+'    Call CreatePreFPTable("[" & CStr(v) & "$]", "TMP_PRE_" & CStr(v))
+'Next v
+'
+'sSqlQuery = ""
+'For Each v In vWb
+'Stop
+'    sSqlQuery = sSqlQuery & _
+'    RetQuerySelectFrom(" * ", "[" & "TMP_PRE_" & CStr(v) & "$]") & _
+'    "UNION ALL " & _
+'    ""
+'Next v
+'
+'sSqlQuery = Left(sSqlQuery, Len(sSqlQuery) - 10)
+'Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'sSqlQuery = RetQuerySelectFrom("*", "[" & sWsName & "$]") & _
+'                    "WHERE [ALIAS_BASE] IS NOT NULL"
+'
+'sWsName = "PRE_FP_TABLE"
+'Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'End Sub
 
-
-Sub JointPreFPTable(inptShts As Variant)
-Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-Dim sWsName As String
-Dim sSqlQuery As String
-Dim vWb As Variant
-Dim v As Variant
-vWb = inptShts
-
-sWsName = "TMP_FP_TABLE"
-For Each v In vWb
-    Call CreatePreFPTable("[" & CStr(v) & "$]", "TMP_PRE_" & CStr(v))
-Next v
-
-sSqlQuery = ""
-For Each v In vWb
-    sSqlQuery = sSqlQuery & _
-    RetQuerySelectFrom(" * ", "[" & "TMP_PRE_" & CStr(v) & "$]") & _
-    "UNION ALL " & _
-    ""
-Next v
-
-sSqlQuery = Left(sSqlQuery, Len(sSqlQuery) - 10)
-Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-sSqlQuery = RetQuerySelectFrom("*", "[" & sWsName & "$]") & _
-                    "WHERE [ALIAS_BASE] IS NOT NULL"
-
-sWsName = "PRE_FP_TABLE"
-Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-End Sub
-
-
-Function CreatePreFPTable(inptShtName As String, inptOutSht As String) As String
-Call DebugOut("SUB_ST", "CreatePreFPTable")
-Dim sSqlQuery As String
-Dim sWbName As String
-Dim sWsName As String
-Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
-Dim sOutSht As String: sOutSht = inptOutSht
-Dim sShtObjName As String: sShtObjName = inptShtName
-Dim sSelect As String
-
-    sSelect = " [FP_TYPE],[ALIAS_BASE]" & _
-                ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
-                ", [PV_MAX], [PV_MIN]" & _
-                ", [SV_MAX], [SV_MIN]" & _
-                ", [TREND_MAX], [TREND_MIN]" & _
-                ", [UNITS], [DECIMAL]" & _
-                ",[RESET]" & _
-                ""
-    sWbName = RetCDirWbPath
-    sWsName = sOutSht
-    sSqlQuery = RetQuerySelectFrom(sSelect, sShtObjName)
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-End Function
+'
+'Function CreatePreFPTable(inptShtName As String, inptOutSht As String) As String
+'Call DebugOut("SUB_ST", "CreatePreFPTable")
+'Dim sSqlQuery As String
+'Dim sWbName As String
+'Dim sWsName As String
+'Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
+'Dim sOutSht As String: sOutSht = inptOutSht
+'Dim sShtObjName As String: sShtObjName = inptShtName
+'Dim sSelect As String
+'
+'    sSelect = " [FP_TYPE],[ALIAS_BASE]" & _
+'                ",[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT]" & _
+'                ", [PV_MAX], [PV_MIN]" & _
+'                ", [SV_MAX], [SV_MIN]" & _
+'                ", [TREND_MAX], [TREND_MIN]" & _
+'                ", [UNITS], [DECIMAL]" & _
+'                ",[RESET]" & _
+'                ""
+'    sWbName = RetCDirWbPath
+'    sWsName = sOutSht
+'    sSqlQuery = RetQuerySelectFrom(sSelect, sShtObjName)
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'End Function
 
 
 Sub CheckAnalog2ServerPrm()
@@ -453,13 +428,13 @@ Dim v As Variant
 vWb = inptShts
 
 For Each v In vWb
-    Call CreatePreAnalogTable("[" & CStr(v) & "$]", "TMP_PRE_ANLG_" & CStr(v))
+    Call CreatePreAnalogTable("[" & CStr(v) & "$]", "TMP_PRE_" & CStr(v))
 Next v
 
 sSqlQuery = ""
 For Each v In vWb
     sSqlQuery = sSqlQuery & _
-    RetQuerySelectFrom(" * ", "[" & "TMP_PRE_ANLG_" & CStr(v) & "$] AS ANLG") & _
+    RetQuerySelectFrom(" * ", "[" & "TMP_PRE_" & CStr(v) & "$] AS ANLG") & _
     "UNION ALL " & _
     ""
 Next v
@@ -469,383 +444,386 @@ sWsName = "PRE_ANALOG_TABLE"
 Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
 
 End Sub
+'
+'
+'Function CreatePreAnalogTable(inptShtName As String, inptOutSht As String) As String
+'Dim sSqlQuery As String
+'Dim sWbPath As String
+'Dim sWbName As String
+'Dim sWsName As String
+'Dim sWbDBPath As String
+'
+'Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
+'Dim sOutSht As String: sOutSht = inptOutSht
+'Dim sShtObjName As String: sShtObjName = inptShtName
+'Dim sField As String
+'Dim sType As String
+'
+'sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+'
+'    sField = "[PV_DEVICE]"
+'    sType = "PV"
+'    sSqlQuery = _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[SV_DEVICE]"
+'    sType = "SV"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MV_DEVICE]"
+'    sType = "MV"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[SH_DEVICE]"
+'    sType = "SH"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[SL_DEVICE]"
+'    sType = "SL"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MV1_DEVICE]"
+'    sType = "MV1"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MV2_DEVICE]"
+'    sType = "MV2"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[DB_DEVICE]"
+'    sType = "DB"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MH_DEVICE]"
+'    sType = "MH"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[ML_DEVICE]"
+'    sType = "ML"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+''    'ALARM DEV
+'    sField = "[HH_DEVICE]"
+'    sType = "HH"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[H_DEVICE]"
+'    sType = "H"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[L_DEVICE]"
+'    sType = "L"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[LL_DEVICE]"
+'    sType = "LL"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    'HYS
+'    sField = "[HYS_DEVICE]"
+'    sType = "HYS"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[CAL_DEVICE]"
+'    sType = "CAL"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[CAL_M_DEVICE]"
+'    sType = "CAL_M"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[RAW_DEVICE]"
+'    sType = "RAW"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'      'PID
+'    sField = "[P_DEVICE]"
+'    sType = "P"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[I_DEVICE]"
+'    sType = "I"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[D_DEVICE]"
+'    sType = "D"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MODE_DEVICE]"
+'    sType = "MODE"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sWsName = "TMP_PRE_ANALOG_R"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'    Stop
+'
+'    sSqlQuery = ""
+'
+' 'PLC ALARM DEV
+'    sField = "[PLC_HH_DEVICE]"
+'    sType = "PLC_HH"
+'    sSqlQuery = sSqlQuery & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_H_DEVICE]"
+'    sType = "PLC_H"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_L_DEVICE]"
+'    sType = "PLC_L"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_LL_DEVICE]"
+'    sType = "PLC_LL"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_CAL_M_DEVICE]"
+'    sType = "PLC_CAL_M"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'   'SCADA ALARM DEV
+'    sField = "[AL_HH_DEVICE]"
+'    sType = "AL_HH"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_H_DEVICE]"
+'    sType = "AL_H"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_L_DEVICE]"
+'    sType = "AL_L"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_LL_DEVICE]"
+'    sType = "AL_LL"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_CAL_M_DEVICE]"
+'    sType = "AL_CAL_M"
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sWsName = "TMP_PRE_ANALOG_M"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'    sSqlQuery = ""
+'
+'    sSqlQuery = sSqlQuery & _
+'                          RetQuerySelectFrom("*", "[TMP_PRE_ANALOG_R$]") & _
+'                    "UNION ALL " & _
+'                          RetQuerySelectFrom("*", "[TMP_PRE_ANALOG_M$]") & _
+'                    ""
+'
+'    sWsName = sOutSht
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'End Function
 
-
-Function CreatePreAnalogTable(inptShtName As String, inptOutSht As String) As String
-Dim sSqlQuery As String
-Dim sWbPath As String
-Dim sWbName As String
-Dim sWsName As String
-Dim sWbDBPath As String
-
-Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
-Dim sOutSht As String: sOutSht = inptOutSht
-Dim sShtObjName As String: sShtObjName = inptShtName
-Dim sField As String
-Dim sType As String
-
-sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-
-    sField = "[PV_DEVICE]"
-    sType = "PV"
-    sSqlQuery = _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[SV_DEVICE]"
-    sType = "SV"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MV_DEVICE]"
-    sType = "MV"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[SH_DEVICE]"
-    sType = "SH"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[SL_DEVICE]"
-    sType = "SL"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MV1_DEVICE]"
-    sType = "MV1"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MV2_DEVICE]"
-    sType = "MV2"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[DB_DEVICE]"
-    sType = "DB"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MH_DEVICE]"
-    sType = "MH"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[ML_DEVICE]"
-    sType = "ML"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-'    'ALARM DEV
-    sField = "[HH_DEVICE]"
-    sType = "HH"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[H_DEVICE]"
-    sType = "H"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[L_DEVICE]"
-    sType = "L"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[LL_DEVICE]"
-    sType = "LL"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    'HYS
-    sField = "[HYS_DEVICE]"
-    sType = "HYS"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[CAL_DEVICE]"
-    sType = "CAL"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[CAL_M_DEVICE]"
-    sType = "CAL_M"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[RAW_DEVICE]"
-    sType = "RAW"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-      'PID
-    sField = "[P_DEVICE]"
-    sType = "P"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[I_DEVICE]"
-    sType = "I"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[D_DEVICE]"
-    sType = "D"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MODE_DEVICE]"
-    sType = "MODE"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "R", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sWsName = "TMP_PRE_ANALOG_R"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-    sSqlQuery = ""
-
- 'PLC ALARM DEV
-    sField = "[PLC_HH_DEVICE]"
-    sType = "PLC_HH"
-    sSqlQuery = sSqlQuery & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_H_DEVICE]"
-    sType = "PLC_H"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_L_DEVICE]"
-    sType = "PLC_L"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_LL_DEVICE]"
-    sType = "PLC_LL"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_CAL_M_DEVICE]"
-    sType = "PLC_CAL_M"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-   'SCADA ALARM DEV
-    sField = "[AL_HH_DEVICE]"
-    sType = "AL_HH"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_H_DEVICE]"
-    sType = "AL_H"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_L_DEVICE]"
-    sType = "AL_L"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_LL_DEVICE]"
-    sType = "AL_LL"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_CAL_M_DEVICE]"
-    sType = "AL_CAL_M"
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-                          RetQuerySelectFrom(RetQueryPreAnalog(sShtName, "M", sField, sType), sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sWsName = "TMP_PRE_ANALOG_M"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-    sSqlQuery = ""
-    
-    sSqlQuery = sSqlQuery & _
-                          RetQuerySelectFrom("*", "[TMP_PRE_ANALOG_R$]") & _
-                    "UNION ALL " & _
-                          RetQuerySelectFrom("*", "[TMP_PRE_ANALOG_M$]") & _
-                    ""
-                    
-    sWsName = sOutSht
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-End Function
-
-
-
-Function RetQueryPreAnalog(inptsht As String, inptLetter As String, inptField As String, inptType As String) As String
-Call DebugOut("UTIL", "RetQueryPreAnalog" & inptsht & inptLetter & inptField & inptType)
-Dim sSht As String: sSht = inptsht
-Dim sLetter As String: sLetter = inptLetter
-Dim sField As String: sField = inptField
-Dim sType As String: sType = inptType
-Dim sSelect As String
-Dim vSelect(20) As Variant
-      
-    vSelect(0) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", [PV_MIN] ,[PV_MAX], '' AS [SV_MIN] ,'' AS [SV_MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
-                        ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
-'2 : SV
-'xRANGE
-    vSelect(1) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", [PV_MIN] ,[PV_MAX], [SV_MIN] ,[SV_MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
-                        ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
-'3 : MH  ML  MV  MV1 MV2
-'0.0 100.0 %
-    vSelect(2) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0.0', '100.0', '', '', '%','1',[FP_TYPE]" & _
-                        ", 'BIN-16' AS [BINALY] "
-'4 : (BIT) AL_CAL    AL_H    AL_HH   AL_L    AL_LL
-'BIT o ALIAS oCOMMENT (SCADAL)
-    vSelect(3) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
-                        ", 'BIT' AS [BINALY] "
-'5 : (BIT) PLC_CAL_M , PLC_H, PLC_HH, PLC_L, PLC_LL
-'BIT x ALIAS oCOMMENT (PLC)
-    vSelect(4) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
-                        ", 'BIT' AS [BINALY] "
-'6 : MODE
-'ALIAS => MODE, COMMENT => A/M
-    vSelect(5) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_A/M" & "' AS [COMMENT]" & _
-                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
-                        ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
-'7 : P (DEC 0)
-    vSelect(6) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '', '', '' , '' , '','0',[FP_TYPE]" & _
-                        ", 'BIN-16' AS [BINALY] "
-'8 : I (DEC 1)
-    vSelect(7) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '' , '' , '', '', '','1',[FP_TYPE]" & _
-                        ", 'BIN-16' AS [BINALY] "
-'9 : D (DEC 2)
-    vSelect(8) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '' , '' , '', '', '','2',[FP_TYPE]" & _
-                        ", 'BIN-16' AS [BINALY] "
-'10 : CAL_M
-    vSelect(9) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
-                        ",'" & sSht & "' AS [SHEET]" & _
-                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
-                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
-                        ", '" & sType & "' AS [TYPE]" & _
-                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
-                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
-                        ", 'BIN-16' AS [BINALY]  "
-
-
-'1 : 'PV , RAW, sH, sL, P, CAL, d, Db, H, HH, HYS, i, l, LL,DB
-'2 : SV
-'3 : MH  ML  MV  MV1 MV2
-'4 : (BIT) AL_CAL    AL_H    AL_HH   AL_L    AL_LL, CAL_M
-'5 : (BIT) PLC_CAL_M , PLC_H, PLC_HH, PLC_L, PLC_LL
-'6 : MODE
-'7 : P (DEC 0)
-'8 : I (DEC 1)
-'9 : D (DEC 2)
-
-   If WorksheetFunction.Or(sType = "PV", sType = "RAW", sType = "SH", sType = "SL", sType = "CAL", sType = "DB", sType = "H", sType = "HH", sType = "HYS", sType = "L", sType = "LL") Then
-        sSelect = vSelect(0)
-    ElseIf sType = "SV" Then
-        sSelect = vSelect(1)
-    ElseIf WorksheetFunction.Or(sType = "MH", sType = "ML", sType = "MV", sType = "MV1", sType = "MV2") Then
-        sSelect = vSelect(2)
-    ElseIf WorksheetFunction.Or(sType = "AL_CAL_M", sType = "AL_H", sType = "AL_HH", sType = "AL_L", sType = "AL_LL") Then
-        sSelect = vSelect(3)
-    ElseIf WorksheetFunction.Or(sType = "PLC_CAL_M", sType = "PLC_H", sType = "PLC_HH", sType = "PLC_L", sType = "PLC_LL") Then
-        sSelect = vSelect(4)
-    ElseIf sType = "MODE" Then
-        sSelect = vSelect(5)
-    ElseIf sType = "P" Then
-          sSelect = vSelect(6)
-    ElseIf sType = "I" Then
-            sSelect = vSelect(7)
-    ElseIf sType = "D" Then
-            sSelect = vSelect(8)
-    ElseIf sType = "CAL_M" Then
-            sSelect = vSelect(9)
-    Else
-            Stop
-    End If
-
-    RetQueryPreAnalog = sSelect
-
-End Function
-
+'
+'
+'Function RetQueryPreAnalog(inptSht As String, inptLetter As String, inptField As String, inptType As String) As String
+'Call DebugOut("UTIL", "RetQueryPreAnalog" & inptSht & inptLetter & inptField & inptType)
+'Dim sSht As String: sSht = inptSht
+'Dim sLetter As String: sLetter = inptLetter
+'Dim sField As String: sField = inptField
+'Dim sType As String: sType = inptType
+'Dim sSelect As String
+'Dim vSelect(20) As Variant
+'
+'    vSelect(0) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", [PV_MIN] ,[PV_MAX], '' AS [SV_MIN] ,'' AS [SV_MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
+'                        ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
+''2 : SV
+''xRANGE
+'    vSelect(1) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", [PV_MIN] ,[PV_MAX], [SV_MIN] ,[SV_MAX] ,[UNITS],[DECIMAL],[FP_TYPE]" & _
+'                        ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
+''3 : MH  ML  MV  MV1 MV2
+''0.0 100.0 %
+'    vSelect(2) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '0.0', '100.0', '', '', '%','1',[FP_TYPE]" & _
+'                        ", 'BIN-16' AS [BINALY] "
+''4 : (BIT) AL_CAL    AL_H    AL_HH   AL_L    AL_LL
+''BIT o ALIAS oCOMMENT (SCADAL)
+'    vSelect(3) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
+'                        ", 'BIT' AS [BINALY] "
+''5 : (BIT) PLC_CAL_M , PLC_H, PLC_HH, PLC_L, PLC_LL
+''BIT x ALIAS oCOMMENT (PLC)
+'    vSelect(4) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
+'                        ", 'BIT' AS [BINALY] "
+''6 : MODE
+''ALIAS => MODE, COMMENT => A/M
+'    vSelect(5) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_A/M" & "' AS [COMMENT]" & _
+'                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
+'                        ", IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY] "
+''7 : P (DEC 0)
+'    vSelect(6) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '', '', '' , '' , '','0',[FP_TYPE]" & _
+'                        ", 'BIN-16' AS [BINALY] "
+''8 : I (DEC 1)
+'    vSelect(7) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '' , '' , '', '', '','1',[FP_TYPE]" & _
+'                        ", 'BIN-16' AS [BINALY] "
+''9 : D (DEC 2)
+'    vSelect(8) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '' , '' , '', '', '','2',[FP_TYPE]" & _
+'                        ", 'BIN-16' AS [BINALY] "
+''10 : CAL_M
+'    vSelect(9) = "[NO] AS [NO],'" & fSplit(sSht, 1, "_") & "." & sLetter & "." & "' & " & sField & " AS [FULL_ADR]" & _
+'                        ",'" & sSht & "' AS [SHEET]" & _
+'                        ", [ALIAS_BASE]   AS [ALIAS_BASE]" & _
+'                        ", [ALIAS_BASE]  & '_" & sType & "' AS [ALIAS]" & _
+'                        ", '" & sType & "' AS [TYPE]" & _
+'                        ", [COMMENT] & '_" & sType & "' AS [COMMENT]" & _
+'                        ", '0', '0', '', '', '', '0',[FP_TYPE]" & _
+'                        ", 'BIN-16' AS [BINALY]  "
+'
+'
+''1 : 'PV , RAW, sH, sL, P, CAL, d, Db, H, HH, HYS, i, l, LL,DB
+''2 : SV
+''3 : MH  ML  MV  MV1 MV2
+''4 : (BIT) AL_CAL    AL_H    AL_HH   AL_L    AL_LL, CAL_M
+''5 : (BIT) PLC_CAL_M , PLC_H, PLC_HH, PLC_L, PLC_LL
+''6 : MODE
+''7 : P (DEC 0)
+''8 : I (DEC 1)
+''9 : D (DEC 2)
+'
+'   If WorksheetFunction.Or(sType = "PV", sType = "RAW", sType = "SH", sType = "SL", sType = "CAL", sType = "DB", sType = "H", sType = "HH", sType = "HYS", sType = "L", sType = "LL") Then
+'        sSelect = vSelect(0)
+'    ElseIf sType = "SV" Then
+'        sSelect = vSelect(1)
+'    ElseIf WorksheetFunction.Or(sType = "MH", sType = "ML", sType = "MV", sType = "MV1", sType = "MV2") Then
+'        sSelect = vSelect(2)
+'    ElseIf WorksheetFunction.Or(sType = "AL_CAL_M", sType = "AL_H", sType = "AL_HH", sType = "AL_L", sType = "AL_LL") Then
+'        sSelect = vSelect(3)
+'    ElseIf WorksheetFunction.Or(sType = "PLC_CAL_M", sType = "PLC_H", sType = "PLC_HH", sType = "PLC_L", sType = "PLC_LL") Then
+'        sSelect = vSelect(4)
+'    ElseIf sType = "MODE" Then
+'        sSelect = vSelect(5)
+'    ElseIf sType = "P" Then
+'          sSelect = vSelect(6)
+'    ElseIf sType = "I" Then
+'            sSelect = vSelect(7)
+'    ElseIf sType = "D" Then
+'            sSelect = vSelect(8)
+'    ElseIf sType = "CAL_M" Then
+'            sSelect = vSelect(9)
+'    Else
+'            Stop
+'    End If
+'
+'    RetQueryPreAnalog = sSelect
+'
+'End Function
+'
 
 
 Function RetQueryServerDev0() As String
@@ -1304,9 +1282,9 @@ Call DebugOut("SUB_ST", "CheckAlarmMaster")
 End Sub
 
 
-Function RetAColValues(inptsht As String) As String
-    Call DebugOut("UTIL", "RetAColValues  " & inptsht)
-    Dim sWsName As String: sWsName = inptsht
+Function RetAColValues(inptSht As String) As String
+    Call DebugOut("UTIL", "RetAColValues  " & inptSht)
+    Dim sWsName As String: sWsName = inptSht
     Dim rRng As Range
     
     Set rRng = ThisWorkbook.Sheets(sWsName).Range("A1:A" & Cells(Rows.Count, 1).End(xlUp).Row)
@@ -1640,7 +1618,7 @@ Sub ★BKM_UTILS(): End Sub
 
 Sub fjoinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
 Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-Dim sWsName As String: sWsName = inptsht
+Dim sWsName As String: sWsName = inptSht
 Dim sSqlQuery As String
 Dim sLeft As String: sLeft = inptLeft
 Dim sRight As String: sRight = inptRight
@@ -1685,17 +1663,17 @@ End Sub
 
 Sub GetQueryResultsOnSht(sSqlQuery As String, sWbName As String, sWsName As String)
     Dim s As String: s = Dir(sWbName): If s = "" Then Call DebugOut("ERR", "check inptWorkbookName is FullPath")
-    Call DebugOut("GET_QUERY", sWsName)
+    Call DebugOut("GET_QUERY", sWsName & " " & sSqlQuery)
     Call SelectOrAddWs(sWsName, Dir(sWbName))
     Call GetQueryResults(sSqlQuery, sWbName, sWsName)
 End Sub
 
 
-Function RetQuerySelectFrom(inptSels As String, inptsht As String, Optional inptwbpath As String = "")
+Function RetQuerySelectFrom(inptSels As String, inptSht As String, Optional inptwbpath As String = "")
 Call DebugOut("RET_QUERY_SELECT", "RetQuerySelectFrom")
 Dim sResult As String
 Dim aSels As Variant: aSels = Split(inptSels, ",")
-Dim sSht As String: sSht = inptsht
+Dim sSht As String: sSht = inptSht
 Dim sWbDBPath As String: sWbDBPath = inptwbpath
 Dim v As Variant
 Dim vSels As String
@@ -1719,56 +1697,35 @@ RetQuerySelectFrom = sResult
 End Function
 
 
- Sub checkHeader(inptSelect As String, inptsht As String)
+ Sub checkSqlHeader(inptSelect As String, inptSht As String)
 'select => [DEVICE],[COMMENT1] &' ' & [COMMENT2] AS [COMMENT], [CATEGORY]
 'sht => [DB_PLC00_OP_Y$]
-
 Dim vSelect As Variant: vSelect = Split(inptSelect, ",")
 Dim vSplited As Variant: ReDim vSplited(UBound(vSelect))
-Dim sSht As String: sSht = fSplitBetweenAlter(inptsht, 2, "[", "$]")
+Dim sSht As String: sSht = fSplitBetweenAlter(inptSht, 2, "[", "$]")
 Dim l As Long
 Dim ll As Long
 
 For l = 0 To UBound(vSelect)
-    vSplited(l) = fSplit(vSelect(l), 1, "AS")
+    vSelect(l) = fReplaces(vSelect(l), "]AS:] AS,AS[:AS [")
+    vSplited(l) = fSplit(vSelect(l), 1, " AS ")
 Next l
 
-For l = 0 To UBound(vSplited)
-    ll = 2
-    Do Until fSplitBetweenAlter(vSplited(l), ll, "[", "]", True) = ""
-        If retHeaderCol(sSht, fSplitBetweenAlter(vSplited(l), ll, "[", "]", True)) = 0 Then
-            Call DebugOut("ERR", "does not exist header in " & sSht & " : " & fSplitBetweenAlter(vSplited(l), ll, "[", "]", True))
-        End If
-    ll = ll + 1
+For l = LBound(vSplited) To UBound(vSplited)
+        ll = 1
+        Do Until fSplitBetween(vSplited(l), ll, "[", "]", True) = ""
+
+'      Debug.Print fSplitBetween(vSplited(l), ll, "[", "]", True)
+'      Debug.Print retHeaderCol(sSht, fSplitBetween(vSplited(l), ll, "[", "]", True))
+            If retHeaderCol(sSht, fSplitBetween(vSplited(l), ll, "[", "]", True)) = 0 Then
+                Call DebugOut("ERR", "does not exist header in " & sSht & " : " & fSplitBetween(vSplited(l), ll, "[", "]", True))
+            End If
+        ll = ll + 1
+
     Loop
 Next l
 
 End Sub
-
-
-Private Function retHeaderCol(inptsht As String, inptKey As String) As Long
-Dim sWbName As String:  sWbName = ThisWorkbook.Name
-Dim sWsName As String:  sWsName = inptsht
-Dim sKey As String: sKey = inptKey
-Dim sMatchRow As String
-Dim sRslt As String
-On Error Resume Next
-
-With Workbooks(sWbName).Worksheets(sWsName)
-    Dim rRow As Range
-    Set rRow = .Rows(1)
-    If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
-        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
-        If sMatchRow <> "" Then
-                sRslt = sMatchRow
-            Else
-                sRslt = 0
-        End If
-End With
-
-retHeaderCol = CLng(sRslt)
-
-End Function
 
 
 
@@ -1856,3 +1813,171 @@ End Function
 
 '=========================================================
 'COL END => H
+
+'
+'】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'// IGNORE  //】【// PG PARAM NAME  //】【// PG PARAM VALUE //】【】【// REPLACE //】【// REPLACE BASE //  】【】【】【
+'>> PLC 00 TMP PRESHT】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_OUTSHT】【[TMP_PRE_PLC_ALNG00$]】【】【】【[NO]】【】【】【
+'//】【BSQL_PRESHT-ANLG00_FILTER】【】【】【】【 '{PLC}.{LETTER}.' & [{TYPE}_DEVICE] AS [FULL_ADR]】【】【】【
+'】【】【】【< PLC00 >】【】【 '{PLC}_ANLG' AS [SHEET]】【】【】【
+'】【BSQL_PRESHT-ANLG00_SELECT】【[NO], 'PLC00.R.' & [PV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PV'  AS [ALIAS], 'PV' AS [TYPE], [COMMENT] & '_PV' AS [COMMENT],[PV_MAX],[PV_MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PV】【{PLC}:PLC00;{TYPE}:PV;{MIN}:[PV_MIN];{MAX}:[PV_MAX];{LETTER}:R】【 [ALIAS_BASE]】【】【】【
+'】【BSQL_PRESHT-ANLG00_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【 [ALIAS_BASE]  & '_{TYPE}'  AS [ALIAS]】【】【】【
+'】【BSQL_PRESHT-ANLG00_CONDITION】【WHERE [ALIAS_BASE] IS NOT NULL】【*】【】【 '{TYPE}' AS [TYPE]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-1_SELECT】【[NO], 'PLC00.R.' & [SV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_SV'  AS [ALIAS], 'SV' AS [TYPE], [COMMENT] & '_SV' AS [COMMENT],IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX],IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【SV】【{PLC}:PLC00;{TYPE}:SV;{MIN}:IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN];{MAX}:IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX];{LETTER}:R】【 [COMMENT] & '_{TYPE}' AS [COMMENT]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-1_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【{MAX}】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-1_CONDITION】【WHERE 'PLC00.R.' & [SV_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:SV;{PLC}:PLC00;{LETTER}:R】【{MIN}】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-2_SELECT】【[NO], 'PLC00.R.' & [MV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV'  AS [ALIAS], 'MV' AS [TYPE], [COMMENT] & '_MV' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV】【{PLC}:PLC00;{TYPE}:MV;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【[UNITS]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-2_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【[DECIMAL]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-2_CONDITION】【WHERE 'PLC00.R.' & [MV_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV;{PLC}:PLC00;{LETTER}:R】【[FP_TYPE]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-3_SELECT】【[NO], 'PLC00.R.' & [MV1_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV1'  AS [ALIAS], 'MV1' AS [TYPE], [COMMENT] & '_MV1' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV1】【{PLC}:PLC00;{TYPE}:MV1;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-3_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-3_CONDITION】【WHERE 'PLC00.R.' & [MV1_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV1;{PLC}:PLC00;{LETTER}:R】【WHERE '{PLC}.{LETTER}.' & [{TYPE}_DEVICE]  NOT LIKE  '{PLC}.{LETTER}.' AND [ALIAS_BASE] IS NOT NULL】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-4_SELECT】【[NO], 'PLC00.R.' & [MV2_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV2'  AS [ALIAS], 'MV2' AS [TYPE], [COMMENT] & '_MV2' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV2】【{PLC}:PLC00;{TYPE}:MV2;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-4_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-4_CONDITION】【WHERE 'PLC00.R.' & [MV2_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV2;{PLC}:PLC00;{LETTER}:R】【IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX]】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-5_SELECT】【[NO], 'PLC00.R.' & [MH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MH'  AS [ALIAS], 'MH' AS [TYPE], [COMMENT] & '_MH' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MH】【{PLC}:PLC00;{TYPE}:MH;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-5_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-5_CONDITION】【WHERE 'PLC00.R.' & [MH_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MH;{PLC}:PLC00;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-6_SELECT】【[NO], 'PLC00.R.' & [ML_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_ML'  AS [ALIAS], 'ML' AS [TYPE], [COMMENT] & '_ML' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【ML】【{PLC}:PLC00;{TYPE}:ML;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-6_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-6_CONDITION】【WHERE 'PLC00.R.' & [ML_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:ML;{PLC}:PLC00;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-7_SELECT】【[NO], 'PLC00.M.' & [AL_CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_CAL_M'  AS [ALIAS], 'AL_CAL_M' AS [TYPE], [COMMENT] & '_AL_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_CAL_M】【{PLC}:PLC00;{TYPE}:AL_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-7_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-7_CONDITION】【WHERE 'PLC00.M.' & [AL_CAL_M_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_CAL_M;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-8_SELECT】【[NO], 'PLC00.M.' & [AL_H_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_H'  AS [ALIAS], 'AL_H' AS [TYPE], [COMMENT] & '_AL_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_H】【{PLC}:PLC00;{TYPE}:AL_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-8_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-8_CONDITION】【WHERE 'PLC00.M.' & [AL_H_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_H;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-9_SELECT】【[NO], 'PLC00.M.' & [AL_HH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_HH'  AS [ALIAS], 'AL_HH' AS [TYPE], [COMMENT] & '_AL_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_HH】【{PLC}:PLC00;{TYPE}:AL_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-9_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-9_CONDITION】【WHERE 'PLC00.M.' & [AL_HH_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_HH;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-10_SELECT】【[NO], 'PLC00.M.' & [AL_L_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_L'  AS [ALIAS], 'AL_L' AS [TYPE], [COMMENT] & '_AL_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_L】【{PLC}:PLC00;{TYPE}:AL_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-10_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-10_CONDITION】【WHERE 'PLC00.M.' & [AL_L_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_L;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-11_SELECT】【[NO], 'PLC00.M.' & [AL_LL_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_LL'  AS [ALIAS], 'AL_LL' AS [TYPE], [COMMENT] & '_AL_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_LL】【{PLC}:PLC00;{TYPE}:AL_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-11_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-11_CONDITION】【WHERE 'PLC00.M.' & [AL_LL_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_LL;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-12_SELECT】【[NO], 'PLC00.M.' & [PLC_CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_CAL_M'  AS [ALIAS], 'PLC_CAL_M' AS [TYPE], [COMMENT] & '_PLC_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_CAL_M】【{PLC}:PLC00;{TYPE}:PLC_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-12_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-12_CONDITION】【WHERE 'PLC00.M.' & [PLC_CAL_M_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_CAL_M;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-13_SELECT】【[NO], 'PLC00.M.' & [PLC_H_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_H'  AS [ALIAS], 'PLC_H' AS [TYPE], [COMMENT] & '_PLC_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_H】【{PLC}:PLC00;{TYPE}:PLC_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-13_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-13_CONDITION】【WHERE 'PLC00.M.' & [PLC_H_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_H;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-14_SELECT】【[NO], 'PLC00.M.' & [PLC_HH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_HH'  AS [ALIAS], 'PLC_HH' AS [TYPE], [COMMENT] & '_PLC_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_HH】【{PLC}:PLC00;{TYPE}:PLC_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-14_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-14_CONDITION】【WHERE 'PLC00.M.' & [PLC_HH_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_HH;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-15_SELECT】【[NO], 'PLC00.M.' & [PLC_L_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_L'  AS [ALIAS], 'PLC_L' AS [TYPE], [COMMENT] & '_PLC_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_L】【{PLC}:PLC00;{TYPE}:PLC_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-15_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-15_CONDITION】【WHERE 'PLC00.M.' & [PLC_L_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_L;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-16_SELECT】【[NO], 'PLC00.M.' & [PLC_LL_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_LL'  AS [ALIAS], 'PLC_LL' AS [TYPE], [COMMENT] & '_PLC_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_LL】【{PLC}:PLC00;{TYPE}:PLC_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-16_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-16_CONDITION】【WHERE 'PLC00.M.' & [PLC_LL_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_LL;{PLC}:PLC00;{LETTER}:M】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-17_SELECT】【[NO], 'PLC00.R.' & [MODE_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MODE'  AS [ALIAS], 'MODE' AS [TYPE], [COMMENT] & '_A/M'  AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MODE】【{PLC}:PLC00;{TYPE}:MODE;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';[COMMENT] & '_MODE':[COMMENT] & '_A/M' ;{LETTER}:R】【 ALIAS=>MODE, COMMENT=>A/M】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-17_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-17_CONDITION】【WHERE 'PLC00.R.' & [MODE_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MODE;{PLC}:PLC00;{LETTER}:R】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-18_SELECT】【[NO], 'PLC00.R.' & [P_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_P'  AS [ALIAS], 'P' AS [TYPE], [COMMENT] & '_P' AS [COMMENT],'','','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【P】【{PLC}:PLC00;{TYPE}:P;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【DEC0】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-18_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-18_CONDITION】【WHERE 'PLC00.R.' & [P_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:P;{PLC}:PLC00;{LETTER}:R】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-19_SELECT】【[NO], 'PLC00.R.' & [I_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_I'  AS [ALIAS], 'I' AS [TYPE], [COMMENT] & '_I' AS [COMMENT],'','','','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【I】【{PLC}:PLC00;{TYPE}:I;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'1';{LETTER}:R】【 DEC1】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-19_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-19_CONDITION】【WHERE 'PLC00.R.' & [I_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:I;{PLC}:PLC00;{LETTER}:R】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-20_SELECT】【[NO], 'PLC00.R.' & [D_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_D'  AS [ALIAS], 'D' AS [TYPE], [COMMENT] & '_D' AS [COMMENT],'','','','2',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【D】【{PLC}:PLC00;{TYPE}:D;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'2';{LETTER}:R】【 DEC2】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-20_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-20_CONDITION】【WHERE 'PLC00.R.' & [D_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:D;{PLC}:PLC00;{LETTER}:R】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-21_SELECT】【[NO], 'PLC00.R.' & [CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_CAL_M'  AS [ALIAS], 'CAL_M' AS [TYPE], [COMMENT] & '_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【CAL_M】【{PLC}:PLC00;{TYPE}:CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【BIT】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-21_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-21_CONDITION】【WHERE 'PLC00.R.' & [CAL_M_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:CAL_M;{PLC}:PLC00;{LETTER}:R】【*】【】【】【
+'】【】【】【】【】【】【】【】【
+'>> PLC 03 TMP PRESHT】【】【】【< PLC03 >】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_OUTSHT】【[TMP_PRE_PLC_ALNG03$]】【】【】【】【】【】【
+'NOT USE】【NOT USEBSQL_PRESHT-ANLG03_FILTER】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_SELECT】【[NO], 'PLC03.R.' & [PV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PV'  AS [ALIAS], 'PV' AS [TYPE], [COMMENT] & '_PV' AS [COMMENT],[PV_MAX],[PV_MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PV】【{PLC}:PLC03;{TYPE}:PV;{MIN}:[PV_MIN];{MAX}:[PV_MAX];{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_CONDITION】【WHERE [ALIAS_BASE] IS NOT NULL】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-1_SELECT】【[NO], 'PLC03.R.' & [SV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_SV'  AS [ALIAS], 'SV' AS [TYPE], [COMMENT] & '_SV' AS [COMMENT],IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX],IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【SV】【{PLC}:PLC03;{TYPE}:SV;{MIN}:IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN];{MAX}:IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX];{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-1_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-1_CONDITION】【WHERE 'PLC03.R.' & [SV_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:SV;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-2_SELECT】【[NO], 'PLC03.R.' & [MV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV'  AS [ALIAS], 'MV' AS [TYPE], [COMMENT] & '_MV' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV】【{PLC}:PLC03;{TYPE}:MV;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-2_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-2_CONDITION】【WHERE 'PLC03.R.' & [MV_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-3_SELECT】【[NO], 'PLC03.R.' & [MV1_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV1'  AS [ALIAS], 'MV1' AS [TYPE], [COMMENT] & '_MV1' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV1】【{PLC}:PLC03;{TYPE}:MV1;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-3_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-3_CONDITION】【WHERE 'PLC03.R.' & [MV1_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV1;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-4_SELECT】【[NO], 'PLC03.R.' & [MV2_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV2'  AS [ALIAS], 'MV2' AS [TYPE], [COMMENT] & '_MV2' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV2】【{PLC}:PLC03;{TYPE}:MV2;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-4_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-4_CONDITION】【WHERE 'PLC03.R.' & [MV2_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV2;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-5_SELECT】【[NO], 'PLC03.R.' & [MH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MH'  AS [ALIAS], 'MH' AS [TYPE], [COMMENT] & '_MH' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MH】【{PLC}:PLC03;{TYPE}:MH;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-5_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-5_CONDITION】【WHERE 'PLC03.R.' & [MH_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MH;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-6_SELECT】【[NO], 'PLC03.R.' & [ML_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_ML'  AS [ALIAS], 'ML' AS [TYPE], [COMMENT] & '_ML' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【ML】【{PLC}:PLC03;{TYPE}:ML;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-6_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-6_CONDITION】【WHERE 'PLC03.R.' & [ML_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:ML;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-7_SELECT】【[NO], 'PLC03.M.' & [AL_CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_CAL_M'  AS [ALIAS], 'AL_CAL_M' AS [TYPE], [COMMENT] & '_AL_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_CAL_M】【{PLC}:PLC03;{TYPE}:AL_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-7_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-7_CONDITION】【WHERE 'PLC03.M.' & [AL_CAL_M_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_CAL_M;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-8_SELECT】【[NO], 'PLC03.M.' & [AL_H_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_H'  AS [ALIAS], 'AL_H' AS [TYPE], [COMMENT] & '_AL_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_H】【{PLC}:PLC03;{TYPE}:AL_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-8_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-8_CONDITION】【WHERE 'PLC03.M.' & [AL_H_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_H;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-9_SELECT】【[NO], 'PLC03.M.' & [AL_HH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_HH'  AS [ALIAS], 'AL_HH' AS [TYPE], [COMMENT] & '_AL_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_HH】【{PLC}:PLC03;{TYPE}:AL_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-9_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-9_CONDITION】【WHERE 'PLC03.M.' & [AL_HH_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_HH;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-10_SELECT】【[NO], 'PLC03.M.' & [AL_L_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_L'  AS [ALIAS], 'AL_L' AS [TYPE], [COMMENT] & '_AL_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_L】【{PLC}:PLC03;{TYPE}:AL_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-10_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-10_CONDITION】【WHERE 'PLC03.M.' & [AL_L_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_L;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-11_SELECT】【[NO], 'PLC03.M.' & [AL_LL_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_LL'  AS [ALIAS], 'AL_LL' AS [TYPE], [COMMENT] & '_AL_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_LL】【{PLC}:PLC03;{TYPE}:AL_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-11_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-11_CONDITION】【WHERE 'PLC03.M.' & [AL_LL_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_LL;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-12_SELECT】【[NO], 'PLC03.M.' & [PLC_CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_CAL_M'  AS [ALIAS], 'PLC_CAL_M' AS [TYPE], [COMMENT] & '_PLC_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_CAL_M】【{PLC}:PLC03;{TYPE}:PLC_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-12_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-12_CONDITION】【WHERE 'PLC03.M.' & [PLC_CAL_M_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_CAL_M;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-13_SELECT】【[NO], 'PLC03.M.' & [PLC_H_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_H'  AS [ALIAS], 'PLC_H' AS [TYPE], [COMMENT] & '_PLC_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_H】【{PLC}:PLC03;{TYPE}:PLC_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-13_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-13_CONDITION】【WHERE 'PLC03.M.' & [PLC_H_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_H;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-14_SELECT】【[NO], 'PLC03.M.' & [PLC_HH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_HH'  AS [ALIAS], 'PLC_HH' AS [TYPE], [COMMENT] & '_PLC_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_HH】【{PLC}:PLC03;{TYPE}:PLC_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-14_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-14_CONDITION】【WHERE 'PLC03.M.' & [PLC_HH_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_HH;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-15_SELECT】【[NO], 'PLC03.M.' & [PLC_L_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_L'  AS [ALIAS], 'PLC_L' AS [TYPE], [COMMENT] & '_PLC_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_L】【{PLC}:PLC03;{TYPE}:PLC_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-15_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-15_CONDITION】【WHERE 'PLC03.M.' & [PLC_L_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_L;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-16_SELECT】【[NO], 'PLC03.M.' & [PLC_LL_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_LL'  AS [ALIAS], 'PLC_LL' AS [TYPE], [COMMENT] & '_PLC_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_LL】【{PLC}:PLC03;{TYPE}:PLC_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-16_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-16_CONDITION】【WHERE 'PLC03.M.' & [PLC_LL_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_LL;{PLC}:PLC03;{LETTER}:M】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-17_SELECT】【[NO], 'PLC03.R.' & [MODE_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MODE'  AS [ALIAS], 'MODE' AS [TYPE], [COMMENT] & '_A/M'  AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MODE】【{PLC}:PLC03;{TYPE}:MODE;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';[COMMENT] & '_MODE':[COMMENT] & '_A/M' ;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-17_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-17_CONDITION】【WHERE 'PLC03.R.' & [MODE_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MODE;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-18_SELECT】【[NO], 'PLC03.R.' & [P_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_P'  AS [ALIAS], 'P' AS [TYPE], [COMMENT] & '_P' AS [COMMENT],'','','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【P】【{PLC}:PLC03;{TYPE}:P;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-18_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-18_CONDITION】【WHERE 'PLC03.R.' & [P_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:P;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-19_SELECT】【[NO], 'PLC03.R.' & [I_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_I'  AS [ALIAS], 'I' AS [TYPE], [COMMENT] & '_I' AS [COMMENT],'','','','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【I】【{PLC}:PLC03;{TYPE}:I;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'1';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-19_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-19_CONDITION】【WHERE 'PLC03.R.' & [I_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:I;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-20_SELECT】【[NO], 'PLC03.R.' & [D_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_D'  AS [ALIAS], 'D' AS [TYPE], [COMMENT] & '_D' AS [COMMENT],'','','','2',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【D】【{PLC}:PLC03;{TYPE}:D;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'2';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-20_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-20_CONDITION】【WHERE 'PLC03.R.' & [D_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:D;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-21_SELECT】【[NO], 'PLC03.R.' & [CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_CAL_M'  AS [ALIAS], 'CAL_M' AS [TYPE], [COMMENT] & '_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【CAL_M】【{PLC}:PLC03;{TYPE}:CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-21_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-21_CONDITION】【WHERE 'PLC03.R.' & [CAL_M_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:CAL_M;{PLC}:PLC03;{LETTER}:R】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'>> PRESHT UNION 00, 03】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG_OUTSHT】【[PRE_PLC_ANLG$]】【】【[NO]】【】【】【】【
+'//】【//BSQL_PRESHT-ANLG_FILTER】【】【】【[FULL_ADR]】【】【】【】【
+'】【BSQL_PRESHT-ANLG_SELECT】【[NO],[FULL_ADR],[SHEET],[ALIAS_BASE],[ALIAS],[TYPE],[COMMENT],[PV_MIN],[PV_MAX],[UNITS],[DECIMAL],[FP_TYPE],[BINALY]】【】【[SHEET]】【】【】【】【
+'】【BSQL_PRESHT-ANLG_FROM】【[TMP_PRE_PLC_ALNG00$]】【】【[ALIAS_BASE]】【】【】【】【
+'//】【//BSQL_PRESHT-ANLG_CONDITION】【】【】【[ALIAS]】【】【】【】【
+'】【BSQL_PRESHT-ANLG_UNION-1_SELECT】【[NO],[FULL_ADR],[SHEET],[ALIAS_BASE],[ALIAS],[TYPE],[COMMENT],[PV_MIN],[PV_MAX],[UNITS],[DECIMAL],[FP_TYPE],[BINALY]】【】【[TYPE]】【】【】【】【
+'】【BSQL_PRESHT-ANLG_UNION-1_FROM】【[TMP_PRE_PLC_ALNG03$]】【】【[COMMENT]】【】【】【】【
+'//】【//BSQL_PRESHT-ANLG_UNION-1_WHERE】【】【】【[PV_MIN]】【】【】【】【
+'】【】【】【】【[PV_MAX]】【】【】【】【
+'】【】【】【】【[UNITS]】【】【】【】【
+'】【】【】【】【[DECIMAL]】【】【】【】【
+'】【】【】【】【[FP_TYPE]】【】【】【】【
+'】【】【】【】【[BINALY]】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【
+'>> PRESHT UNION 00, 03】【】【】【】【】【】【】【】【
+
