@@ -1,5 +1,5 @@
 Option Explicit
-'common 20211101
+'common 20211102
 
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
@@ -168,12 +168,20 @@ Dim bMatch As Boolean
 
 sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A") 'single row, get link parameters
 
-If UBound(sData) = -1 Then fKey2Val = "#N/A#": Exit Function
+If UBound(sData) = -1 Then
+    Call DebugOut("ERR", "fGetRowData fail : " & inptLabel & " " & inptKey & " " & inptSht)
+    fKey2Val = "#N/A#": Exit Function
+End If
 
 Dim sWb As String: sWb = sData(2)
 Dim sWs As String: sWs = sData(3)
 Dim sKeyCol As String: sKeyCol = sData(4)
 Dim sRtnCol As String: sRtnCol = sData(5)
+
+If sWb = "" Or sWb = "#N/A#" Then Call DebugOut("ERR", "sWb : " & sWb)
+If sWs = "" Or sWs = "#N/A#" Then Call DebugOut("ERR", "sWs : " & sWs)
+If sKeyCol = "" Or sKeyCol = "#N/A#" Then Call DebugOut("ERR", "sKeyCol : " & sKeyCol)
+If sRtnCol = "" Or sRtnCol = "#N/A#" Then Call DebugOut("ERR", "sRtnCol : " & sRtnCol)
 
 sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
 fKey2Val = sResult
