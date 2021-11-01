@@ -1,182 +1,8 @@
 Option Explicit
-'DB 20211101
+'DB 20211102
 
 Dim gTmp As String
 
-'CONVERT XML 2 DB==========================================================
-
-Sub uploadNumberingXml()
-Application.ScreenUpdating = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim sRet As String
-Dim ws As Worksheet
-On Error Resume Next
-
-With ThisWorkbook.ActiveSheet
-    .Activate
-    C.uploadNumberingXml (ActiveSheet.Name)
-End With
-
-Set C = Nothing
-Application.ScreenUpdating = True
-End Sub
-
-
-Sub downloadFolderXml()
-
-Application.ScreenUpdating = False
-Dim d As clsXapDebug: Set d = New clsXapDebug
-Dim f As IXMLDOMSelection
-Dim sFol As String: sFol = ""
-Dim sCid As String
-Dim l As Long
-Dim sRet As String
-Dim sOutWsName As String
-sOutWsName = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT", "LinkShtDB")
-On Error Resume Next
-
-If sOutWsName = "" Then
-   Call DebugOut("ERR", "empty pgprm_xml_out_sht")
-Else
-    Call SelectOrAddWs(sOutWsName, ThisWorkbook.Name)
-    Set ws = Sheets(sOutWsName)
-End If
-    ws.Activate
-
-sFol = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_LOAD_FOLDER", "LinkShtDB")
-d.reloadPath
-Set f = d.getFolder(sFol)
-
-If f.Length = 0 Then MsgBox "Folder Load Error : " & sFol: Exit Sub
-Stop
-Call d.downloadFolderXml(f)
-
-Call DebugOut("REM", "alter fgetpgval")
-'If fGetPgVal("xml_nrw_Form") = "" And fGetPgVal("xml_nrw_LibName") = "" Then Exit Sub
-'
-'If fGetPgVal("xml_nrw_Enabled") = 1 Then
-'    If fGetPgVal("xml_nrw_Form") <> "#N/A#" And fGetPgVal("xml_nrw_Form") <> "" And d.searchActiveSheetHeaderCol("LibraryComment") <> 0 Then
-'        Call d.delUnMatchForm(d.searchActiveSheetHeaderCol("form"), fGetPgVal("xml_nrw_Form"))
-'    End If
-'    If fGetPgVal("xml_nrw_LibName") <> "#N/A#" And fGetPgVal("xml_nrw_LibName") <> "" And d.searchActiveSheetHeaderCol("form") <> 0 Then
-'
-'       Call d.delUnMatchRow(d.searchActiveSheetHeaderCol("LibraryComment"), fGetPgVal("xml_nrw_LibName"))
-'    End If
-'End If
-
-Set d = Nothing
-Set f = Nothing
-Set fr = Nothing
-
-Application.ScreenUpdating = True
-End Sub
-
-
-Sub downloadFixReport()
-Application.ScreenUpdating = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim sRet As String
-
-On Error Resume Next
-
-If fGetPgVal("fix_repo_OutSht") = "" Then
-    Set ws = ActiveSheet
-Else
-    Set ws = Sheets(fGetPgVal("fix_repo_OutSht"))
-    If ws.Name <> fGetPgVal("fix_repo_OutSht") Then MsgBox "does not exist  : " & fGetPgVal("fix_repo_OutSht"): Exit Sub
-End If
-
-With ws
-    .Activate
-    .Cells.Clear
-    .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
-    C.reloadPath
-    C.downloadFixReport
-End With
-
-Set C = Nothing
-Application.ScreenUpdating = True
-End Sub
-
-
-Sub uploadFixReport()
-Application.ScreenUpdating = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim sRet As String
-Dim ws As Worksheet
-On Error Resume Next
-
-If fGetPgVal("fix_repo_OutSht") = "" Then
-    Set ws = ActiveSheet
-Else
-    Set ws = Sheets(fGetPgVal("fix_repo_OutSht"))
-    If ws.Name <> fGetPgVal("fix_repo_OutSht") Then MsgBox "does not exist  : " & fGetPgVal("fix_repo_OutSht"): Exit Sub
-End If
-
-With ws
-    .Activate
-    C.reloadPath
-    C.uploadFixFilterXml
-End With
-
-MsgBox "uploaFixReport :" & fGetPgVal("fix_repo_OutPath")
-
-Set C = Nothing
-Application.ScreenUpdating = True
-End Sub
-
-Sub uploadFixReportB()
-Application.ScreenUpdating = False
-Application.DisplayAlerts = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
-Dim vSelectFiles As FileDialogSelectedItems
-Dim vCnt As Long
-Dim sRet As String
-Dim wb As Workbook
-
-With vFiles
-    .Filters.Clear
-'    .Filters.Add "pictureFile", "*.*", 1
-    '.Title = "FILE SELECT"
-    .AllowMultiSelect = True
-    .InitialFileName = fGetPgVal("fix_repo_dir")
-    .Show
-End With
-
-On Error Resume Next
-If vFiles.SelectedItems.Count = 0 Then Exit Sub: Exit Sub
-Set wb = Workbooks.Add: wb.Activate
-
-For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
-    With wb.Worksheets.Add
-        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
-        sRet = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
-        sRet = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
-        C.reloadPath
-        C.downloadFixReport
-        .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
-        C.uploadFixFilterXml
-    End With
-Next vCnt
-wb.Sheets("Sheet1").Delete
-
-Set C = Nothing
-Application.ScreenUpdating = True
-Application.DisplayAlerts = True
-End Sub
-        
-Sub downloadPartsXmlOnSht()
-
-Dim d As clsXapDebug
-Set d = New clsXapDebug
-d.downloadPartsXmlOnSht
-
-End Sub
 
 'CONVERT EXCEL 2 DB==========================================================
 
@@ -671,170 +497,41 @@ End Function
 '=========================================================
 'COL END => AZ
 '
-'
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'PGPRM_DB_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtDB】【B】【C】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【[ KEY ]】【[ SHEETS ]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_DB_EXE_CREATESHT】【DB_FP_AI ,DB_FP_AI_AL4,DB_FP_AI_Q,DB_FP_AI_SV ,DB_FP_AI_SV2,DB_FP_AI_SV3,DB_FP_PID,DB_FP_SUM,DB_LST_ALIAS,DB_LST_ALM_MASTER,DB_LST_C ,DB_LST_FACEPLATE_MASTER,DB_LST_FIELDMASTER_TAG ,DB_LST_FIELDMASTER_TAG_PRT,DB_LST_FIELDMASTER_TAG_PV,DB_LST_FIELDMASTER_TAG_SV,DB_LST_SERVER_CSV,DB_LST_TREND_PENINFO ,DB_LST_TREND_PENINFO_ONEPOINT,DB_PLC00_AEC_ANALOG,DB_PLC00_AEC_M,DB_PLC00_AEC_R,DB_PLC00_AEC_X,DB_PLC00_AEC_Y,DB_PLC00_OP_X,DB_PLC00_OP_Y,DB_PLC03_AEC_ANALOG,DB_PLC03_AEC_B,DB_PLC03_AEC_M,DB_PLC03_AEC_R,DB_PLC03_AEC_W,DB_PLC03_AEC_X,DB_PLC03_AEC_Y,DB_PLC03_HIRANO_ALM_W,DB_PLC03_HIRANO_DI_B,DB_PLC03_HIRANO_DO_B,DB_PLC03_HIRANO_PV_W,DB_PLC03_HIRANO_SV_W,DB_PLC03_KONDO_A2K_B,DB_PLC03_KONDO_K2A_B,DB_PLC03_KONDO_K2A_W,DB_PLC03_TYOUGOU_R】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_AI 】【DB_FP_AI 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_AI_AL4】【DB_FP_AI_AL4】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_AI_Q】【DB_FP_AI_Q】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_AI_SV 】【DB_FP_AI_SV 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_AI_SV2】【DB_FP_AI_SV2】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_AI_SV3】【DB_FP_AI_SV3】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_PID】【DB_FP_PID】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_FP_SUM】【DB_FP_SUM】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_ALIAS】【DB_LST_ALIAS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_ALM_MASTER】【DB_LST_ALM_MASTER】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_C 】【DB_LST_C 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_FACEPLATE_MASTER】【DB_LST_FACEPLATE_MASTER】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_FIELDMASTER_TAG 】【DB_LST_FIELDMASTER_TAG 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_FIELDMASTER_TAG_PRT】【DB_LST_FIELDMASTER_TAG_PRT】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_FIELDMASTER_TAG_PV】【DB_LST_FIELDMASTER_TAG_PV】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_FIELDMASTER_TAG_SV】【DB_LST_FIELDMASTER_TAG_SV】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_SERVER_CSV】【DB_LST_SERVER_CSV】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_TREND_PENINFO 】【DB_LST_TREND_PENINFO 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_LST_TREND_PENINFO_ONEPOINT】【DB_LST_TREND_PENINFO_ONEPOINT】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_AEC_ANALOG】【DB_PLC00_AEC_ANALOG】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_AEC_M】【DB_PLC00_AEC_M】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_AEC_R】【DB_PLC00_AEC_R】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_AEC_X】【DB_PLC00_AEC_X】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_AEC_Y】【DB_PLC00_AEC_Y】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_OP_X】【DB_PLC00_OP_X】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC00_OP_Y】【DB_PLC00_OP_Y】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_ANALOG】【DB_PLC03_AEC_ANALOG】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_B】【DB_PLC03_AEC_B】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_M】【DB_PLC03_AEC_M】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_R】【DB_PLC03_AEC_R】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_W】【DB_PLC03_AEC_W】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_X】【DB_PLC03_AEC_X】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_AEC_Y】【DB_PLC03_AEC_Y】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_HIRANO_ALM_W】【DB_PLC03_HIRANO_ALM_W】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_HIRANO_DI_B】【DB_PLC03_HIRANO_DI_B】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_HIRANO_DO_B】【DB_PLC03_HIRANO_DO_B】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_HIRANO_PV_W】【DB_PLC03_HIRANO_PV_W】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_HIRANO_SV_W】【DB_PLC03_HIRANO_SV_W】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_KONDO_A2K_B】【DB_PLC03_KONDO_A2K_B】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_KONDO_K2A_B】【DB_PLC03_KONDO_K2A_B】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_KONDO_K2A_W】【DB_PLC03_KONDO_K2A_W】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【*】【DB_PLC03_TYOUGOU_R】【DB_PLC03_TYOUGOU_R】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'//Sheet Setting】【】【】【】【】【NotEmpty => Fill Header】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'[ KEY ]】【[WorkBookName]】【[WorkSheetName]】【[KeyCol]】【[RtnCol]】【[Header] >> 】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_OP_X200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●OP盤_警報PLC_Ｉ／Ｏ設計_20210811.xlsx】【DI,DO】【C3】【G34】【A:DEVICE】【C:COMMENT1】【D:COMMENT2】【E:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_OP_Y0A0】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●OP盤_警報PLC_Ｉ／Ｏ設計_20210811.xlsx】【DI,DO】【D35】【G42】【A:DEVICE】【C:COMMENT1】【D:COMMENT2】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_KONDO_K2A_B1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ビット(近藤殿→旭)】【B5】【M260】【E:CATEGORY】【G:COMMENT】【H:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_KONDO_A2K_B1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ビット(旭→近藤殿)】【B5】【H300】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_KONDO_K2A_W1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ワード(近藤殿→旭)】【B5】【J300】【D:COMMENT】【E:DEVICE】【F:PV_MIN】【G:PV_MAX】【H:UNITS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_KONDO_A2K_W1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\[第１案確定]新3系 Tプロ通信リスト_触酸PLC 200508MT.xls】【ワード(旭→近藤殿)】【B5】【K300】【//Ignore】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_X】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(共通)】【D3】【G194】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【E:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_Y】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(共通)】【D195】【G322】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_X】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(3系)】【D3】【G322】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【E:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_Y】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\●盤Ｉ／Ｏ設計_2021_08_23.xlsx】【DI,DO(3系)】【D323】【G578】【A:DEVICE】【B:COMMENT1】【C:COMMENT2】【D:COMMENT3】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_HIRANO_DI_B1300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(DI)】【B5】【G400】【A:INDEX】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_HIRANO_ALM_W13E0】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(DI)アラーム】【B5】【G400】【A:INDEX】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_HIRANO_DO_B1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(DO)】【B5】【H150】【A:INDEX】【D:COMMENT】【E:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_HIRANO_PV_W1300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(PV)】【B5】【K300】【A:INDEX】【D:COMMENT】【E:DEVICE】【F:MIN】【G:MAX】【H:UNITS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_HIRANO_SV_W1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\旭化成殿信号取り合いリスト_20210729.xls】【ﾋﾗﾉ通信(SV)】【B5】【K200】【A:INDEX】【D:COMMENT】【E:DEVICE】【F:MIN】【G:MAX】【H:UNITS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_TYOUGOU_R8000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\外部インターフェイス.xlsx】【3系PLC項目リスト】【A2】【O800】【F:ALIAS】【K:COMMENT】【O:DEVICE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_ANALOG_1W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_共通)】【C7】【AT156】【A:NO】【B:ALIAS_BASE】【C:COMMENT】【D:PV_MIN】【E:PV_MAX】【F:SV_MIN】【G:SV_MAX】【H:UNITS】【I:FP_TYPE】【J:WORD_SIZE】【K:PV_DEVICE】【L:SV_DEVICE】【M:MV_DEVICE】【N:SH_DEVICE】【O:SL_DEVICE】【Q:MV1_DEVICE】【R:MV2_DEVICE】【S:DB_DEVICE】【T:MH_DEVICE】【U:ML_DEVICE】【V:HH_DEVICE】【W:H_DEVICE】【X:L_DEVICE】【Y:LL_DEVICE】【Z:HYS_DEVICE】【AA:CAL_DEVICE】【AB:CAL_M_DEVICE】【AC:RAW_DEVICE】【AD:P_DEVICE】【AE:I_DEVICE】【AF:D_DEVICE】【AG:MODE_DEVICE】【AI:PLC_HH_DEVICE】【AJ:PLC_H_DEVICE】【AK:PLC_L_DEVICE】【AL:PLC_LL_DEVICE】【AM:PLC_CAL_M_DEVICE】【AN:AL_HH_DEVICE】【AO:AL_H_DEVICE】【AP:AL_L_DEVICE】【AQ:AL_LL_DEVICE】【AR:AL_CAL_M_DEVICE】【AT:DECIMAL】【】【】【
-'DB_PLC00_AEC_ANALOG_2W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_共通)】【C159】【AT183】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_ANALOG_1W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_3系)】【C7】【AT456】【A:NO】【B:ALIAS_BASE】【C:COMMENT】【D:PV_MIN】【E:PV_MAX】【F:SV_MIN】【G:SV_MAX】【H:UNITS】【I:FP_TYPE】【J:WORD_SIZE】【K:PV_DEVICE】【L:SV_DEVICE】【M:MV_DEVICE】【N:SH_DEVICE】【O:SL_DEVICE】【Q:MV1_DEVICE】【R:MV2_DEVICE】【S:DB_DEVICE】【T:MH_DEVICE】【U:ML_DEVICE】【V:HH_DEVICE】【W:H_DEVICE】【X:L_DEVICE】【Y:LL_DEVICE】【Z:HYS_DEVICE】【AA:CAL_DEVICE】【AB:CAL_M_DEVICE】【AC:RAW_DEVICE】【AD:P_DEVICE】【AE:I_DEVICE】【AF:D_DEVICE】【AG:MODE_DEVICE】【AI:PLC_HH_DEVICE】【AJ:PLC_H_DEVICE】【AK:PLC_L_DEVICE】【AL:PLC_LL_DEVICE】【AM:PLC_CAL_M_DEVICE】【AN:AL_HH_DEVICE】【AO:AL_H_DEVICE】【AP:AL_L_DEVICE】【AQ:AL_LL_DEVICE】【AR:AL_CAL_M_DEVICE】【AT:DECIMAL】【】【】【
-'DB_PLC03_AEC_ANALOG_2W】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【計器 (Fﾌﾟﾛ_3系)】【C459】【AT483】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_M800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系操作フラグ】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【_D:[FULL_ADR],[Fix],[A],[="PLC00.M."&fReplace(RC1,"M","M0")]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_M700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系操作フラグ】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_M900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【A3】【C150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_M1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_M1100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【I3】【K150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_M1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通系モニタフラグ】【M3】【O150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_R3500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通設定値】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_R3600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通設定値】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_R4000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通設定値】【I3】【K150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_R2000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通各種設定値】【A3】【C150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_R2100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通各種設定値】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC00_AEC_R2600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【共通各種設定値】【I3】【K150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【A3】【C102】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R1700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【E3】【G102】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R1800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【I3】【K102】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R1900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【M3】【O102】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【Q3】【S102】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【A106】【C205】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【E106】【G205】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2400】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【I106】【K205】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【M106】【O205】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【Q106】【S205】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【A209】【C308】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3400】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【E209】【G308】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【I209】【K308】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【M209】【O308】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系処方関係】【Q209】【S308】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R4200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系塗工洗浄履歴】【A3】【C150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R4300】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系塗工洗浄履歴】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【A3】【C150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R2600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【I3】【K150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【M3】【O150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【Q3】【S150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_R3200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系各種設定値】【U3】【W150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【A3】【C150】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1400】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【I3】【K150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系操作フラグ】【M3】【O150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M900】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【A3】【C150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【E3】【G150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1500】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【I3】【K150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【M3】【O150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1200】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【Q3】【S150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M3700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【U3】【W150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1600】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【Y3】【AA150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1700】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【AC3】【AE150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M5100】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【AG3】【AI150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_M1800】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【３系モニタフラグ】【AK3】【AM150】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_B0000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【CC-Link IE Control(Fﾌﾟﾛ)】【G2】【I800】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_PLC03_AEC_W0000】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\割付表_PLC_SCADA間通信_Fプロ_2021_08_27.xls】【CC-Link IE Control(Fﾌﾟﾛ)】【L2】【N800】【A:DEVICE】【B:COMMENT】【C:CATEGORY】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_C 】【C:\Users\Owner\Documents\workspace\PRJ\リスト\リスト\c210609.xlsm】【FP修正原本】【E5】【M300】【A:GROUP】【B:ALIAS】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_ALIAS】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\Alias\Alias.csv】【Alias】【A1】【B90000】【A:ALIAS】【B:FULL_ADR】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_SERVER_CSV】【C:\Users\Owner\Documents\workspace\PRJ\リスト\server_csv.csv】【server_csv】【A1】【C90000】【A:CSV1】【B:CSV2】【C:CSV3】【_D:[PLC],[Fix],[A],[=IF(RC1="*",R[-1]C,fSplit(RC1,1,"#"))]】【_E:[FOLDER],[Fix],[A],[=IF(RC2="*",R[-1]C,fSplit(RC2,1,"#"))]】【_F:[NAME],[Fix],[A],[=IF(RC3="*",R[-1]C,fSplit(RC3,1,"#"))]】【_G:[FULL_ADR],[Fix],[A],[=RC4 & "." & RC5 & "." & RC6]】【_H:[UNITS],[Fix],[A],[=fSplitBetween(RC3,1,"+EU=","+C=")]】【_I:[COMMENT],[Fix],[A],[=fSplit(RC3,2,"+C=",TRUE)]】【_ J:[DEC1],[Fix],[A],[=fSplitCsvPrmDec(RC3,1)]】【_K:[DEC2],[Fix],[A],[=fSplitCsvPrmDec(RC3,2)]】【_L:[DEC3],[Fix],[A],[=fSplitCsvPrmDec(RC3,3)]】【_M:[DECIMAL],[Fix],[A],[=IF(NOT(SUBSTITUTE(RC10,"-","")=SUBSTITUTE(RC11,"-","")),"NG",SUBSTITUTE(RC10,"-",""))]】【_N:[BINALY],[Fix],[A],[=fSplitCsvPrmBin(RC3)]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_TREND_PENINFO 】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\config\trend_peninfo.txt】【trend_peninfo】【A1】【L500】【A:TREND_COMMENT】【B: UNITS】【F: MIN】【G: MAX】【J: DATA_SOURCE】【K: DECIMAL】【L: SIZE】【_N:[TREND_NAME],[Fix],[A],[=SUBSTITUTE(fSplit(RC10,2,"::"),fSplit(fSplit(RC10,2,"::"),1,".") &".","")]】【_O:[FP_TYPE],[Fix],[A],[=fSplitBetween(RC10,1,"::",".")]】【_P:[ALIAS],[Fix],[A],[=IF(NOT(LEFT(RC1,1)="["),fSplit(RC1,1," "),"")]】【_Q:[COMMENT],[Fix],[A],[=IF(NOT(LEFT(RC1,1)="["),TRIM(SUBSTITUTE(RC1,fSplit(RC1,1," "),"")),"")]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_TREND_PENINFO_ONEPOINT】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\config\trend_peninfo_onepoint.txt】【trend_peninfo_onepoint】【A1】【C400】【A:SRC】【_D:[TREND_NAME],[Fix],[A],[=SUBSTITUTE(fSplit(RC1,2,"::"),fSplit(fSplit(RC1,2,"::"),1,".") &".","")]】【_E:[FP_TYPE],[Fix],[A],[=fSplitBetween(RC1,1,"::",".")]】【_F:[ALIAS],[Fix],[A],[=fSplit(RC4,1,".")]】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_ALM_MASTER】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\config\alarm_master.csv】【alarm_master】【A3】【L10000】【A:ALARMID】【D:FULL_ADR】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_FIELDMASTER_TAG 】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND01\fieldmaster_tag.csv】【fieldmaster_tag】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_FIELDMASTER_TAG_PV】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND02\fieldmaster_tag_pv.csv】【fieldmaster_tag_pv】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_FIELDMASTER_TAG_SV】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND02\fieldmaster_tag_sv.csv】【fieldmaster_tag_sv】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_FIELDMASTER_TAG_PRT】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server\TREND02\fieldmaster_tag_prt.csv】【fieldmaster_tag_prt】【A2】【N500】【A: TREND_NAME】【B: ALIAS】【C: COMMENT】【F: DECIMAL】【K: ALIAS_BASE】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_LST_FACEPLATE_MASTER】【C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\config\faceplate_master.csv】【faceplate_master】【A2】【B500】【A:GROUP_NAME】【B:STRUCT_TAG_ADR】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_AI 】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI.csv】【AI】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AB: PV_MAX】【AE: PV_MIN】【AH: TREND_MAX】【AK: TREND_MIN】【AT: UNITS】【AW: DECIMAL】【ZZ: RESET】【ZX: SV_MAX】【ZY: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_AI_AL4】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_AL4.csv】【AI_AL4】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AB: PV_MAX】【AE: PV_MIN】【AH: TREND_MAX】【AK: TREND_MIN】【AT: UNITS】【AW: DECIMAL】【AX: RESET】【AY: SV_MAX】【AZ: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_AI_Q】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_Q.csv】【AI_Q】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AB: PV_MAX】【AE: PV_MIN】【AH: TREND_MAX】【AK: TREND_MIN】【AT: UNITS】【AW: DECIMAL】【AX: RESET】【AY: SV_MAX】【AZ: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_AI_SV 】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SV.csv】【AI_SV】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AE: PV_MAX】【AH: PV_MIN】【AK: SV_MAX】【AN: SV_MIN】【AQ: TREND_MAX】【AT: TREND_MIN】【AU: UNITS】【AV: DECIMAL】【AW: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_AI_SV2】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SV2.csv】【AI_SV2】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AE: PV_MAX】【AH: PV_MIN】【AK: SV_MAX】【AN: SV_MIN】【AQ: TREND_MAX】【AT: TREND_MIN】【BC: UNITS】【BF: DECIMAL】【BG: SV_MAX】【BH: SV_MIN】【BI: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_AI_SV3】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SV3.csv】【AI_SV3】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AE: PV_MAX】【AH: PV_MIN】【AQ: TREND_MAX】【AT: TREND_MIN】【BC: UNITS】【BF: DECIMAL】【CZ: SV_MAX】【DA: SV_MIN】【DB: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_PID】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\PID.csv】【PID】【A2】【ED500】【A: STRUCT_TAG_DR】【B: FP_TYPE】【G: ALIAS_BASE】【J: COMMENT1】【M: COMMENT2】【AH: PV_MAX】【AK: PV_MIN】【AT: TREND_MAX】【AW: TREND_MIN】【BL: UNITS】【BO: DECIMAL】【BP: SV_MAX】【BQ: SV_MIN】【BR: RESET】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
-'DB_FP_SUM】【C:\Users\Owner\Documents\workspace\tmpData\DFR3_FP\AI_SUM.csv】【AI_SUM】【A2】【ED500】【A: ALIAS_BASE】【B: COMMENT1 】【C: COMMENT2 】【D: DECIMAL】【E: FP_TYPE】【F: PV_MAX】【G: PV_MIN】【H: TREND_MAX】【I: TREND_MIN】【J: UNITS】【K: RESET】【L: SV_MAX】【M: SV_MIN】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【】【
+''*><BSQL_PRESHT-BITDEV_OUTSHT><[PRE_BIT_DEV$]><><><
+'*><BSQL_PRESHT-BITDEV_CONDITION><WHERE [DEVICE] IS NOT NULL><><><
+'*><BSQL_PRESHT-BITDEV_SELECT><[DEVICE],[COMMENT1] &' ' & [COMMENT2] AS [COMMENT], [CATEGORY]><[DEVICE]><[COMMENT1] &' ' & [COMMENT2] AS [COMMENT]>< [CATEGORY]
+'*><BSQL_PRESHT-BITDEV_FROM><[DB_PLC00_OP_X$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-1_SELECT><[DEVICE],[COMMENT1] &' ' & [COMMENT2] AS [COMMENT],''><[DEVICE]><[COMMENT1] &' ' & [COMMENT2] AS [COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-1_FROM><[DB_PLC00_OP_Y$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-2_SELECT><[DEVICE],[COMMENT], [CATEGORY]><[DEVICE]><[COMMENT]>< [CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-2_FROM><[DB_PLC03_KONDO_K2A_B$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-3_SELECT><[DEVICE],[COMMENT],''><[DEVICE]><[COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-3_FROM><[DB_PLC03_KONDO_A2K_B$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-4_SELECT><[DEVICE],[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT],[CATEGORY]><[DEVICE]><[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT]><[CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-4_FROM><[DB_PLC00_AEC_X$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-5_SELECT><[DEVICE],[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT],''><[DEVICE]><[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-5_FROM><[DB_PLC00_AEC_Y$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-6_SELECT><[DEVICE],[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT],[CATEGORY]><[DEVICE]><[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT]><[CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-6_FROM><[DB_PLC03_AEC_X$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-7_SELECT><[DEVICE],[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT],''><[DEVICE]><[COMMENT1] &' ' & [COMMENT2]  &' ' & [COMMENT3] AS [COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-7_FROM><[DB_PLC03_AEC_Y$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-8_SELECT><[DEVICE],[COMMENT],''><[DEVICE]><[COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-8_FROM><[DB_PLC03_HIRANO_DI_B$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-9_SELECT><[DEVICE],[COMMENT],''><[DEVICE]><[COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-9_FROM><[DB_PLC03_HIRANO_ALM_W$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-10_SELECT><[DEVICE],[COMMENT],''><[DEVICE]><[COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-10_FROM><[DB_PLC03_HIRANO_DO_B$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-11_SELECT><[DEVICE],[COMMENT], [CATEGORY]><[DEVICE]><[COMMENT]>< [CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-11_FROM><[DB_PLC00_AEC_M$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-12_SELECT><[DEVICE],[COMMENT], [CATEGORY]><[DEVICE]><[COMMENT]>< [CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-12_FROM><[DB_PLC00_AEC_R$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-13_SELECT><[DEVICE],[COMMENT], [CATEGORY]><[DEVICE]><[COMMENT]>< [CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-13_FROM><[DB_PLC03_AEC_R$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-14_SELECT><[DEVICE],[COMMENT], [CATEGORY]><[DEVICE]><[COMMENT]>< [CATEGORY]
+'*><BSQL_PRESHT-BITDEV_UNION-14_FROM><[DB_PLC03_AEC_M$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-15_SELECT><[DEVICE],[COMMENT],''><[DEVICE]><[COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-15_FROM><[DB_PLC03_AEC_B$]><><><
+'*><BSQL_PRESHT-BITDEV_UNION-16_SELECT><[DEVICE],[COMMENT],''><[DEVICE]><[COMMENT]><''
+'*><BSQL_PRESHT-BITDEV_UNION-16_FROM><[DB_PLC03_AEC_W$]><><><
+'><><><><><
 
