@@ -1,4 +1,4 @@
-'clsXapDebug 20211018
+'clsXapDebug 20211104
 
 Private base_ As clsXapDomDoc
 Private InPath_ As String
@@ -11,10 +11,46 @@ Private crrForm_ As String
 
 
 Sub createPartsXmlShtByPGPRM()
-Dim sPrf As String: sPrf = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_SHEET_PREF", "LinkShtClt")
+Application.ScreenUpdating = False
 
-Call downloadPartsXmlOnSht(sPrf)
+Stop '>>>>ALTER
+'REN >>> PGP6RM_CLT_EXE_ROOT
 
+Dim sPrfs As String: sPrfs = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_EXE_CREATESHT", "LinkShtClt")
+Dim sPrf As String: sPrf = inptPrf
+Dim sLinkShtName As String: sLinkShtName = "LinkShtClt"
+Dim sShtName As String
+Dim sAttr As String
+Dim sLibCls As String
+Dim v As Variant
+If UBound(Split(sPrfs, ",")) = 0 Then Call DebugOut("ERR", "sprfs length is 0")
+
+For Each v In Split(sPrfs, ",")
+    'append range
+    sData = fGetRowData(ThisWorkbook.Name, sLinkShtName, CStr(v), "A")  'row => [link parameter]
+    If UBound(sData) = -1 Then Call DebugOut("ERR", "fGetRowData fail : " & v & " " & sLinkShtName): Exit Sub
+    sShtName = CStr(sData(1))
+    sLibCls = CStr(sData(2))
+    'sAttr = CStr(sData(3))
+    vRest = retArrayBetween(sData, 3, UBound(sData))
+    Call SelectOrAddWs(sShtName, ThisWorkbook.Name)
+    With ThisWorkbook.Sheets(sShtName)
+        .Activate
+        .Cells.Clear
+        .Range(Cells(1, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+        .Range("A1").Interior.Color = RGB(255, 155, 155)
+        .Range("A1").Value = "_Index"
+        
+        If (UBound(vRest)) = -1 Then Exit Sub
+             .Rows(1).Clear
+            Call PasteShtData(ThisWorkbook.Name, .Name, vRest)
+            Call downloadPartsXml(.Name, sLibCls)
+            Call PasteShtData(ThisWorkbook.Name, .Name, vRest)
+    End With
+Next v
+
+If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_SORTSHT", "LinkShtClt")) = True Then SortShtByPGPRM
+Application.ScreenUpdating = True
 ThisWorkbook.Sheets("LinkShtClt").Activate
 End Sub
 
@@ -38,7 +74,6 @@ End Sub
 
 
 Sub WsdownloadFolderXml()
-
 Application.ScreenUpdating = False
 Dim d As clsXapDebug: Set d = New clsXapDebug
 Dim f As IXMLDOMSelection
@@ -47,7 +82,7 @@ Dim sCid As String
 Dim l As Long
 Dim sRet As String
 Dim sOutWsName As String
-sOutWsName = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT", "LinkShtDB")
+sOutWsName = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_OUT_SHT", "LinkShtDB")
 On Error Resume Next
 
 If sOutWsName = "" Then
@@ -58,7 +93,7 @@ Else
 End If
     ws.Activate
 
-sFol = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_LOAD_FOLDER", "LinkShtDB")
+sFol = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_LOAD_FOLDER", "LinkShtDB")
 d.reloadPath
 Set f = d.getFolder(sFol)
 
@@ -192,10 +227,10 @@ End Sub
 Sub reloadPath()
 '    InPath_ = fGetPgVal("xml_in_path")
 '    OutPath_ = fGetPgVal("xml_out_path")
-    InPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_LOAD_XML", "LinkShtClt")
-    OutPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_SAVE_XML", "LinkShtClt")
-'    FixRepoInPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_LOAD_XML")
-'    FixRepoOutPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_SAVE_XML")
+    InPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_LOAD_XML", "LinkShtClt")
+    OutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_SAVE_XML", "LinkShtClt")
+'    FixRepoInPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_LOAD_XML")
+'    FixRepoOutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_SAVE_XML")
 
     Call DebugOut("XML_PROC", _
                         "sub reloadpath " & vbNewLine & _
@@ -355,44 +390,6 @@ Set vFilter = Nothing
 End Sub
 
 
-Sub downloadPartsXmlOnSht(inptPrf As String)
-Application.ScreenUpdating = False
-Dim sPrf As String: sPrf = inptPrf
-Dim lEnd As Long
-Dim sShtName As String
-Dim sAttr As String
-Dim sLibCls As String
-
-With ThisWorkbook.Sheets("LinkShtClt")
-lEnd = .Cells(.Rows.Count, 1).End(xlUp).Row
-    For l = 1 To lEnd
-        'search link key
-        If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then ' CLT_XXX_XX
-            'append range
-            sData = fGetRowData(ThisWorkbook.Name, .Name, .Cells(l, 1).Value, "A")  'row => [link parameter]
-            If UBound(sData) = -1 Then Call DebugOut("ERR", "fGetRowData fail : " & .Cells(l, 1).Value & " " & .Name): Exit Sub
-                sShtName = CStr(sData(1))
-                sAttr = CStr(sData(2))
-                sLibCls = CStr(sData(3))
-                Call SelectOrAddWs(sShtName, ThisWorkbook.Name)
-                    With ThisWorkbook.Sheets(sShtName)
-                        .Activate
-                        .Cells.Clear
-                        .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-                        .Range("A1").Interior.Color = RGB(255, 155, 155)
-                        .Range("A1").Value = "_Index"
-                        .Range(.Cells(1, 2), .Cells(1, UBound(Split(sAttr, ",")) + 2)).Value2 = Split(sAttr, ",")
-                        Call downloadPartsXml(.Name, sLibCls)
-                    End With
-        End If
-    Next l
-End With
-
-Call SortSht(sPrf)
-Application.ScreenUpdating = True
-End Sub
-
-
 Sub downloadPartsXml(inptShtName As String, inptLibComment As String)
 Dim d As clsXapDomDoc: Set d = New clsXapDomDoc
 Dim sLibCmt  As String: sLibCmt = inptLibComment
@@ -417,8 +414,8 @@ End Sub
 
 
 Sub downloadXmlOnClearSht(inptList As IXMLDOMSelection)
-    Call SelectOrAddWs(fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT"), ThisWorkbook.Name)
-    With ThisWorkbook.Worksheets(fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_XML_OUT_SHT"))
+    Call SelectOrAddWs(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_OUT_SHT"), ThisWorkbook.Name)
+    With ThisWorkbook.Worksheets(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_OUT_SHT"))
         .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
         .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
         .Range("A1").Interior.Color = RGB(255, 155, 155)
@@ -466,7 +463,9 @@ With ActiveSheet
                              ActiveCell.Value = ActiveCell.Row - 1 'Column A index
                                 .Range("A1").Interior.Color = RGB(55, 155, 255)
                                 Do While .Cells(1, lCol).Value <> "" 'field Attrs
-                                    If .Cells(1, lCol).Value = "Folder" Then
+                                    If Left(.Cells(1, lCol).Value, 1) = "%" Then
+                                        'do nothing
+                                    ElseIf .Cells(1, lCol).Value = "Folder" Then
                                         ActiveCell.Offset(0, lCol - 1) = crrFolder_
                                     ElseIf .Cells(1, lCol).Value = "Form" Then
                                        ActiveCell.Offset(0, lCol - 1) = crrForm_
@@ -485,7 +484,7 @@ With ActiveSheet
                                 ActiveCell.Offset(1, 0).Activate
 
                                 If Not vObj.ChildNodes.Length = 0 And _
-                                    CBool(fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_EXPAND_CHILD", "LinkShtClt")) = CBool(1) Then
+                                    CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_EXPAND_CHILD", "LinkShtClt")) = CBool(1) Then
                                     For Each vO In vObj.ChildNodes
                                         Call parseGroup(vO, "", .Name)
                                     Next vO
@@ -1145,4 +1144,55 @@ Print f.Context.childnode(0).XML ' => xml top
 
 End Sub
 
+
+
+'=====================================
+
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'[ CLIENT DB SETTING ]】【】【】【】【】【】【】【】【】【】【
+'PGPRM_CLT_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtClt】【B】【C】【】【】【】【】【】【
+'*】【[ KEY ]】【[ VAL ]】【】【】【】【】【】【】【】【
+'*】【//Download xml setting】【】【】【】【】【】【】【】【】【
+'*】【PGPRM_PATH_LOAD_XML】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client.xml】【】【】【】【】【】【】【】【
+'*】【PGPRM_PATH_SAVE_XML】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client_out.xml】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【
+'*】【PGPRM_XML_LOAD_FOLDER】【_Graphic】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【
+'*】【PGPRM_XML_OUT_SHT】【CLT_XML_OUT】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【
+'*】【PGPRM_XML_SORTSHT】【1】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【
+'*】【PGPRM_EXPAND_CHILD】【0】【】【】【】【】【】【】【】【
+'*】【PGPRM_SHEET_PREF】【CLT_】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【PGPRM_EXE_CREATESHT】【CLT_p_r_Alm】【】【】【】【】【】【】【】【
+'】【】【CLT_p_r_Alm】【CLT_p_r_valve】【】【】【】【】【】【】【
+'】【】【】【CLT_p_r_pump】【】【】【】【】【】【】【
+'】【】【】【CLT_p_r_pvsv】【】【】【】【】【】【】【
+'】【】【】【CLT_p_r_Alm】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'PGPRM_ALIAS2FULLADR】【DFR3_DB_211014.xlsm】【DB_LST_ALIAS】【A】【B】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'[ PARTS DATA ]】【[ LIBRALYCLASS ]】【[ ATTRIBUTES ]】【】【】【】【】【】【】【】【
+'CLT_p_r_valve】【p_r_valve】【A:_Index】【B:Form】【C:Folder】【D:Top】【E:Left】【F:Height】【G:Width】【H:_TagIn】【%I:[FULL_ADR],[Fix],[A],[=retDFRALIAS2FULLADR(RC[-1])]
+'CLT_p_r_pump】【p_r_pump】【A:_Index】【B:Form】【C:Folder】【D:_TagIn】【%E:[FULL_ADR],[Fix],[A],[=retDFRALIAS2FULLADR(RC[-1])]】【】【】【】【
+'CLT_p_r_pvsv】【p_r_pvsv】【A:_Index】【B:Form】【C:Folder】【D:_TagInPV】【E:_TagOutPV】【F:_TagInSV】【G:_TagOutSV】【H:_Decimal】【%I:[FULL_ADR],[Fix],[A],[=fkey2val("PGPRM_ALIAS2FULLADR",RC[-5],"LinkShtClt")]
+'CLT_p_r_Alm】【p_r_Alm】【A:_Index】【B:Form】【C:Folder】【D:_TagIn】【E:_TagIn2】【F:_Text】【%G:[FULL_ADR],[Fix],[A],[=retDFRALIAS2FULLADR(RC[-3])]】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【
 
