@@ -1,5 +1,5 @@
 Option Explicit
-'common 20211102
+'common 20211104
 
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
@@ -22,7 +22,6 @@ oArr.Add "ERR"
 oArr.Add "XML_PROC"
 
 oArr.Add "DEBUG"
-
 
 For Each v In oArr
     If v = UCase(inptCategory) Then
@@ -175,8 +174,8 @@ End If
 
 Dim sWb As String: sWb = sData(2)
 Dim sWs As String: sWs = sData(3)
-Dim sKeyCol As String: sKeyCol = sData(4)
-Dim sRtnCol As String: sRtnCol = sData(5)
+Dim sKeyCol As String: sKeyCol = Trim(sData(4))
+Dim sRtnCol As String: sRtnCol = Trim(sData(5))
 
 If sWb = "" Or sWb = "#N/A#" Then Call DebugOut("ERR", "sWb : " & sWb)
 If sWs = "" Or sWs = "#N/A#" Then Call DebugOut("ERR", "sWs : " & sWs)
@@ -974,10 +973,8 @@ End With
 End Sub
 
 
-
 Sub FillFormula(inptRng As Range, inptFormula As String)
     Dim rRng As Range: Set rRng = inptRng
-        
     With rRng
         .NumberFormat = "General"
         .FormulaR1C1 = inptFormula
@@ -985,7 +982,6 @@ Sub FillFormula(inptRng As Range, inptFormula As String)
         SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
         ReplaceFormat:=False
     End With
-    
 End Sub
 
 
@@ -1095,13 +1091,14 @@ Dim rRng As Range
 Dim lEnd As Long
 Dim lBaseCol As Long: lBaseCol = Columns(inptBaseCol).Column
 Dim lPasteCol As Long: lPasteCol = Columns(inptPasteCol).Column
+Dim lRowEnd As Long
 With Workbooks(inptWbName).Sheets(inptShtName)
-Call DebugOut("UTIL", "fFixFormula :" & inptShtName & " " & inptFormula)
-Set rRng = .Range( _
-                      .Cells(2, lBaseCol) _
-                    , .Cells(.Cells(.Rows.Count, lBaseCol).End(xlUp).Row, lBaseCol))
-
-Call FixFormula(rRng.Offset(0, lPasteCol - lBaseCol), inptFormula)
+    Call DebugOut("UTIL", "fFixFormula :" & inptShtName & " " & inptFormula)
+    lRowEnd = .Cells(.Rows.Count, lBaseCol).End(xlUp).Row: If lRowEnd = 1 Then Exit Sub
+    Set rRng = .Range( _
+                          .Cells(2, lBaseCol) _
+                        , .Cells(lRowEnd, lBaseCol))
+    Call FixFormula(rRng.Offset(0, lPasteCol - lBaseCol), inptFormula)
 End With
 
 End Sub
@@ -1255,7 +1252,7 @@ End Sub
 Function retHeaderCol(inptSht As String, inptKey As String) As Long
 Dim sWbName As String:  sWbName = ThisWorkbook.Name
 Dim sWsName As String:  sWsName = inptSht
-Dim sKey As String: sKey = inptKey
+Dim sKey As String: sKey = Trim(inptKey)
 Dim sMatchRow As String
 Dim sRslt As String
 On Error Resume Next
