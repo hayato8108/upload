@@ -1,5 +1,5 @@
 Option Explicit
-'SQL 20211102
+'SQL 20211104
 
 Sub CreateDFR3DBTable()
 Dim oWb As Workbook: Set oWb = ThisWorkbook
@@ -54,37 +54,46 @@ Dim v As Variant
 Dim vv As Variant
 Dim sShts As Variant
 Dim sQueryFilter As String
+Dim l As Long
+
+Call DebugOut("REM", "full join : duplicat value")
 
 sShts = Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "PGPRM_BSQL_EXE_CREATESHT", sShtSqlLink), ",")
 
 For Each v In sShts
-
+If Not Left(v, 4) = "BSQL" Then Call DebugOut("ERR", "prefix missing : BSQL"): Exit Sub
     sShtName = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
     sShtName = fSplitBetweenAlter(sShtName, 2, "[", "$]")
     sShtTmpName = "TMP_" & sShtName
     sQueryFilter = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink): If sQueryFilter = "#N/A#" Then sQueryFilter = ""
 
+    If sShtName = "#N/A#" Or sShtName = "" Then Call DebugOut("ERR", "sheet find error : " & v): Exit Sub
     Call SelectOrAddWs(sShtName, ThisWorkbook.Name)
     Call SelectOrAddWs(sShtTmpName, ThisWorkbook.Name)
-
     'create temp sheet
     Call GetQueryResultsOnSht(GetSqlQueryByLinkShtSQL(CStr(v)), RetCDirWbPath(), sShtTmpName)
     'condition
     Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryFilter, RetCDirWbPath(), sShtName)
     'refresh and paste formula column
-    For Each vv In Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_TSTOUT2_FORMULACOL", sShtSqlLink), ",")
-        If Not retHeaderCol(sShtName, CStr(vv)) = 0 Then Sheets(sShtName).Columns(retHeaderCol(sShtName, CStr(vv))).NumberFormat = "General"
-    Next vv
-    Call calcFormula(sShtName)
-    ThisWorkbook.Sheets(sShtName).Cells.Copy
-    ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
-    ThisWorkbook.Sheets(sShtName).Range("A1").Select
-    
+    If Not UBound(Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")) = -1 Then
+        For Each vv In Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")
+            l = retHeaderCol(sShtName, CStr(vv))
+            If Not l = 0 Then
+                With Sheets(sShtName)
+                     Call FillFormula(.Range(.Cells(2, l), .Cells(.Cells(Rows.Count, l).End(xlUp).Row, l)), .Cells(2, l).Value)
+                End With
+            End If
+        Next vv
+    End If
 Next v
 
-If fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink) = "T" Then Call DeleteTableByPrefix("TMP_")
-If fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_SORTSHT", sShtSqlLink) = "T" Then Call SortShtByPGPRM
-ThisWorkbook.Sheets(sShtSqlLink).Activate
+ThisWorkbook.Sheets(sShtName).Cells.Copy
+ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+ThisWorkbook.Sheets(sShtName).Range("A1").Select
+
+If CBool(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink)) = True Then Call DeleteTableByPrefix("TMP_")
+If CBool(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_SORTSHT", sShtSqlLink)) = True Then Call SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_RTNSHT", sShtSqlLink)) = True Then ThisWorkbook.Sheets(sShtSqlLink).Activate
 Application.ScreenUpdating = True
 End Sub
 
@@ -114,20 +123,21 @@ ReDim vJoin(CLng(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_JOINTMAX", sWsSql
 
 sQuerySelect = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
 sQueryFrom = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
-sQueryCondition = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Then sQueryCondition = ""
+sQueryCondition = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Or fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_CONDITION", sWsSql) = "//" Then sQueryCondition = ""
 sQueryJoin = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
 sQueryFree = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
 
 For l = 1 To UBound(vJoin)
     v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
     v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_KEY", sWsSql)
-    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
+    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "") ' MAIN
     v(5) = sQuerySelect
+    v(6) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_KEY", sWsSql): If v(6) = "#N/A#" Then v(6) = v(2)
     If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
         vJoin(l) = _
                         "INNER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
-                        "                ON " & v(4) & "." & v(2) & " = " & v(1) & "." & v(2) & vbLf & _
+                        "                ON " & v(4) & "." & v(6) & " = " & v(1) & "." & v(2) & vbLf & _
                         ""
 Next l
 
@@ -136,7 +146,8 @@ For l = 1 To UBound(vJoin)
     v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FULLJOIN-" & CStr(l) & "_KEY", sWsSql)
     v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
     v(5) = sQuerySelect
-    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
+    v(6) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_FULLJOIN-" & CStr(l) & "_FROM", sWsSql)
+    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(6) = "//" Then Exit For
         vJoin(l) = _
                         "LEFT OUTER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
@@ -153,18 +164,20 @@ For l = 1 To UBound(vJoin)
 Next l
 
 For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
-    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN-" & l & "_KEY", sWsSql)
-    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
-    Call DebugOut("ERR", "not use, outer join")
-'        vJoin(l) = _
-'                        "LEFT OUTER JOIN " & vbLf & _
-'                        "    " & v(0) & vbLf & _
-'                        "                ON " & _
-'                                 fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "") & "." & v(2) & _
-'                        " = " & _
-'                                 v(1) & "." & v(2) & _
-'                        ""
+    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_LEFTJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_LEFTJOIN-" & CStr(l) & "_KEY", sWsSql)
+    v(3) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_LEFTJOIN-" & CStr(l) & "_FROM", sWsSql)
+    v(4) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_KEY", sWsSql): If v(4) = "#N/A#" Then v(4) = v(2)
+    
+    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(3) = "//" Then Exit For
+        vJoin(l) = _
+                        "LEFT OUTER JOIN " & vbLf & _
+                        "    " & v(0) & vbLf & _
+                        "                ON " & _
+                                 fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "") & "." & v(4) & _
+                        " = " & _
+                                 v(1) & "." & v(2) & _
+                        ""
 Next l
 
 'UNION ALL SELECT
@@ -173,6 +186,8 @@ For l = 1 To UBound(vJoin)
     v(1) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
     v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
     v(3) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(4) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_CONDITION", sWsSql)
+    If v(4) = "//" Then v(2) = ""
     If v(0) = "#N/A#" Or v(0) = "" Or v(1) = "#N/A#" Or v(1) = "" Or v(3) = "//" Then Exit For
 
         Call checkSqlHeader(CStr(v(0)), CStr(v(1)))
@@ -197,8 +212,7 @@ sResult = _
                 sQueryFree & _
                 sSqlJoinQuery & vbLf & _
                 ""
-                
-            
+
 If sQuerySelect = "" Or sQueryFrom = "" Then Call DebugOut("ERR", "error, empty select or from"): sResult = ""
 
 GetSqlQueryByLinkShtSQL = sResult
@@ -828,462 +842,462 @@ End Sub
 '
 'End Function
 '
+'
+'
+'Function RetQueryServerDev0() As String
+'Call DebugOut("UTIL", "RetQueryServerDev0")
+'Dim sSqlQuery As String
+'
+'    sSqlQuery = _
+'            RetQuerySelectFrom(" REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & _
+'                                             ",'PLC03_R' AS [SHEET] " & _
+'                                             ", '' AS [ALIAS] " & _
+'                                             ",         [COMMENT] " & _
+'                                             ", '' AS [UNITS] " & _
+'                                             ", '' AS [DECIMAL] " & _
+'                                             ", '' AS [BINALY] ", " [DB_PLC03_R$]") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC03_M','', [COMMENT],'','',''", "[DB_PLC03_M$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC03_R', '', [COMMENT],'','',''", "[DB_PLC03_R$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC00_M', '', [COMMENT],'','',''", "[DB_PLC00_M$] WHERE [DEVICE] IS NOT NULL") & _
+'      "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC00_R', '', [COMMENT],'','',''", "[DB_PLC00_R$] WHERE [DEVICE] IS NOT NULL") & _
+'        ""
+'
+'    sSqlQuery = sSqlQuery & _
+'      "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') AS [FULL_ADR] " & ",'PLC03_B', '', [COMMENT],'','',''", "[DB_PLC03_AEC_B$] WHERE [DEVICE] IS NOT NULL") & _
+'      "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0') AS [FULL_ADR] " & ",'PLC03_W', '', [COMMENT],'','',''", "[DB_PLC03_AEC_W$] WHERE [DEVICE] IS NOT NULL") & _
+'            " "
+'
+'    sSqlQuery = sSqlQuery & _
+'         "UNION ALL " & _
+'                 RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0'),'HIRANO_SV_W', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_SV_W$] WHERE [DEVICE] IS NOT NULL") & _
+'         "UNION ALL " & _
+'                 RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0'),'HIRANO_PV_W', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_PV_W$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'                 RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0'),'HIRANO_DO_B', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_DO_B$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'                 RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0'),'HIRANO_DI_B', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_DI_B$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0'),'HIRANO_ALM_W', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_ALM_W$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_A2K_W', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_A2K_W$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_K2A_W', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_K2A_W$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_A2K_B', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_A2K_B$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_K2A_B', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_K2A_B$] WHERE [DEVICE] IS NOT NULL") & _
+'        ""
+'
+'    sSqlQuery = sSqlQuery & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.X.' & [DEVICE], 'X.X', 'X.X00') ,'OP00_X', '' , [COMMENT1] & ' ' & [COMMENT2] AS [COMMENT],'','',''", "[DB_PLC00_OP_X$] WHERE [DEVICE] IS NOT NULL") & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.Y.' & [DEVICE], 'Y.Y', 'Y.Y00') ,'OP00_Y', '' , [COMMENT1] & ' ' & [COMMENT2] AS [COMMENT],'','',''", "[DB_PLC00_OP_Y$] WHERE [DEVICE] IS NOT NULL") & _
+'            " "
+'
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC00_X', '' ,[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC00_X$] AS PLC00_X") & _
+'            "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC03_X', '' , [COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC03_X$] AS PLC03_X") & _
+'            "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.Y.' & [DEVICE], 'Y.Y', 'Y.Y00') ,'DB_PLC00_Y', '' ,[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC00_Y$] AS PLC00_Y") & _
+'            "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.Y.' & [DEVICE], 'Y.Y', 'Y.Y00') ,'DB_PLC03_Y', '' , [COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC03_Y$] AS PLC03_Y") & _
+'            " "
+'    RetQueryServerDev0 = sSqlQuery
+'
+'End Function
+'
+'
+'
+'Function RetQueryServerDevAnalog(inptShtName As String) As String
+'Call DebugOut("UTIL", "RetQueryServerDevAnalog" & inptShtName)
+'Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
+'Dim sShtObjName As String: sShtObjName = inptShtName
+'Dim sQuery As String
+'Dim sPlcR As String
+'Dim sPlcM As String
+'Dim sField As String
+'Dim sType As String
+'sPlcR = fSplit(sShtName, 1, "_") & ".R."
+'sPlcM = fSplit(sShtName, 1, "_") & ".M."
+'
+'    'PV
+'    sField = "[PV_DEVICE]"
+'    sType = "PV"
+'    sQuery = _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[SV_DEVICE]"
+'    sType = "SV"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MV_DEVICE]"
+'    sType = "MV"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[SH_DEVICE]"
+'    sType = "SH"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[SL_DEVICE]"
+'    sType = "SL"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MV1_DEVICE]"
+'    sType = "MV1"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MV2_DEVICE]"
+'    sType = "MV2"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[DB_DEVICE]"
+'    sType = "DB"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MH_DEVICE]"
+'    sType = "MH"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[ML_DEVICE]"
+'    sType = "ML"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+''    'ALARM DEV
+'    sField = "[HH_DEVICE]"
+'    sType = "HH"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[H_DEVICE]"
+'    sType = "H"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[L_DEVICE]"
+'    sType = "L"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[LL_DEVICE]"
+'    sType = "LL"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    'HYS
+'    sField = "[HYS_DEVICE]"
+'    sType = "HYS"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[CAL_DEVICE]"
+'    sType = "CAL"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[CAL_M_DEVICE]"
+'    sType = "CAL_M"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[RAW_DEVICE]"
+'    sType = "RAW"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'      'PID
+'    sField = "[P_DEVICE]"
+'    sType = "P"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[I_DEVICE]"
+'    sType = "I"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[D_DEVICE]"
+'    sType = "D"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[MODE_DEVICE]"
+'    sType = "MODE"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    RetQueryServerDevAnalog = sQuery
+'
+'End Function
 
+'
+'Function RetQueryServerDev2(inptShtName As String) As String
+'Call DebugOut("UTIL", "RetQueryServerDev2")
+'Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
+'Dim sShtObjName As String: sShtObjName = inptShtName
+'Dim sQuery As String
+'Dim sPlcR As String
+'Dim sPlcM As String
+'Dim sField As String
+'Dim sType As String
+'sPlcR = fSplit(sShtName, 1, "_") & ".R."
+'sPlcM = fSplit(sShtName, 1, "_") & ".M."
+'
+' 'PLC ALARM DEV
+'    sField = "[PLC_HH_DEVICE]"
+'    sType = "PLC_HH"
+'    sQuery = ""
+'    sQuery = sQuery & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_H_DEVICE]"
+'    sType = "PLC_H"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_L_DEVICE]"
+'    sType = "PLC_L"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_LL_DEVICE]"
+'    sType = "PLC_LL"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[PLC_CAL_M_DEVICE]"
+'    sType = "PLC_CAL_M"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'   'SCADA ALARM DEV
+'    sField = "[AL_HH_DEVICE]"
+'    sType = "AL_HH"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_H_DEVICE]"
+'    sType = "AL_H"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_L_DEVICE]"
+'    sType = "AL_L"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_LL_DEVICE]"
+'    sType = "AL_LL"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    sField = "[AL_CAL_M_DEVICE]"
+'    sType = "AL_CAL_M"
+'    sQuery = sQuery & _
+'            "UNION ALL " & _
+'             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
+'
+'    RetQueryServerDev2 = sQuery
+'   Stop
+'End Function
 
-Function RetQueryServerDev0() As String
-Call DebugOut("UTIL", "RetQueryServerDev0")
-Dim sSqlQuery As String
+'Sub CheckServerComment()
+'Call DebugOut("SUB_ST", "CheckServerComment")
+'    'SERVER <=> LIST
+'    'ALIAS, COMMENT, UNITS, DECIMAL, BINALY
+'    Dim sSqlQuery As String
+'    Dim sWbPath As String
+'    Dim sWbName As String
+'    Dim sWsName As String
+'    Dim sWbDBPath As String
+'
+'    'LIST_TABLE=======================================================
+'    sWsName = "TMP_LST_TABLE"
+'    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+'
+'    sSqlQuery = RetQueryServerDev0() & _
+'                    ""
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'    sSqlQuery = _
+'        RetQuerySelectFrom(" * ", "[" & sWsName & "$]") & _
+'    " UNION ALL " & _
+'        RetQuerySelectFrom(" [FULL_ADR],[SHEET],[ALIAS],[COMMENT],[UNITS],[DECIMAL],[BINALY] ", "[PRE_ANALOG_TABLE$] AS ANLG") & _
+'    " WHERE ANLG.[TYPE] = '_HH' OR ANLG.[TYPE] = '_H' OR ANLG.[TYPE] = '_L' OR ANLG.[TYPE] = '_LL'" & _
+'    ""
+'
+'    sWsName = "TMP_JOIN_LIST&ANLG_TABLE"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'    'FULL LIST
+'     sSqlQuery = _
+'        RetQuerySelectFrom("LST.[FULL_ADR] AS LST_FULLADR" & _
+'                                         ", SVR.[FULL_ADR] AS SVR_FULLADR" & _
+'                                         ", LST.[ALIAS] AS LST_ALIAS" & _
+'                                         ", LST.[SHEET] AS LST_SHEET" & _
+'                                         ", LST.[COMMENT] AS LST_COMMENT" & _
+'                                         ", SVR.[COMMENT] AS SVR_COMMENT" _
+'                                         , "[" & sWsName & "$] AS LST") & _
+'        "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON SVR.[FULL_ADR] = LST.[FULL_ADR] " & _
+'        ""
+'
+'    sWsName = "TMP_JOIN_LIST&ANLG&SVR_TABLE"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'
+'    'SVR COMMENT VERIFY
+'    sSqlQuery = _
+'    RetQuerySelectFrom(" SVR.[CSV1]" & _
+'                                    ",SVR.[CSV2]" & _
+'                                    ",SVR.[CSV3]" & _
+'                                    ",SVR.[FULL_ADR]" & _
+'                                    ",DIFF.[LST_SHEET]" & _
+'                                    ",DIFF.[LST_COMMENT]" _
+'                                    , "[DB_SERVER_CSV$] AS SVR ") & _
+'    "RIGHT OUTER JOIN [" & sWsName & "$] AS DIFF ON DIFF.[LST_FULLADR] = SVR.[FULL_ADR] " & _
+'    ""
+'
+'    sWsName = "DIFF_COMMENT_CHECK"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'
+'End Sub
 
-    sSqlQuery = _
-            RetQuerySelectFrom(" REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & _
-                                             ",'PLC03_R' AS [SHEET] " & _
-                                             ", '' AS [ALIAS] " & _
-                                             ",         [COMMENT] " & _
-                                             ", '' AS [UNITS] " & _
-                                             ", '' AS [DECIMAL] " & _
-                                             ", '' AS [BINALY] ", " [DB_PLC03_R$]") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC03_M','', [COMMENT],'','',''", "[DB_PLC03_M$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC03_R', '', [COMMENT],'','',''", "[DB_PLC03_R$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC00_M', '', [COMMENT],'','',''", "[DB_PLC00_M$] WHERE [DEVICE] IS NOT NULL") & _
-      "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC00_R', '', [COMMENT],'','',''", "[DB_PLC00_R$] WHERE [DEVICE] IS NOT NULL") & _
-        ""
-        
-    sSqlQuery = sSqlQuery & _
-      "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') AS [FULL_ADR] " & ",'PLC03_B', '', [COMMENT],'','',''", "[DB_PLC03_AEC_B$] WHERE [DEVICE] IS NOT NULL") & _
-      "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0') AS [FULL_ADR] " & ",'PLC03_W', '', [COMMENT],'','',''", "[DB_PLC03_AEC_W$] WHERE [DEVICE] IS NOT NULL") & _
-            " "
-
-    sSqlQuery = sSqlQuery & _
-         "UNION ALL " & _
-                 RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0'),'HIRANO_SV_W', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_SV_W$] WHERE [DEVICE] IS NOT NULL") & _
-         "UNION ALL " & _
-                 RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0'),'HIRANO_PV_W', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_PV_W$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-                 RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0'),'HIRANO_DO_B', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_DO_B$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-                 RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0'),'HIRANO_DI_B', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_DI_B$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.W.' & [DEVICE], 'W.W', 'W.W0'),'HIRANO_ALM_W', '',[COMMENT],'','','' ", "[DB_PLC03_HIRANO_ALM_W$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_A2K_W', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_A2K_W$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_K2A_W', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_K2A_W$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_A2K_B', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_A2K_B$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_K2A_B', '', [COMMENT],'','',''", "[DB_PLC03_KONDO_K2A_B$] WHERE [DEVICE] IS NOT NULL") & _
-        ""
-        
-    sSqlQuery = sSqlQuery & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.X.' & [DEVICE], 'X.X', 'X.X00') ,'OP00_X', '' , [COMMENT1] & ' ' & [COMMENT2] AS [COMMENT],'','',''", "[DB_PLC00_OP_X$] WHERE [DEVICE] IS NOT NULL") & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.Y.' & [DEVICE], 'Y.Y', 'Y.Y00') ,'OP00_Y', '' , [COMMENT1] & ' ' & [COMMENT2] AS [COMMENT],'','',''", "[DB_PLC00_OP_Y$] WHERE [DEVICE] IS NOT NULL") & _
-            " "
-            
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC00_X', '' ,[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC00_X$] AS PLC00_X") & _
-            "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC03_X', '' , [COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC03_X$] AS PLC03_X") & _
-            "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.Y.' & [DEVICE], 'Y.Y', 'Y.Y00') ,'DB_PLC00_Y', '' ,[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC00_Y$] AS PLC00_Y") & _
-            "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.Y.' & [DEVICE], 'Y.Y', 'Y.Y00') ,'DB_PLC03_Y', '' , [COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],'','',''", "[DB_PLC03_Y$] AS PLC03_Y") & _
-            " "
-    RetQueryServerDev0 = sSqlQuery
-
-End Function
-
-
-
-Function RetQueryServerDevAnalog(inptShtName As String) As String
-Call DebugOut("UTIL", "RetQueryServerDevAnalog" & inptShtName)
-Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
-Dim sShtObjName As String: sShtObjName = inptShtName
-Dim sQuery As String
-Dim sPlcR As String
-Dim sPlcM As String
-Dim sField As String
-Dim sType As String
-sPlcR = fSplit(sShtName, 1, "_") & ".R."
-sPlcM = fSplit(sShtName, 1, "_") & ".M."
-
-    'PV
-    sField = "[PV_DEVICE]"
-    sType = "PV"
-    sQuery = _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[SV_DEVICE]"
-    sType = "SV"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MV_DEVICE]"
-    sType = "MV"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[SH_DEVICE]"
-    sType = "SH"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[SL_DEVICE]"
-    sType = "SL"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MV1_DEVICE]"
-    sType = "MV1"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MV2_DEVICE]"
-    sType = "MV2"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[DB_DEVICE]"
-    sType = "DB"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MH_DEVICE]"
-    sType = "MH"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[ML_DEVICE]"
-    sType = "ML"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-'    'ALARM DEV
-    sField = "[HH_DEVICE]"
-    sType = "HH"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[H_DEVICE]"
-    sType = "H"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[L_DEVICE]"
-    sType = "L"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[LL_DEVICE]"
-    sType = "LL"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    'HYS
-    sField = "[HYS_DEVICE]"
-    sType = "HYS"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[CAL_DEVICE]"
-    sType = "CAL"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[CAL_M_DEVICE]"
-    sType = "CAL_M"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[RAW_DEVICE]"
-    sType = "RAW"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-      'PID
-    sField = "[P_DEVICE]"
-    sType = "P"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[I_DEVICE]"
-    sType = "I"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[D_DEVICE]"
-    sType = "D"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[MODE_DEVICE]"
-    sType = "MODE"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcR & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    RetQueryServerDevAnalog = sQuery
-            
-End Function
-
-
-Function RetQueryServerDev2(inptShtName As String) As String
-Call DebugOut("UTIL", "RetQueryServerDev2")
-Dim sShtName As String: sShtName = fReplace(fReplace(fReplace(inptShtName, "$]", ""), "[", ""), "DB_", "")
-Dim sShtObjName As String: sShtObjName = inptShtName
-Dim sQuery As String
-Dim sPlcR As String
-Dim sPlcM As String
-Dim sField As String
-Dim sType As String
-sPlcR = fSplit(sShtName, 1, "_") & ".R."
-sPlcM = fSplit(sShtName, 1, "_") & ".M."
-    
- 'PLC ALARM DEV
-    sField = "[PLC_HH_DEVICE]"
-    sType = "PLC_HH"
-    sQuery = ""
-    sQuery = sQuery & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-    
-    sField = "[PLC_H_DEVICE]"
-    sType = "PLC_H"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_L_DEVICE]"
-    sType = "PLC_L"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_LL_DEVICE]"
-    sType = "PLC_LL"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[PLC_CAL_M_DEVICE]"
-    sType = "PLC_CAL_M"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-   'SCADA ALARM DEV
-    sField = "[AL_HH_DEVICE]"
-    sType = "AL_HH"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_H_DEVICE]"
-    sType = "AL_H"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_L_DEVICE]"
-    sType = "AL_L"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_LL_DEVICE]"
-    sType = "AL_LL"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    sField = "[AL_CAL_M_DEVICE]"
-    sType = "AL_CAL_M"
-    sQuery = sQuery & _
-            "UNION ALL " & _
-             RetQuerySelectFrom("'" & sPlcM & "' & " & sField & ", '" & sShtName & "', [ALIAS_BASE] & '_" & sType & "' AS [ALIAS], [COMMENT] & '_" & sType & "', [UNITS], [DECIMAL], IIF([WORD_SIZE]="","",IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) ", sShtObjName & " WHERE [ALIAS_BASE] IS NOT NULL AND " & sField & " IS NOT NULL ")
-
-    RetQueryServerDev2 = sQuery
-   Stop
-End Function
-
-Sub CheckServerComment()
-Call DebugOut("SUB_ST", "CheckServerComment")
-    'SERVER <=> LIST
-    'ALIAS, COMMENT, UNITS, DECIMAL, BINALY
-    Dim sSqlQuery As String
-    Dim sWbPath As String
-    Dim sWbName As String
-    Dim sWsName As String
-    Dim sWbDBPath As String
-    
-    'LIST_TABLE=======================================================
-    sWsName = "TMP_LST_TABLE"
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-
-    sSqlQuery = RetQueryServerDev0() & _
-                    ""
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-    sSqlQuery = _
-        RetQuerySelectFrom(" * ", "[" & sWsName & "$]") & _
-    " UNION ALL " & _
-        RetQuerySelectFrom(" [FULL_ADR],[SHEET],[ALIAS],[COMMENT],[UNITS],[DECIMAL],[BINALY] ", "[PRE_ANALOG_TABLE$] AS ANLG") & _
-    " WHERE ANLG.[TYPE] = '_HH' OR ANLG.[TYPE] = '_H' OR ANLG.[TYPE] = '_L' OR ANLG.[TYPE] = '_LL'" & _
-    ""
-    
-    sWsName = "TMP_JOIN_LIST&ANLG_TABLE"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-    'FULL LIST
-     sSqlQuery = _
-        RetQuerySelectFrom("LST.[FULL_ADR] AS LST_FULLADR" & _
-                                         ", SVR.[FULL_ADR] AS SVR_FULLADR" & _
-                                         ", LST.[ALIAS] AS LST_ALIAS" & _
-                                         ", LST.[SHEET] AS LST_SHEET" & _
-                                         ", LST.[COMMENT] AS LST_COMMENT" & _
-                                         ", SVR.[COMMENT] AS SVR_COMMENT" _
-                                         , "[" & sWsName & "$] AS LST") & _
-        "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON SVR.[FULL_ADR] = LST.[FULL_ADR] " & _
-        ""
-        
-    sWsName = "TMP_JOIN_LIST&ANLG&SVR_TABLE"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-
-    
-    'SVR COMMENT VERIFY
-    sSqlQuery = _
-    RetQuerySelectFrom(" SVR.[CSV1]" & _
-                                    ",SVR.[CSV2]" & _
-                                    ",SVR.[CSV3]" & _
-                                    ",SVR.[FULL_ADR]" & _
-                                    ",DIFF.[LST_SHEET]" & _
-                                    ",DIFF.[LST_COMMENT]" _
-                                    , "[DB_SERVER_CSV$] AS SVR ") & _
-    "RIGHT OUTER JOIN [" & sWsName & "$] AS DIFF ON DIFF.[LST_FULLADR] = SVR.[FULL_ADR] " & _
-    ""
-    
-    sWsName = "DIFF_COMMENT_CHECK"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-    
-
-End Sub
-
-
-Sub CheckAlarmMaster()
-Call DebugOut("SUB_ST", "CheckAlarmMaster")
-    Dim sSqlQuery As String
-    Dim sWbPath As String
-    Dim sWbName As String
-    Dim sWsName As String
-    Dim sWbDBPath As String
-    
-    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
-    Dim sWhere1 As String: sWhere1 = "WHERE [CATEGORY] LIKE '%ALM%' OR  [CATEGORY] LIKE '%OPE%' "
-
-    sSqlQuery = _
-            RetQuerySelectFrom("REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC03_R' AS SHEET,[COMMENT],[CATEGORY] ", "[DB_PLC03_R$]") & sWhere1 & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC03_M',[COMMENT],[CATEGORY] ", "[DB_PLC03_M$]") & sWhere1 & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC00_R',[COMMENT],[CATEGORY] ", "[DB_PLC00_R$]") & sWhere1 & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC00_M',[COMMENT],[CATEGORY] ", "[DB_PLC00_M$]") & sWhere1 & _
-            " "
-    sSqlQuery = sSqlQuery & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.W.' & REPLACE([DEVICE], '.', '@'), 'W.W', 'W.W0') ,'HIRANO_W',[COMMENT],'ALM'", "[DB_PLC03_HIRANO_ALM_W$]") & "WHERE COMMENT IS NOT NULL " & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_B',[COMMENT],[CATEGORY]", "[DB_PLC03_KONDO_K2A_B$]") & "WHERE [CATEGORY] = 'ALM' " & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'OP_X',[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT] ,[CATEGORY]", "[DB_PLC00_OP_X$]") & "WHERE [CATEGORY] = 'ALM' " & _
-            " "
-    sSqlQuery = sSqlQuery & _
-            "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC00.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC00_X',[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY]", "[DB_PLC00_X$] AS PLC00_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
-            "UNION ALL " & _
-            RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC03_X',[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY]", "[DB_PLC03_X$] AS PLC03_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
-            " "
-
-    sSqlQuery = sSqlQuery & _
-        "UNION ALL " & _
-            RetQuerySelectFrom("[FULL_ADR],[SHEET],[COMMENT] ,[TYPE]", "[PRE_ANALOG_TABLE$] AS ANLG") & "WHERE [TYPE] LIKE 'AL_%' " & _
-            " "
-            
-    sWsName = "TMP_TABLE1"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-    sSqlQuery = ""
-
-    sSqlQuery = " SELECT" & _
-                            " LST.[FULL_ADR] AS [LST_FULLADR]" & _
-                            ",MST.[FULL_ADR] AS [MST_FULLADR]" & _
-                            ",LST.[SHEET]" & _
-                            ",LST.[COMMENT]" & _
-                            ",MST.[COMMENT]" & _
-                            ",[ALIAS] AS [MST_ALIAS_NOTE]" & _
-                            ",LST.[CATEGORY]" & _
-                            ",MST.[CATEGORY]" & _
-                        " FROM" & _
-                            " [" & sWsName & "$] AS LST" & _
-                            ""
-   sSqlQuery = _
-                        sSqlQuery & _
-                        " LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
-                    " UNION ALL " & _
-                        sSqlQuery & _
-                        " RIGHT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
-                        " WHERE LST.[COMMENT] IS NULL" & _
-                        " "
-                        
-    sWsName = "TMP_FULLJOIN_LST&MST"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
-    sSqlQuery = ""
-    
-    Call SelectOrAddWs("PRG_ALM_DELETE", ThisWorkbook.Name)
-    If Not RetAColValues("PRG_ALM_DELETE") = "" Then
-        Call DebugOut("UTIL", "USE ALM_DELETE")
-        Call DebugOut("ERR", "currently it does not work")
-        sSqlQuery = "SELECT * FROM [" & sWsName & "$] WHERE [FULL_ADR] " & _
-                                "NOT IN (" & RetAColValues("PRG_ALM_DELETE") & ")" & _
-                                ""
-    Else
-        Call DebugOut("UTIL", "NOT USE ALM_DELETE")
-        sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
-    End If
-    
-    
-        sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
-            
-    sWsName = "DIFF_ALARM"
-    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
- 
-End Sub
+'
+'Sub CheckAlarmMaster()
+'Call DebugOut("SUB_ST", "CheckAlarmMaster")
+'    Dim sSqlQuery As String
+'    Dim sWbPath As String
+'    Dim sWbName As String
+'    Dim sWsName As String
+'    Dim sWbDBPath As String
+'
+'    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+'    Dim sWhere1 As String: sWhere1 = "WHERE [CATEGORY] LIKE '%ALM%' OR  [CATEGORY] LIKE '%OPE%' "
+'
+'    sSqlQuery = _
+'            RetQuerySelectFrom("REPLACE('PLC03.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC03_R' AS SHEET,[COMMENT],[CATEGORY] ", "[DB_PLC03_R$]") & sWhere1 & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC03_M',[COMMENT],[CATEGORY] ", "[DB_PLC03_M$]") & sWhere1 & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.R.' & [DEVICE], 'R.R', 'R.R0') AS [FULL_ADR] " & ",'PLC00_R',[COMMENT],[CATEGORY] ", "[DB_PLC00_R$]") & sWhere1 & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.M.' & [DEVICE], 'M.M', 'M.M0') AS [FULL_ADR] " & ",'PLC00_M',[COMMENT],[CATEGORY] ", "[DB_PLC00_M$]") & sWhere1 & _
+'            " "
+'    sSqlQuery = sSqlQuery & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.W.' & REPLACE([DEVICE], '.', '@'), 'W.W', 'W.W0') ,'HIRANO_W',[COMMENT],'ALM'", "[DB_PLC03_HIRANO_ALM_W$]") & "WHERE COMMENT IS NOT NULL " & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.B.' & [DEVICE], 'B.B', 'B.B0') ,'KONDO_B',[COMMENT],[CATEGORY]", "[DB_PLC03_KONDO_K2A_B$]") & "WHERE [CATEGORY] = 'ALM' " & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'OP_X',[COMMENT1] & ' ' & [COMMENT2] AS [COMMENT] ,[CATEGORY]", "[DB_PLC00_OP_X$]") & "WHERE [CATEGORY] = 'ALM' " & _
+'            " "
+'    sSqlQuery = sSqlQuery & _
+'            "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC00.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC00_X',[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY]", "[DB_PLC00_X$] AS PLC00_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
+'            "UNION ALL " & _
+'            RetQuerySelectFrom("REPLACE('PLC03.X.' & [DEVICE], 'X.X', 'X.X00') ,'DB_PLC03_X',[COMMENT1] & ' ' & [COMMENT2] & ' ' & [COMMENT3] AS [COMMENT],[CATEGORY]", "[DB_PLC03_X$] AS PLC03_X") & "WHERE [CATEGORY] LIKE '%ALM%' " & _
+'            " "
+'
+'    sSqlQuery = sSqlQuery & _
+'        "UNION ALL " & _
+'            RetQuerySelectFrom("[FULL_ADR],[SHEET],[COMMENT] ,[TYPE]", "[PRE_ANALOG_TABLE$] AS ANLG") & "WHERE [TYPE] LIKE 'AL_%' " & _
+'            " "
+'
+'    sWsName = "TMP_TABLE1"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'    sSqlQuery = ""
+'
+'    sSqlQuery = " SELECT" & _
+'                            " LST.[FULL_ADR] AS [LST_FULLADR]" & _
+'                            ",MST.[FULL_ADR] AS [MST_FULLADR]" & _
+'                            ",LST.[SHEET]" & _
+'                            ",LST.[COMMENT]" & _
+'                            ",MST.[COMMENT]" & _
+'                            ",[ALIAS] AS [MST_ALIAS_NOTE]" & _
+'                            ",LST.[CATEGORY]" & _
+'                            ",MST.[CATEGORY]" & _
+'                        " FROM" & _
+'                            " [" & sWsName & "$] AS LST" & _
+'                            ""
+'   sSqlQuery = _
+'                        sSqlQuery & _
+'                        " LEFT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
+'                    " UNION ALL " & _
+'                        sSqlQuery & _
+'                        " RIGHT OUTER JOIN [DB_ALM_MASTER$] AS MST ON LST.[FULL_ADR] = MST.[FULL_ADR]" & _
+'                        " WHERE LST.[COMMENT] IS NULL" & _
+'                        " "
+'
+'    sWsName = "TMP_FULLJOIN_LST&MST"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'    sSqlQuery = ""
+'
+'    Call SelectOrAddWs("PRG_ALM_DELETE", ThisWorkbook.Name)
+'    If Not RetAColValues("PRG_ALM_DELETE") = "" Then
+'        Call DebugOut("UTIL", "USE ALM_DELETE")
+'        Call DebugOut("ERR", "currently it does not work")
+'        sSqlQuery = "SELECT * FROM [" & sWsName & "$] WHERE [FULL_ADR] " & _
+'                                "NOT IN (" & RetAColValues("PRG_ALM_DELETE") & ")" & _
+'                                ""
+'    Else
+'        Call DebugOut("UTIL", "NOT USE ALM_DELETE")
+'        sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
+'    End If
+'
+'
+'        sSqlQuery = "SELECT * FROM [" & sWsName & "$]"
+'
+'    sWsName = "DIFF_ALARM"
+'    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+'
+'End Sub
 
 
 Function RetAColValues(inptSht As String) As String
@@ -1333,6 +1347,7 @@ sSqlQuery = _
     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
     
 End Sub
+
 
 Sub ★BKM_SAMPLES(): End Sub
 
@@ -1409,7 +1424,35 @@ sTable1 = _
 " INNER JOIN " & _
 "(SELECT [COL1],[COL3] FROM [TEST_OUTER$] )  AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1] )" & _
 ""
-    
+
+
+' ( [ $] AS ... ) => OK
+sTable1 = " SELECT " & _
+        " DEV.[COL1],ALS.[COL1]" & _
+ " FROM " & _
+        " ( [TEST_MAIN$] AS DEV" & _
+" LEFT OUTER JOIN " & _
+        " [TEST_SUB$] AS ALS" & _
+                " ON DEV.[COL1] = ALS.[COL1] ) " & _
+ " UNION ALL " & _
+ " SELECT " & _
+        " DEV.[COL1],ALS.[COL1]" & _
+ " FROM " & _
+        " ( [TEST_MAIN$] AS DEV" & _
+ " RIGHT OUTER JOIN " & _
+        " [TEST_SUB$] AS ALS" & _
+                " ON DEV.[COL1] = ALS.[COL1] ) "
+                                                               
+' ( SESLECT )
+sTable1 = "( SELECT " & _
+        " DEV.[COL1],ALS.[COL1]" & _
+ " FROM " & _
+        " [TEST_MAIN$] AS DEV" & _
+" LEFT OUTER JOIN " & _
+        " [TEST_SUB$] AS ALS" & _
+                " ON DEV.[COL1] = ALS.[COL1] )"
+                        
+                                         
     sSqlQuery = sTable1
     
     'Run the query with the SQL string
@@ -1523,6 +1566,7 @@ sQuery = _
         
 End Function
 
+
 Sub sample_join()
 Dim sSqlQuery As String
 Dim sWbPath As String
@@ -1537,24 +1581,41 @@ sWsName = "SQL_OUT"
 sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
 Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
 
-sSqlQuery = "SELECT " & _
-" TST1.[COL1] , TST2.[COL1]" & _
-" FROM" & _
-" [TST1$] AS TST1" & _
-" LEFT OUTER JOIN" & _
-" [TST2$] AS TST2" & _
-" ON TST1.[COL1] = TST2.[COL1]"
+'sSqlQuery = "SELECT " & _
+'" TST1.[COL1] , TST2.[COL1]" & _
+'" FROM" & _
+'" [TST1$] AS TST1" & _
+'" LEFT OUTER JOIN" & _
+'" [TST2$] AS TST2" & _
+'" ON TST1.[COL1] = TST2.[COL1]"
 
-
-
-sSqlQuery = _
-  " SELECT " & _
-"    [MAIN].[COL1] , [MAIN].[COL2], [OUTER].[COL3] " & _
-" FROM " & _
-"    [TEST_SHT$] AS [MAIN] " & _
-" INNER JOIN " & _
-"(SELECT [COL1],[COL3] FROM [TEST_OUTER$] )  AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1] " & _
-""
+'
+'sSqlQuery = _
+'  " SELECT " & _
+'"    [MAIN].[COL1] , [MAIN].[COL2], [OUTER].[COL3] " & _
+'" FROM " & _
+'"    [TEST_SHT$] AS [MAIN] " & _
+'" INNER JOIN " & _
+'"(SELECT [COL1],[COL3] FROM [TEST_OUTER$] )  AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1] " & _
+'""
+'
+'
+'sSqlQuery = " SELECT " & _
+'        " DEV.[FULL_ADR],ALS.[FULL_ADR],DEV.[COMMENT]" & _
+' " FROM " & _
+'        " [PRE_DEVICE$] AS DEV" & _
+'" LEFT OUTER JOIN " & _
+'        " [DB_LST_ALIAS$] AS ALS" & _
+'                " ON DEV.[FULL_ADR] = ALS.[FULL_ADR]" & _
+' " UNION ALL " & _
+' " SELECT " & _
+'        " DEV.[FULL_ADR],ALS.[FULL_ADR],DEV.[COMMENT]" & _
+' " FROM " & _
+'        " [PRE_DEVICE$] AS DEV" & _
+' " RIGHT OUTER JOIN " & _
+'        " [DB_LST_ALIAS$] AS ALS" & _
+'                " ON DEV.[FULL_ADR] = ALS.[FULL_ADR]"
+'
 
     Call GetQueryResults(sSqlQuery, sWbName, sWsName)
     
@@ -1820,23 +1881,394 @@ End Sub
 '=========================================================
 'COL END => H
 
-'*><BSQL_PRE-CLT_OUTSHT><[PRE_CLT$]><
-'*><BSQL_PRE-CLT_SELECT><[Form],[Folder],[_TagIn] As [TagIn]><
-'*><BSQL_PRE-CLT_FROM><[CLT_p_r_valve$]><
-'*><BSQL_PRE-CLT_UNION-1_SELECT><[Form],[Folder],[_TagIn] As [TagIn]><
-'*><BSQL_PRE-CLT_UNION-1_FROM><[CLT_p_r_pump$]><
-'*><BSQL_PRE-CLT_UNION-2_SELECT><[Form],[Folder],'_'><
-'*><BSQL_PRE-CLT_UNION-2_FROM><[CLT_p_r_pvsv$]><
-'//><BSQL_PRE-CLT_UNION-3_SELECT><'','','[_TagIn] As [TagIn]><
-'//><BSQL_PRE-CLT_UNION-3_FROM><[CLT_p_r_Alm$]><
-'><><><
-'><><><
-'><BSQL_JOIN-CLT_OUTSHT><[JOIN_CLT$]><
-'><BSQL_JOIN-CLT_CONDITION><><
-'><BSQL_JOIN-CLT_SELECT><TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2]><
-'><BSQL_JOIN-CLT_FROM><[PRE_CLT$]><
-'><BSQL_JOIN-CLT_FULLJOIN-1_FROM><[TST2$] AS TST2><
-'><BSQL_JOIN-CLT_FULLJOIN-1_KEY><[COL1]><
-'><><><
-'><><><
+'
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'PGPRM_BSQL_EXE_ROOT】【DFR3_DB_211014 (version 1).xlsb】【LinkShtSQL】【B】【C】【】【】【】【】【】【】【】【
+'*】【[ KEY }】【[ SHEETS ]】【】【】【】【】【】【】【】【】【】【
+'*】【PGPRM_BSQL_EXE_CREATESHT】【BSQL_DO,BSQL_DIFF-ANLG-FPM】【】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRESHT-ANLG00】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRESHT-ANLG03】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRESHT-ANLG】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRESHT-DEVICE】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_DIFF-ALIAS】【Alias-DevList】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRE-CLT】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_DIFF-CLT】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRESHT-FP】【】【】【】【】【】【】【】【】【
+'】【】【BSQL_DO】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【BSQL_DIFF-ANLG-FPM】【】【】【】【】【】【】【】【】【】【
+'】【】【】【SMPL-LEFTJOIN】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_SMPL-INNERJOIN】【】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【】【】【BSQL_PRE-CLT】【】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PGPRM_JOINTMAX】【25】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PGPRM_DELETE_TEMPSHT】【1】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PGPRM_SORTSHT】【0】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PGPRM_RTNSHT】【0】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'PGPRM_BSQL_QUERY_IGRNORE】【DFR3_DB_211014 (version 1).xlsb】【LinkShtSQL】【B】【A】【】【】【】【】【】【】【】【
+'PGPRM_BSQL_QUERY_ROOT】【DFR3_DB_211014 (version 1).xlsb】【LinkShtSQL】【B】【C】【】【】【】【】【】【】【】【
+'*】【[Key]】【[Param]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【[ KEY ]】【[ SQL ]】【】【】【】【】【】【】【】【】【】【
+'>>PRESHT-BITDEV】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRESHT-DEVICE_OUTSHT】【[PRE_DEVICE$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> SAMPLE】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_SELECT】【[MAIN].[COL1] , [MAIN].[COL2] , ''】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_FROM】【[TEST_SHT$] AS [MAIN]】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_UNION-1_SELECT】【[COL1] & ' ' & [COL2] AS [COL1]  ,   'UNION1'  ,  ''】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_UNION-1_FROM】【[TEST_MAIN$] AS [UNION1]】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_UNION-2_SELECT】【[COL1] & ' ' & [COL2] AS [COL1], 'UNION2',''】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_TEST1_UNION-2_FROM】【[TEST_SUB$] AS [UNION3]】【】【】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TEST1_FREE】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TEST1_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【//】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TEST2_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TEST2_SELECT】【*】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TEST2_FROM】【[TEST_SHT$] AS [MAIN]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TEST2_FREE】【LEFT OUTER JOIN [TEST_OUTER$] AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'//SAMPLE_FULL_JOIN】【BSQL_TSTOUT1_OUTSHT】【[TSTOUT1$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT1_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT1_SELECT】【TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2]】【TST1.[COL1] AS [TST1_COL1]】【TST2.[COL1] AS [TST2_COL1]】【TST1.[COL2] AS [TST1_COL2]】【TST2.[COL2] AS [TST2_COL2]】【】【】【】【】【】【
+'】【BSQL_TSTOUT1_FROM】【[TST1$] AS TST1】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT1_FULLJOIN-1_FROM】【[TST2$] AS TST2】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT1_FULLJOIN-1_KEY】【[COL1]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'//SAMPLE 】【BSQL_TSTOUT3_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
+'//CONDITION】【BSQL_TSTOUT3_CONDITION】【WHERE [DEVICE] NOT LIKE 'X200'】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT3_SELECT】【[DEVICE],[COMMENT],'=retDev2FullAdrFormat("PLC00", left(RC1,1),RC1,6)' AS   [FUNC]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT3_FROM】【[PRE_BIT_DEV$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_TSTOUT3_FORMULACOL】【FUNC】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'//SAMPLE_LEFT_JOIN】【BSQL_SMPL-LEFTJOIN_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
+'//】【BSQL_SMPL-LEFTJOIN_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-LEFTJOIN_SELECT】【TST1.[COL1],TST2.[COL1]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-LEFTJOIN_FROM】【[TEST_MAIN$] AS TST1】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-LEFTJOIN_LEFTJOIN-1_FROM】【[TEST_SUB$] AS TST2】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-LEFTJOIN_LEFTJOIN-1_KEY】【[COL1]】【】【】【】【】【】【】【】【】【】【
+'//】【BSQL_SMPL-LEFTJOIN_FORMULACOL】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'//SAMPLE_INNER_JOIN】【BSQL_SMPL-INNERJOIN_OUTSHT】【[TSTOUT2$]】【】【】【】【】【】【】【】【】【】【
+'//】【BSQL_SMPL-INNERJOIN_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-INNERJOIN_SELECT】【TST1.[COL1],TST2.[COL1]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-INNERJOIN_FROM】【[TEST_MAIN$] AS TST1】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-INNERJOIN_INNERJOIN-1_FROM】【[TEST_SUB$] AS TST2】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_SMPL-INNERJOIN_INNERJOIN-1_KEY】【[COL1]】【】【】【】【】【】【】【】【】【】【
+'//】【BSQL_SMPL-INNERJOIN_FORMULACOL】【FRM1,FRM2】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'//SAMPLE_INNER_JOIN】【BSQL_DO_OUTSHT】【[TST_DO$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DO_CONDITION】【WHERE [TYPE] = 'PV'】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DO_SELECT】【[TYPE]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DO_FROM】【[PRE_ANLG$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>>PRE-ANLG】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> PLC 00 TMP PRESHT】【】【】【】【$F$116:$F$128】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_OUTSHT】【[TMP_PRE_PLC_ALNG00$]】【】【$F$141:$F$153】【[NO]】【】【】【】【】【】【】【
+'//】【BSQL_PRESHT-ANLG00_FILTER】【】【】【】【 '{PLC}.{LETTER}.' & [{TYPE}_DEVICE] AS [FULL_ADR]】【】【】【】【】【】【】【
+'】【】【】【< PLC00 >】【】【 '{PLC}_ANLG' AS [SHEET]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_SELECT】【[NO], 'PLC00.R.' & [PV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PV'  AS [ALIAS], 'PV' AS [TYPE], [COMMENT] & '_PV' AS [COMMENT],[PV_MAX],[PV_MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PV】【{PLC}:PLC00;{TYPE}:PV;{MIN}:[PV_MIN];{MAX}:[PV_MAX];{LETTER}:R】【 [ALIAS_BASE]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【 [ALIAS_BASE]  & '_{TYPE}'  AS [ALIAS]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_CONDITION】【WHERE [ALIAS_BASE] IS NOT NULL】【*】【】【 '{TYPE}' AS [TYPE]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-1_SELECT】【[NO], 'PLC00.R.' & [SV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_SV'  AS [ALIAS], 'SV' AS [TYPE], [COMMENT] & '_SV' AS [COMMENT],IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX],IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【SV】【{PLC}:PLC00;{TYPE}:SV;{MIN}:IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN];{MAX}:IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX];{LETTER}:R】【 [COMMENT] & '_{TYPE}' AS [COMMENT]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-1_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【{MAX}】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-1_CONDITION】【WHERE 'PLC00.R.' & [SV_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:SV;{PLC}:PLC00;{LETTER}:R】【{MIN}】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-2_SELECT】【[NO], 'PLC00.R.' & [MV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV'  AS [ALIAS], 'MV' AS [TYPE], [COMMENT] & '_MV' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV】【{PLC}:PLC00;{TYPE}:MV;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【[UNITS]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-2_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【[DECIMAL]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-2_CONDITION】【WHERE 'PLC00.R.' & [MV_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV;{PLC}:PLC00;{LETTER}:R】【[FP_TYPE]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-3_SELECT】【[NO], 'PLC00.R.' & [MV1_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV1'  AS [ALIAS], 'MV1' AS [TYPE], [COMMENT] & '_MV1' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV1】【{PLC}:PLC00;{TYPE}:MV1;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-3_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-3_CONDITION】【WHERE 'PLC00.R.' & [MV1_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV1;{PLC}:PLC00;{LETTER}:R】【WHERE '{PLC}.{LETTER}.' & [{TYPE}_DEVICE]  NOT LIKE  '{PLC}.{LETTER}.' AND [ALIAS_BASE] IS NOT NULL】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-4_SELECT】【[NO], 'PLC00.R.' & [MV2_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV2'  AS [ALIAS], 'MV2' AS [TYPE], [COMMENT] & '_MV2' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV2】【{PLC}:PLC00;{TYPE}:MV2;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-4_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-4_CONDITION】【WHERE 'PLC00.R.' & [MV2_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV2;{PLC}:PLC00;{LETTER}:R】【IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX]】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-5_SELECT】【[NO], 'PLC00.R.' & [MH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MH'  AS [ALIAS], 'MH' AS [TYPE], [COMMENT] & '_MH' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MH】【{PLC}:PLC00;{TYPE}:MH;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-5_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-5_CONDITION】【WHERE 'PLC00.R.' & [MH_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MH;{PLC}:PLC00;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-6_SELECT】【[NO], 'PLC00.R.' & [ML_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_ML'  AS [ALIAS], 'ML' AS [TYPE], [COMMENT] & '_ML' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【ML】【{PLC}:PLC00;{TYPE}:ML;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-6_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-6_CONDITION】【WHERE 'PLC00.R.' & [ML_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:ML;{PLC}:PLC00;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-7_SELECT】【[NO], 'PLC00.M.' & [AL_CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_CAL_M'  AS [ALIAS], 'AL_CAL_M' AS [TYPE], [COMMENT] & '_AL_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_CAL_M】【{PLC}:PLC00;{TYPE}:AL_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-7_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-7_CONDITION】【WHERE 'PLC00.M.' & [AL_CAL_M_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_CAL_M;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-8_SELECT】【[NO], 'PLC00.M.' & [AL_H_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_H'  AS [ALIAS], 'AL_H' AS [TYPE], [COMMENT] & '_AL_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_H】【{PLC}:PLC00;{TYPE}:AL_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-8_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-8_CONDITION】【WHERE 'PLC00.M.' & [AL_H_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_H;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-9_SELECT】【[NO], 'PLC00.M.' & [AL_HH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_HH'  AS [ALIAS], 'AL_HH' AS [TYPE], [COMMENT] & '_AL_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_HH】【{PLC}:PLC00;{TYPE}:AL_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-9_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-9_CONDITION】【WHERE 'PLC00.M.' & [AL_HH_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_HH;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-10_SELECT】【[NO], 'PLC00.M.' & [AL_L_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_L'  AS [ALIAS], 'AL_L' AS [TYPE], [COMMENT] & '_AL_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_L】【{PLC}:PLC00;{TYPE}:AL_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-10_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-10_CONDITION】【WHERE 'PLC00.M.' & [AL_L_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_L;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-11_SELECT】【[NO], 'PLC00.M.' & [AL_LL_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_LL'  AS [ALIAS], 'AL_LL' AS [TYPE], [COMMENT] & '_AL_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_LL】【{PLC}:PLC00;{TYPE}:AL_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-11_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-11_CONDITION】【WHERE 'PLC00.M.' & [AL_LL_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_LL;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-12_SELECT】【[NO], 'PLC00.M.' & [PLC_CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_CAL_M'  AS [ALIAS], 'PLC_CAL_M' AS [TYPE], [COMMENT] & '_PLC_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_CAL_M】【{PLC}:PLC00;{TYPE}:PLC_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-12_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-12_CONDITION】【WHERE 'PLC00.M.' & [PLC_CAL_M_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_CAL_M;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-13_SELECT】【[NO], 'PLC00.M.' & [PLC_H_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_H'  AS [ALIAS], 'PLC_H' AS [TYPE], [COMMENT] & '_PLC_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_H】【{PLC}:PLC00;{TYPE}:PLC_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-13_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-13_CONDITION】【WHERE 'PLC00.M.' & [PLC_H_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_H;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-14_SELECT】【[NO], 'PLC00.M.' & [PLC_HH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_HH'  AS [ALIAS], 'PLC_HH' AS [TYPE], [COMMENT] & '_PLC_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_HH】【{PLC}:PLC00;{TYPE}:PLC_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-14_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-14_CONDITION】【WHERE 'PLC00.M.' & [PLC_HH_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_HH;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-15_SELECT】【[NO], 'PLC00.M.' & [PLC_L_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_L'  AS [ALIAS], 'PLC_L' AS [TYPE], [COMMENT] & '_PLC_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_L】【{PLC}:PLC00;{TYPE}:PLC_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-15_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-15_CONDITION】【WHERE 'PLC00.M.' & [PLC_L_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_L;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-16_SELECT】【[NO], 'PLC00.M.' & [PLC_LL_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_LL'  AS [ALIAS], 'PLC_LL' AS [TYPE], [COMMENT] & '_PLC_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_LL】【{PLC}:PLC00;{TYPE}:PLC_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-16_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-16_CONDITION】【WHERE 'PLC00.M.' & [PLC_LL_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_LL;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-17_SELECT】【[NO], 'PLC00.R.' & [MODE_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MODE'  AS [ALIAS], 'MODE' AS [TYPE], [COMMENT] & '_A/M'  AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MODE】【{PLC}:PLC00;{TYPE}:MODE;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';[COMMENT] & '_MODE':[COMMENT] & '_A/M' ;{LETTER}:R】【 ALIAS=>MODE, COMMENT=>A/M】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-17_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-17_CONDITION】【WHERE 'PLC00.R.' & [MODE_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MODE;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-18_SELECT】【[NO], 'PLC00.R.' & [P_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_P'  AS [ALIAS], 'P' AS [TYPE], [COMMENT] & '_P' AS [COMMENT],'','','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【P】【{PLC}:PLC00;{TYPE}:P;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【DEC0】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-18_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-18_CONDITION】【WHERE 'PLC00.R.' & [P_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:P;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-19_SELECT】【[NO], 'PLC00.R.' & [I_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_I'  AS [ALIAS], 'I' AS [TYPE], [COMMENT] & '_I' AS [COMMENT],'','','','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【I】【{PLC}:PLC00;{TYPE}:I;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'1';{LETTER}:R】【 DEC1】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-19_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-19_CONDITION】【WHERE 'PLC00.R.' & [I_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:I;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-20_SELECT】【[NO], 'PLC00.R.' & [D_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_D'  AS [ALIAS], 'D' AS [TYPE], [COMMENT] & '_D' AS [COMMENT],'','','','2',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【D】【{PLC}:PLC00;{TYPE}:D;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'2';{LETTER}:R】【 DEC2】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-20_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-20_CONDITION】【WHERE 'PLC00.R.' & [D_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:D;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-21_SELECT】【[NO], 'PLC00.R.' & [CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_CAL_M'  AS [ALIAS], 'CAL_M' AS [TYPE], [COMMENT] & '_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【CAL_M】【{PLC}:PLC00;{TYPE}:CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【BIT】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-21_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG00_UNION-21_CONDITION】【WHERE 'PLC00.R.' & [CAL_M_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:CAL_M;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> PLC 03 TMP PRESHT】【】【】【< PLC03 >】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_OUTSHT】【[TMP_PRE_PLC_ALNG03$]】【】【】【】【】【】【】【】【】【】【
+'//】【NOUUSE_BSQL_PRESHT-ANLG03_FILTER】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_SELECT】【[NO], 'PLC03.R.' & [PV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PV'  AS [ALIAS], 'PV' AS [TYPE], [COMMENT] & '_PV' AS [COMMENT],[PV_MAX],[PV_MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PV】【{PLC}:PLC03;{TYPE}:PV;{MIN}:[PV_MIN];{MAX}:[PV_MAX];{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_CONDITION】【WHERE [ALIAS_BASE] IS NOT NULL】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-1_SELECT】【[NO], 'PLC03.R.' & [SV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_SV'  AS [ALIAS], 'SV' AS [TYPE], [COMMENT] & '_SV' AS [COMMENT],IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX],IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【SV】【{PLC}:PLC03;{TYPE}:SV;{MIN}:IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN];{MAX}:IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX];{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-1_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-1_CONDITION】【WHERE 'PLC03.R.' & [SV_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:SV;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-2_SELECT】【[NO], 'PLC03.R.' & [MV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV'  AS [ALIAS], 'MV' AS [TYPE], [COMMENT] & '_MV' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV】【{PLC}:PLC03;{TYPE}:MV;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-2_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-2_CONDITION】【WHERE 'PLC03.R.' & [MV_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-3_SELECT】【[NO], 'PLC03.R.' & [MV1_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV1'  AS [ALIAS], 'MV1' AS [TYPE], [COMMENT] & '_MV1' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV1】【{PLC}:PLC03;{TYPE}:MV1;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-3_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-3_CONDITION】【WHERE 'PLC03.R.' & [MV1_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV1;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-4_SELECT】【[NO], 'PLC03.R.' & [MV2_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV2'  AS [ALIAS], 'MV2' AS [TYPE], [COMMENT] & '_MV2' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV2】【{PLC}:PLC03;{TYPE}:MV2;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-4_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-4_CONDITION】【WHERE 'PLC03.R.' & [MV2_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV2;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-5_SELECT】【[NO], 'PLC03.R.' & [MH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MH'  AS [ALIAS], 'MH' AS [TYPE], [COMMENT] & '_MH' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MH】【{PLC}:PLC03;{TYPE}:MH;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-5_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-5_CONDITION】【WHERE 'PLC03.R.' & [MH_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MH;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-6_SELECT】【[NO], 'PLC03.R.' & [ML_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_ML'  AS [ALIAS], 'ML' AS [TYPE], [COMMENT] & '_ML' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【ML】【{PLC}:PLC03;{TYPE}:ML;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-6_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-6_CONDITION】【WHERE 'PLC03.R.' & [ML_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:ML;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-7_SELECT】【[NO], 'PLC03.M.' & [AL_CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_CAL_M'  AS [ALIAS], 'AL_CAL_M' AS [TYPE], [COMMENT] & '_AL_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_CAL_M】【{PLC}:PLC03;{TYPE}:AL_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-7_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-7_CONDITION】【WHERE 'PLC03.M.' & [AL_CAL_M_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_CAL_M;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-8_SELECT】【[NO], 'PLC03.M.' & [AL_H_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_H'  AS [ALIAS], 'AL_H' AS [TYPE], [COMMENT] & '_AL_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_H】【{PLC}:PLC03;{TYPE}:AL_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-8_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-8_CONDITION】【WHERE 'PLC03.M.' & [AL_H_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_H;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-9_SELECT】【[NO], 'PLC03.M.' & [AL_HH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_HH'  AS [ALIAS], 'AL_HH' AS [TYPE], [COMMENT] & '_AL_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_HH】【{PLC}:PLC03;{TYPE}:AL_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-9_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-9_CONDITION】【WHERE 'PLC03.M.' & [AL_HH_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_HH;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-10_SELECT】【[NO], 'PLC03.M.' & [AL_L_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_L'  AS [ALIAS], 'AL_L' AS [TYPE], [COMMENT] & '_AL_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_L】【{PLC}:PLC03;{TYPE}:AL_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-10_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-10_CONDITION】【WHERE 'PLC03.M.' & [AL_L_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_L;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-11_SELECT】【[NO], 'PLC03.M.' & [AL_LL_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_LL'  AS [ALIAS], 'AL_LL' AS [TYPE], [COMMENT] & '_AL_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_LL】【{PLC}:PLC03;{TYPE}:AL_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-11_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-11_CONDITION】【WHERE 'PLC03.M.' & [AL_LL_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_LL;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-12_SELECT】【[NO], 'PLC03.M.' & [PLC_CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_CAL_M'  AS [ALIAS], 'PLC_CAL_M' AS [TYPE], [COMMENT] & '_PLC_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_CAL_M】【{PLC}:PLC03;{TYPE}:PLC_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-12_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-12_CONDITION】【WHERE 'PLC03.M.' & [PLC_CAL_M_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_CAL_M;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-13_SELECT】【[NO], 'PLC03.M.' & [PLC_H_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_H'  AS [ALIAS], 'PLC_H' AS [TYPE], [COMMENT] & '_PLC_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_H】【{PLC}:PLC03;{TYPE}:PLC_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-13_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-13_CONDITION】【WHERE 'PLC03.M.' & [PLC_H_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_H;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-14_SELECT】【[NO], 'PLC03.M.' & [PLC_HH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_HH'  AS [ALIAS], 'PLC_HH' AS [TYPE], [COMMENT] & '_PLC_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_HH】【{PLC}:PLC03;{TYPE}:PLC_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-14_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-14_CONDITION】【WHERE 'PLC03.M.' & [PLC_HH_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_HH;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-15_SELECT】【[NO], 'PLC03.M.' & [PLC_L_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_L'  AS [ALIAS], 'PLC_L' AS [TYPE], [COMMENT] & '_PLC_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_L】【{PLC}:PLC03;{TYPE}:PLC_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-15_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-15_CONDITION】【WHERE 'PLC03.M.' & [PLC_L_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_L;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-16_SELECT】【[NO], 'PLC03.M.' & [PLC_LL_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_LL'  AS [ALIAS], 'PLC_LL' AS [TYPE], [COMMENT] & '_PLC_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_LL】【{PLC}:PLC03;{TYPE}:PLC_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-16_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-16_CONDITION】【WHERE 'PLC03.M.' & [PLC_LL_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_LL;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-17_SELECT】【[NO], 'PLC03.R.' & [MODE_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MODE'  AS [ALIAS], 'MODE' AS [TYPE], [COMMENT] & '_A/M'  AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MODE】【{PLC}:PLC03;{TYPE}:MODE;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';[COMMENT] & '_MODE':[COMMENT] & '_A/M' ;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-17_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-17_CONDITION】【WHERE 'PLC03.R.' & [MODE_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MODE;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-18_SELECT】【[NO], 'PLC03.R.' & [P_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_P'  AS [ALIAS], 'P' AS [TYPE], [COMMENT] & '_P' AS [COMMENT],'','','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【P】【{PLC}:PLC03;{TYPE}:P;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-18_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-18_CONDITION】【WHERE 'PLC03.R.' & [P_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:P;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-19_SELECT】【[NO], 'PLC03.R.' & [I_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_I'  AS [ALIAS], 'I' AS [TYPE], [COMMENT] & '_I' AS [COMMENT],'','','','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【I】【{PLC}:PLC03;{TYPE}:I;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-19_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-19_CONDITION】【WHERE 'PLC03.R.' & [I_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:I;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-20_SELECT】【[NO], 'PLC03.R.' & [D_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_D'  AS [ALIAS], 'D' AS [TYPE], [COMMENT] & '_D' AS [COMMENT],'','','','2',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【D】【{PLC}:PLC03;{TYPE}:D;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'2';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-20_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-20_CONDITION】【WHERE 'PLC03.R.' & [D_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:D;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-21_SELECT】【[NO], 'PLC03.R.' & [CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_CAL_M'  AS [ALIAS], 'CAL_M' AS [TYPE], [COMMENT] & '_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【CAL_M】【{PLC}:PLC03;{TYPE}:CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-21_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG03_UNION-21_CONDITION】【WHERE 'PLC03.R.' & [CAL_M_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:CAL_M;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> PRESHT UNION 00, 03】【】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG_OUTSHT】【[PRE_ANLG$]】【】【[NO]】【】【】【】【】【】【】【】【
+'//】【//BSQL_PRESHT-ANLG_FILTER】【】【】【[FULL_ADR]】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG_SELECT】【[NO],[FULL_ADR],[SHEET],[ALIAS_BASE],[ALIAS],[TYPE],[COMMENT],[PV_MIN],[PV_MAX],[UNITS],[DECIMAL],[FP_TYPE],[BINALY]】【】【[SHEET]】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG_FROM】【[TMP_PRE_PLC_ALNG00$]】【】【[ALIAS_BASE]】【】【】【】【】【】【】【】【
+'//】【//BSQL_PRESHT-ANLG_CONDITION】【】【】【[ALIAS]】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG_UNION-1_SELECT】【[NO],[FULL_ADR],[SHEET],[ALIAS_BASE],[ALIAS],[TYPE],[COMMENT],[PV_MIN],[PV_MAX],[UNITS],[DECIMAL],[FP_TYPE],[BINALY]】【】【[TYPE]】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-ANLG_UNION-1_FROM】【[TMP_PRE_PLC_ALNG03$]】【】【[COMMENT]】【】【】【】【】【】【】【】【
+'//】【//BSQL_PRESHT-ANLG_UNION-1_WHERE】【】【】【[PV_MIN]】【】【】【】【】【】【】【】【
+'】【】【】【】【[PV_MAX]】【】【】【】【】【】【】【】【
+'】【】【】【】【[UNITS]】【】【】【】【】【】【】【】【
+'】【】【】【】【[DECIMAL]】【】【】【】【】【】【】【】【
+'】【】【】【】【[FP_TYPE]】【】【】【】【】【】【】【】【
+'】【】【】【】【[BINALY]】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> PRESHT UNION 00, 03】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'<<PRE-ANLG】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> CLT-DIFF】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_OUTSHT】【[PRE_CLT$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_FROM】【[CLT_p_r_valve$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_UNION-1_FROM】【[CLT_p_r_pump$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_UNION-2_FROM】【[CLT_p_r_pvsv$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_UNION-3_FROM】【[CLT_p_r_pvsv$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_UNION-4_FROM】【[CLT_p_r_Alm$]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_PRE-CLT_UNION-5_FROM】【[CLT_p_r_Alm$]】【】【】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_DIFF-CLT_OUTSHT】【[DIFF_CLT-SVR$]】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_DIFF-CLT_FILTER】【WHERE [FULL_ADR] IS NOT NULL】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_DIFF-CLT_FROM】【[PRE_CLT$] AS PRE】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_DIFF-CLT_FULLJOIN-1_FROM】【[DB_LST_SERVER_CSV$] AS SVR】【】【】【】【】【】【】【】【】【】【
+'*】【BSQL_DIFF-CLT_FULLJOIN-1_KEY】【[FULL_ADR]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'<< CLT-DIFF】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> DIFF ALIAS】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_OUTSHT】【[DIFF_ALIAS$]】【】【】【】【】【】【】【】【】【】【
+'"】【BSQL_DIFF-ALIAS_FILTER】【WHERE [DEV#FULL_ADR] IS NOT NULL OR [ALS#FULL_ADR] IS NOT NULL
+'ORDER BY [ALS#FULL_ADR]  ASC】【】【】【】【】【】【】【】【】【】【"
+'】【BSQL_DIFF-ALIAS_SELECT】【DEV.[FULL_ADR],ALS.[FULL_ADR],DEV.[COMMENT]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_FROM】【[PRE_DEVICE$] AS DEV】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_FULLJOIN-1_FROM】【[DB_LST_ALIAS$] AS ALS】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_FULLJOIN-1_KEY】【[FULL_ADR]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'<< DIFF ALIAS】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> PRE-FP】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_OUTSHT】【[PRE_FP$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_FILTER】【WHERE [FP_TYPE] IS NOT NULL 】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI $]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_FROM】【[DB_FP_AI $]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-1_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_AL4$]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-1_FROM】【[DB_FP_AI_AL4$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-1_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-2_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_Q$]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-2_FROM】【[DB_FP_AI_Q$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-2_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-3_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_SV $]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-3_FROM】【[DB_FP_AI_SV $]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-3_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-4_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_SV2$]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-4_FROM】【[DB_FP_AI_SV2$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-4_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-5_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_SV3$]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-5_FROM】【[DB_FP_AI_SV3$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-5_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-6_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_PID$]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-6_FROM】【[DB_FP_PID$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-6_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-7_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_SUM$]】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-7_FROM】【[DB_FP_SUM$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_PRESHT-FP_UNION-7_CONDITION】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'<< PRE-FP】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'>> DIFF_FP】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-FPTMP-SVR_OUTSHT】【[TMP-ANLG-FP$]】【】【】【】【】【】【】【】【】【】【
+'"】【BSQL_DIFF-ALIAS_FILTER】【WHERE [DEV#FULL_ADR] IS NOT NULL OR [ALS#FULL_ADR] IS NOT NULL
+'ORDER BY [ALS#FULL_ADR]  ASC】【】【】【】【】【】【】【】【】【】【"
+'】【BSQL_DIFF-ALIAS_SELECT】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_FROM】【[PRE_ANLG$] AS ANLG】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_FULLJOIN-1_FROM】【[PRE_FP$] AS FP】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ALIAS_FULLJOIN-1_KEY】【[ALIAS_BASE]】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_OUTSHT】【[TSTOUT$]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_FILTER】【 WHERE  [TYPE] = 'PV'】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_SELECT】【*】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_FROM】【[PRE_ANLG$] AS ANLG】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_KEY】【[FP_TYPE] & '.' & ANLG.[ALIAS_BASE]】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_LEFTJOIN-1_FROM】【[DB_LST_FACEPLATE_MASTER$] AS FPM】【】【】【】【】【】【】【】【】【】【
+'】【BSQL_DIFF-ANLG-FPM_LEFTJOIN-1_KEY】【[STRUCT_TAG_ADR]】【】【】【】【】【】【】【】【】【】【
+'//】【BSQL_DIFF-ANLG-FPM_FORMULACOL】【FRM1,FRM2】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+'】【】【】【】【】【】【】【】【】【】【】【】【
+
+
+
 
