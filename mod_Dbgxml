@@ -1,10 +1,9 @@
-'clsXapDebug 20211104
+'clsXapDebug 20211107
 
-Private base_ As clsXapDomDoc
 Private InPath_ As String
 Private OutPath_ As String
-Private FixRepoInPath_ As String
-Private FixRepoOutPath_ As String
+'Private FixRepoInPath_ As String
+'Private FixRepoOutPath_ As String
 'Private IndexCnt_ As Long
 Private crrFolder_ As String
 Private crrForm_ As String
@@ -12,11 +11,7 @@ Private crrForm_ As String
 
 Sub createPartsXmlShtByPGPRM()
 Application.ScreenUpdating = False
-
-Stop '>>>>ALTER
-'REN >>> PGP6RM_CLT_EXE_ROOT
-
-Dim sPrfs As String: sPrfs = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_EXE_CREATESHT", "LinkShtClt")
+Dim sPrfs As String: sPrfs = fKey2Val("PGPRM_CLT_EXE_ROOT", "CLT_EXE_CREATESHT", "LinkShtClt")
 Dim sPrf As String: sPrf = inptPrf
 Dim sLinkShtName As String: sLinkShtName = "LinkShtClt"
 Dim sShtName As String
@@ -49,7 +44,8 @@ For Each v In Split(sPrfs, ",")
     End With
 Next v
 
-If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_SORTSHT", "LinkShtClt")) = True Then SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_SORTSHT", sLinkShtName)) = True Then SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_RTNSHT", sLinkShtName)) = True Then ThisWorkbook.Sheets(sLinkShtName).Activate
 Application.ScreenUpdating = True
 ThisWorkbook.Sheets("LinkShtClt").Activate
 End Sub
@@ -58,17 +54,17 @@ End Sub
 Sub WsUploadNumberingXml()
 Application.ScreenUpdating = False
 'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim sRet As String
+Dim vDom As clsXapDebug: Set vDom = New clsXapDebug
+Dim vBuffer(10) As String
 Dim ws As Worksheet
 On Error Resume Next
 
 With ThisWorkbook.ActiveSheet
     .Activate
-    C.uploadNumberingXml (ActiveSheet.Name)
+    vDom.uploadNumberingXml (ActiveSheet.Name)
 End With
 
-Set C = Nothing
+Set vDom = Nothing
 Application.ScreenUpdating = True
 End Sub
 
@@ -80,20 +76,20 @@ Dim f As IXMLDOMSelection
 Dim sFol As String: sFol = ""
 Dim sCid As String
 Dim l As Long
-Dim sRet As String
+Dim vBuffer(10) As String
 Dim sOutWsName As String
-sOutWsName = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_OUT_SHT", "LinkShtDB")
+sOutWsName = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_OUT_SHT", "LinkShtDB")
 On Error Resume Next
 
 If sOutWsName = "" Then
-   Call DebugOut("ERR", "empty pgprm_xml_out_sht")
+   Call DebugOut("ERR", "empty XML_out_sht")
 Else
     Call SelectOrAddWs(sOutWsName, ThisWorkbook.Name)
     Set ws = Sheets(sOutWsName)
 End If
     ws.Activate
 
-sFol = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_LOAD_FOLDER", "LinkShtDB")
+sFol = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_LOAD_FOLDER", "LinkShtDB")
 d.reloadPath
 Set f = d.getFolder(sFol)
 
@@ -120,124 +116,7 @@ Set fr = Nothing
 
 Application.ScreenUpdating = True
 End Sub
-
-
-Sub WsdownloadFixReport()
-Application.ScreenUpdating = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim sRet As String
-
-On Error Resume Next
-
-If fGetPgVal("fix_repo_OutSht") = "" Then
-    Set ws = ActiveSheet
-Else
-    Set ws = Sheets(fGetPgVal("fix_repo_OutSht"))
-    If ws.Name <> fGetPgVal("fix_repo_OutSht") Then MsgBox "does not exist  : " & fGetPgVal("fix_repo_OutSht"): Exit Sub
-End If
-
-With ws
-    .Activate
-    .Cells.Clear
-    .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
-    C.reloadPath
-    C.downloadFixReport
-End With
-
-Set C = Nothing
-Application.ScreenUpdating = True
-End Sub
-
-
-Sub uploadFixReport()
-Application.ScreenUpdating = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim sRet As String
-Dim ws As Worksheet
-On Error Resume Next
-
-If fGetPgVal("fix_repo_OutSht") = "" Then
-    Set ws = ActiveSheet
-Else
-    Set ws = Sheets(fGetPgVal("fix_repo_OutSht"))
-    If ws.Name <> fGetPgVal("fix_repo_OutSht") Then MsgBox "does not exist  : " & fGetPgVal("fix_repo_OutSht"): Exit Sub
-End If
-
-With ws
-    .Activate
-    C.reloadPath
-    C.uploadFixFilterXml
-End With
-
-MsgBox "uploaFixReport :" & fGetPgVal("fix_repo_OutPath")
-
-Set C = Nothing
-Application.ScreenUpdating = True
-End Sub
-
-Sub uploadFixReportB()
-Application.ScreenUpdating = False
-Application.DisplayAlerts = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim C As clsXapDebug: Set C = New clsXapDebug
-Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
-Dim vSelectFiles As FileDialogSelectedItems
-Dim vCnt As Long
-Dim sRet As String
-Dim wb As Workbook
-
-With vFiles
-    .Filters.Clear
-'    .Filters.Add "pictureFile", "*.*", 1
-    '.Title = "FILE SELECT"
-    .AllowMultiSelect = True
-    .InitialFileName = fGetPgVal("fix_repo_dir")
-    .Show
-End With
-
-On Error Resume Next
-If vFiles.SelectedItems.Count = 0 Then Exit Sub: Exit Sub
-Set wb = Workbooks.Add: wb.Activate
-
-For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
-    With wb.Worksheets.Add
-        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
-        sRet = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
-        sRet = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
-        C.reloadPath
-        C.downloadFixReport
-        .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
-        C.uploadFixFilterXml
-    End With
-Next vCnt
-wb.Sheets("Sheet1").Delete
-
-Set C = Nothing
-Application.ScreenUpdating = True
-Application.DisplayAlerts = True
-End Sub
         
-
-Sub loadXml()
-    Call base_.loadClientFile(InPath_)
-End Sub
-
-Sub reloadPath()
-'    InPath_ = fGetPgVal("xml_in_path")
-'    OutPath_ = fGetPgVal("xml_out_path")
-    InPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_LOAD_XML", "LinkShtClt")
-    OutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_SAVE_XML", "LinkShtClt")
-'    FixRepoInPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_LOAD_XML")
-'    FixRepoOutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_PATH_SAVE_XML")
-
-    Call DebugOut("XML_PROC", _
-                        "sub reloadpath " & vbNewLine & _
-                        "Inpath " & InPath_ & vbNewLine & _
-                        "Outpath " & OutPath_)
-    loadXml
-End Sub
 
 'Private Property Get getIndex() As String
 '    getIndex = IndexCnt_
@@ -247,14 +126,6 @@ End Sub
 '    IndexCnt_ = IndexCnt_ + 1
 '    incIndex = IndexCnt_
 'End Property
-
-Function getFolder(inptName As String) As IXMLDOMSelection 'as Alias
-Dim vRslt As IXMLDOMSelection
-Set vRslt = base_.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
-Set getFolder = vRslt
-Set vRslt = Nothing
-End Function
-
 
 'Function getForm(inptFol As String, inptFrm As String) As IXMLDOMSelection 'as Alias
 'Dim vRslt As IXMLDOMSelection
@@ -270,124 +141,6 @@ End Function
 'Set selectNodesEX = vRslt
 'Set vRslt = Nothing
 'End Function
-
-Sub uploadFormXml()
-Dim vWs As Worksheet: Set vWs = ActiveSheet
-Dim vDom As clsXapDomDoc: Set vDom = base_
-Dim lOdfH As Long: lOdfH = 10000
-Dim lOdfW As Long: lOdfW = 10000
-Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
-Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 1
-Dim s As String
-Dim sKey As String
-Dim lMatchCol As Long
-
-With vWs
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    .Activate
-    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
-
-    Do While ActiveCell.Value <> "" ' row direction
-        .Range("A1").Interior.Color = RGB(55, 155, 255)
-        Set vFilter = setBaseRect
-
-        Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
-            Select Case .Cells(1, lCol).Value
-                Case "_Index"
-                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                        If fGetPgVal("fix_repo_isIndex") = 1 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Top"
-                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Left"
-                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Width"
-                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Height"
-                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "LibraryComment"
-                        Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_TagInColor"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    Set vFilter = setFilterBorder(vFilter)
-                    If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
-
-                Case "_TagInVisible"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    Set vFilter = setFilterBorder(vFilter)
-                    If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
-                    
-                Case "_TagIn"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    Set vFilter = setFilterBorder(vFilter)
-                    If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
-
-                Case "_OpenPic"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Run"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Text"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = setFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Mes1"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Mes2"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Mes2"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "_Img"
-                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
-                        Set vFilter = base_.setAttributesEx(vFilter, "clid", "Image")
-                        Set vFilter = addFilterText(vFilter, "FileNormal", fReplace(fReplace(FixRepoOutPath_, Dir(FixRepoOutPath_), CStr(.Cells(ActiveCell.Row, lCol).Value)), ".ODF", ".jpg"))
-                    End If
-                Case "_Hi"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                     If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
-                Case "_Lo"
-                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                     If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
-                Case "_Del"
-                    If .Cells(ActiveCell.Row, lCol).Value = 1 Then
-                        Set vFilter = base_.setAttributesEx(vFilter, "FillColor", "#7F7F7F")
-                        Set vFilter = base_.setAttributesEx(vFilter, "TextColor", "#5A5A5A")
-                        Set vFilter = base_.setAttributesEx(vFilter, "BorderColor", "#5A5A5A")
-                    End If
-           
-           End Select
-            
-                lCol = lCol + 1
-
-          Loop ' field Attrs
-          
-        vForm.appendChild vFilter
-        lCol = 1
-
-        ActiveCell.Offset(1, 0).Activate 'row direction
-    Loop
-
-    .Range("A1").Activate 'iterate end
-End With
-
-s = "<?xml version=""1.0""?>" & _
-"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
-"<OBJ clid=""Folder"" Name=""Folder01"">" & _
-"PLACEHOLDER" & _
-"</OBJ>" & _
-"</FORMROOT></ROOT>"
-
-s = Replace(s, "PLACEHOLDER", vForm.XML)
-
-''''''''''Call SaveTextWithUtf8(s, OutPath_)
-
-Set vDom = Nothing
-Set vDoc = Nothing
-Set vForm = Nothing
-Set vFilter = Nothing
-
-End Sub
 
 
 Sub downloadPartsXml(inptShtName As String, inptLibComment As String)
@@ -414,8 +167,8 @@ End Sub
 
 
 Sub downloadXmlOnClearSht(inptList As IXMLDOMSelection)
-    Call SelectOrAddWs(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_OUT_SHT"), ThisWorkbook.Name)
-    With ThisWorkbook.Worksheets(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_XML_OUT_SHT"))
+    Call SelectOrAddWs(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_OUT_SHT"), ThisWorkbook.Name)
+    With ThisWorkbook.Worksheets(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_OUT_SHT"))
         .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
         .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
         .Range("A1").Interior.Color = RGB(255, 155, 155)
@@ -484,7 +237,7 @@ With ActiveSheet
                                 ActiveCell.Offset(1, 0).Activate
 
                                 If Not vObj.ChildNodes.Length = 0 And _
-                                    CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "PGPRM_EXPAND_CHILD", "LinkShtClt")) = CBool(1) Then
+                                    CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_CHILDELM_EXPAND", "LinkShtClt")) = CBool(1) Then
                                     For Each vO In vObj.ChildNodes
                                         Call parseGroup(vO, "", .Name)
                                     Next vO
@@ -592,106 +345,10 @@ eventRegx = sRslt
 End Function
 
 
-
-Function setBaseNumEll() As IXMLDOMElement
-Dim vFilter As IXMLDOMElement
-'<OBJ clid="Ellipse" Text="1" TextFont="HGPｺﾞｼｯｸE,-8,0,400,0,0,0,0,0" RotateX="339" RotateY="100" Top="90" Left="329" Height="21" Width="21" LibraryComment="p_dbgNumber">
-Set vFilter = base_.createEllipseElm(0, 0, 0, 0)
-Set vFilter = base_.setAttributesEx(vFilter, "LibraryComment", "p_dbgNumEll")
-Set vFilter = base_.setAttributesEx(vFilter, "Text", "")
-Set vFilter = base_.setAttributesEx(vFilter, "Width", "20")
-Set vFilter = base_.setAttributesEx(vFilter, "Height", "20")
-Set vFilter = base_.setAttributesEx(vFilter, "TextFont", "HGPｺﾞｼｯｸE,-8,0,700,0,0,0,0,0")
-Set vFilter = base_.setAttributesEx(vFilter, "Customize", _
-"[Property]" & vbLf & _
-"_Index=[string]" & vbLf & _
-"_Comment1=[string]")
-
-Set setBaseNumEll = vFilter
-
-End Function
-
-
-
-Function setBaseRect() As IXMLDOMElement
-Dim vFilter As IXMLDOMElement
-'red filter elem
-Set vFilter = base_.createRedFilter(0, 0, 0, 0)
-Set vFilter = base_.setAttributesEx(vFilter, "LibraryComment", "p_FixFil")
-
-Set vFilter = base_.setAttributesEx(vFilter, "Customize", _
-"[Property]" & vbLf & _
-"_Index=[string]" & vbLf & _
-"_TagInColor=[string]" & vbLf & _
-"_TagInVisible=[string]" & vbLf & _
-"_TagIn=[string]" & vbLf & _
-"_OpenPic=[string]" & vbLf & _
-"_Run=[string]" & vbLf & _
-"_Text=[string]" & vbLf & _
-"_Mes1=[string]" & vbLf & _
-"_Mes2=[string]" & vbLf & _
-"_Hi=[string]" & vbLf & _
-"_Lo=[string]" & vbLf & _
-"_Comment1=[string]")
-
-Set setBaseRect = vFilter
-
-End Function
-
-
-Function setFilterBorder(inptElm As IXMLDOMElement) As IXMLDOMElement
-Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
-
-Set vFilter = base_.setAttributesEx(vFilter, "TextFont", "Meiryo UI,-64,0,700,0,0,0,0,0")
-Set vFilter = base_.setAttributesEx(vFilter, "TextColor", "#800000")
-Set vFilter = base_.setAttributesEx(vFilter, "FillColor", "#FFFFFF")
-Set vFilter = base_.setAttributesEx(vFilter, "Border", "True")
-Set vFilter = base_.setAttributesEx(vFilter, "BorderColor", "#800000")
-Set vFilter = base_.setAttributesEx(vFilter, "BorderWidth", "20")
-
-Set setFilterBorder = vFilter
-
-End Function
-
-
-Function setFilterText(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
-Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
-Dim sValue As String: sValue = inptValue
-
-If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
-    Set vFilter = base_.setAttributesEx(vFilter, inptAtr, sValue)
-ElseIf sValue <> "" Then
-    Set vFilter = base_.setAttributesEx(vFilter, inptAtr, sValue)
-Else
-    'usual
-End If
-
-Set setFilterText = vFilter
-
-End Function
-
-
-Function addFilterText(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
-Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
-Dim sValue As String: sValue = inptValue
-
-If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
-    Set vFilter = base_.setAttributesEx(vFilter, inptAtr, base_.getAttributesEx(vFilter, inptAtr) & ", " & sValue)
-ElseIf sValue <> "" Then
-    Set vFilter = base_.setAttributesEx(vFilter, inptAtr, sValue)
-Else
-    'usual
-End If
-
-Set addFilterText = vFilter
-
-End Function
-
-
 Sub uploadNumberingXml(inptWs As String)
 'Function createEllipseElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
 ''<OBJ clid="Ellipse" RotateX="45" RotateY="45" Top="0" Left="0" Height="90" Width="90" LibraryComment="_Circle">
-Dim vDom As clsXapDomDoc: Set vDom = base_
+Dim vDom As clsXapDomDoc: Set vDom = clsXapDomDoc
 Dim lOdfH As Long: lOdfH = 1200
 Dim lOdfW As Long: lOdfW = 1920
 Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
@@ -713,17 +370,17 @@ With ThisWorkbook.Sheets(inptWs)
         Do While .Cells(1, lCol).Value <> ""  'field Attrs <--->
             Select Case .Cells(1, lCol).Value
                 Case "_Index"
-                        Set vFilter = base_.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Top"
-                        Set vFilter = base_.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = vDom.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Left"
-                        Set vFilter = base_.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        Set vFilter = vDom.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Height"
-                    If base_.getAttributesEx(vFilter, "Top") = 0 Then Stop 'TMP
-                        Set vFilter = base_.setAttributesEx(vFilter, "Top", base_.getAttributesEx(vFilter, "Top") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
+                    If vDom.getAttributesEx(vFilter, "Top") = 0 Then Stop 'TMP
+                        Set vFilter = vDom.setAttributesEx(vFilter, "Top", vDom.getAttributesEx(vFilter, "Top") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
                 Case "Width"
-                        If base_.getAttributesEx(vFilter, "Left") = 0 Then Stop 'TMP
-                        Set vFilter = base_.setAttributesEx(vFilter, "Left", base_.getAttributesEx(vFilter, "Left") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
+                        If vDom.getAttributesEx(vFilter, "Left") = 0 Then Stop 'TMP
+                        Set vFilter = vDom.setAttributesEx(vFilter, "Left", vDom.getAttributesEx(vFilter, "Left") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
                 End Select
                 lCol = lCol + 1
 
@@ -758,14 +415,144 @@ Set vFilter = Nothing
 End Sub
 
 
-Sub uploadFixFilterXml()
+Sub ★FixReport(): End Sub
+
+
+' >> ALTER PGPRM
+'Sub uploadFixReport()
+'Application.ScreenUpdating = False
+''If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+'Dim vDom As clsXapDebug: Set vDom = New clsXapDebug
+'Dim vBuffer(10) As String
+'Dim ws As Worksheet
+'Dim sLinkShtName As String: sLinkShtName = "LinkShtClt"
+'Dim vBuffer(10) As Variant
+'On Error Resume Next
+'
+'Call DebugOut("REM", "add prm to ws below")
+''fkey2val("PGPRM_CLT_EXE_ROOT","FIXREPO_OUT_SHT" ,sLinkShtName)
+'
+'vBuffer(0) = fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_OUT_SHT", sLinkShtName)
+'If vBuffer(0) = "" Or vBuffer(0) = "#N/A#" Then Call DebugOut("ERR", "pgprm empty : FIXREPO_OUT_SHT"): Exit Sub
+'    Call SelectOrAddWs(vBuffer(0))
+'
+'With ThisWorkbook.Sheets(vBuffer(0))
+'    .Activate
+'    vDom.reloadPath 'reload / sht
+'    vDom.uploadFixFilterXml
+'End With
+'
+'MsgBox "uploaFixReport :" & vBuffer(0)
+'
+'Set vDom = Nothing
+'Application.ScreenUpdating = True
+'End Sub
+
+
+Sub FIXREPO_EXE_CREATESHT()
+Application.ScreenUpdating = False
+Dim ws As Worksheet
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vDomDoc As DOMDocument60: Set vDomDoc = New DOMDocument60
+Dim sLinkShtName As String: sLinkShtName = "LinkShtClt"
+Dim vFixRepotFiles As FileDialog: Set vFixRepotFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectedPict As FileDialogSelectedItems
+Dim vCnt As Long
+Dim vBuffer(10) As String
+On Error Resume Next
+Set vDomDoc = vDom.createNewXapDoc()
+Set vDomDoc = vDomDoc.DocumentElement.ChildNodes(0).appendChild(vDom.createFolderElm())
+
+With vFixRepotFiles
+    .Filters.Clear
+    .Filters.Add "textFile", "*.*", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    '.InitialFileName = fGetPgVal("doc_pict_dir")
+    .Show
+End With
+
+If vFixRepotFiles.SelectedItems.Count = 0 Then Exit Sub
+
+For vCnt = 1 To vFixRepotFiles.SelectedItems.Count ' 1 base array
+    vBuffer(0) = vFixRepotFiles.SelectedItems(vCnt)
+    vBuffer(1) = "FRP_" & fSplit(Dir(vFixRepotFiles.SelectedItems(vCnt)), 1, ".")
+    Call SelectOrAddWs(vBuffer(1), ThisWorkbook.Name)
+
+    With ThisWorkbook.Sheets(vBuffer(1))
+        .Activate
+        .Cells.Clear
+        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+        Call downloadFixReport(vBuffer(0), vBuffer(1))
+        Set vDomDoc = vDomDoc.DocumentElement.ChildNodes(0).ChildNodes(0).appendChild(CreapteFixReportForm(.Name))
+    End With
+Next vCnt
+
+vBuffer(2) = fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_PATH_OUTXML", sLinkShtName)
+Call SaveTextWithUtf8(vDomDoc.XML, vBuffer(2))
+Call DebugOut("UTIL", "FIXREPO_EXE_CREATESHT :" & vBuffer(2))
+
+Set vDom = Nothing
+Set vDomDoc = Nothing
+
+If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_SORTSHT", sLinkShtName)) = True Then SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_RTNSHT", sLinkShtName)) = True Then ThisWorkbook.Sheets(sLinkShtName).Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+
+Sub uploadFixReportB()
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+Dim vDom As clsXapDebug: Set vDom = New clsXapDebug
+Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectFiles As FileDialogSelectedItems
+Dim vCnt As Long
+Dim vBuffer(10) As String
+Dim wb As Workbook
+
+With vFiles
+    .Filters.Clear
+'    .Filters.Add "pictureFile", "*.*", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = fGetPgVal("fix_repo_dir")
+    .Show
+End With
+
+On Error Resume Next
+If vFiles.SelectedItems.Count = 0 Then Exit Sub: Exit Sub
+Set wb = Workbooks.Add: wb.Activate
+
+For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
+    With wb.Worksheets.Add
+        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+        vBuffer(0) = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
+        vBuffer(0) = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
+        vDom.reloadPath
+        vDom.downloadFixReport
+        .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
+        vDom.uploadFixFilterXml
+    End With
+Next vCnt
+wb.Sheets("Sheet1").Delete
+
+Set vDom = Nothing
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+End Sub
+
+
+Sub uploadFixFormXml()
 Dim vWs As Worksheet: Set vWs = ActiveSheet
-Dim vDom As clsXapDomDoc: Set vDom = base_
+Dim vDom As clsXapDomDoc: Set vDom = vDom
 Dim lOdfH As Long: lOdfH = 10000
 Dim lOdfW As Long: lOdfW = 10000
 Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
 Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 2
+Dim lCol As Long: lCol = 1
 Dim s As String
 Dim sKey As String
 Dim lMatchCol As Long
@@ -827,7 +614,7 @@ With vWs
                     Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "_Img"
                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then
-                        Set vFilter = base_.setAttributesEx(vFilter, "clid", "Image")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "clid", "Image")
                         Set vFilter = addFilterText(vFilter, "FileNormal", fReplace(fReplace(FixRepoOutPath_, Dir(FixRepoOutPath_), CStr(.Cells(ActiveCell.Row, lCol).Value)), ".ODF", ".jpg"))
                     End If
                 Case "_Hi"
@@ -838,11 +625,398 @@ With vWs
                      If fGetPgVal("fix_repo_isIndex") = 0 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
                 Case "_Del"
                     If .Cells(ActiveCell.Row, lCol).Value = 1 Then
-                        Set vFilter = base_.setAttributesEx(vFilter, "FillColor", "#7F7F7F")
-                        Set vFilter = base_.setAttributesEx(vFilter, "TextColor", "#5A5A5A")
-                        Set vFilter = base_.setAttributesEx(vFilter, "BorderColor", "#5A5A5A")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "FillColor", "#7F7F7F")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#5A5A5A")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "BorderColor", "#5A5A5A")
                     End If
            
+           End Select
+            
+                lCol = lCol + 1
+
+          Loop ' field Attrs
+          
+        vForm.appendChild vFilter
+        lCol = 1
+
+        ActiveCell.Offset(1, 0).Activate 'row direction
+    Loop
+
+    .Range("A1").Activate 'iterate end
+End With
+
+s = "<?xml version=""1.0""?>" & _
+"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
+"<OBJ clid=""Folder"" Name=""Folder01"">" & _
+"PLACEHOLDER" & _
+"</OBJ>" & _
+"</FORMROOT></ROOT>"
+
+s = Replace(s, "PLACEHOLDER", vForm.XML)
+
+''''''''''Call SaveTextWithUtf8(s, OutPath_)
+
+Set vDom = Nothing
+Set vDoc = Nothing
+Set vForm = Nothing
+Set vFilter = Nothing
+
+End Sub
+
+
+Sub downloadFixReport(inptRepoPath As String, inptWsName As String) ' report to Excel Sheet
+Dim sPathIn As String: sPathIn = inptRepoPath
+Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim sLine As String
+Dim vCol As Long: vCol = 2
+Dim vRplAttr As String
+Dim s As String
+Dim sKey As String
+Dim l As Long: l = 1 'uniqueIdNum
+Dim lMatchCol As Long 'headerField
+
+With Sheets(inptWsName)
+    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
+    .Range(Cells(1, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
+    .Range("A2").Activate 'start position
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+
+    Open sPathIn For Input As #1
+        Do Until EOF(1)
+        Line Input #1, sLine
+        
+    Call DebugOut("REM", "If sLine =  Then Stop")
+
+    If fSplit(Trim(sLine), 1, ":") = "ﾋﾟｸﾁｬ名" Then
+            sKey = "Object": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "ODF"
+            sKey = "Top": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 0
+            sKey = "Left": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 0
+            sKey = "Height": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 10000
+            sKey = "Width": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = 10000
+            sKey = "_Img": lMatchCol = searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 And Right(Trim(fSplit(sLine, 2, ":")), 3) = "ODF" Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, ":"))
+    End If
+    
+    Select Case fSplit(sLine, 11, " ")
+        Case "前景色"
+            s = "前景色"
+        Case "見える/見えない"
+            s = "見える/見えない"
+        Case "境界色"
+            s = "境界色"
+    End Select
+
+    'next row(オブジェクト）
+    If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
+        .Range("A1").Interior.Color = RGB(55, 155, 255)
+        If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("H").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
+            .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("_Index")).Value = l
+            l = l + 1
+            ActiveCell.Offset(1, 0).Activate
+        End If
+
+        vCol = 2
+        Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
+                vRplAttr = .Cells(1, vCol).Value 'each field
+                    Select Case vRplAttr
+                        Case "Object"
+                            .Cells(ActiveCell.Row, vCol).Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
+                        Case "Left"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
+                        Case "Top"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 8, " "), ",", "")
+                        Case "Width"
+                           .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "") - fReplace(fSplit(sLine, 7, " "), ",", "")
+                        Case "Height"
+                            .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "") - fReplace(fSplit(sLine, 8, " "), ",", "")
+                    End Select
+            vCol = vCol + 1
+        Loop ' field Attrs
+        vCol = 2
+
+    'same row(Parameter)
+    ElseIf Trim(fSplit(sLine, 1, ":")) = "ﾀｸﾞ名" Then
+
+            If Not fSplit(sLine, 1, "#") = sLine Then
+                    sKey = "_TagIn"
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, lMatchCol).Value = Trim(fSplit(sLine, 2, "#"))
+                ElseIf s = "前景色" Or s = "境界色" Then
+                    sKey = "_TagInColor"
+                    sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
+
+                ElseIf s = "見える/見えない" Then
+                    sKey = "_TagInVisible"
+                    sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
+                    lMatchCol = searchActiveSheetHeaderCol(sKey)
+                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
+                Else
+                    Stop 'new property found
+            End If
+
+        ElseIf Trim(fSplit(Trim(sLine), 1, ":")) = "ﾃｷｽﾄ" Then
+            sKey = "_Text"
+            sLine = fSplit(Trim(sLine), 2, ":")
+            lMatchCol = searchActiveSheetHeaderCol(sKey)
+            If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
+
+        ElseIf Trim(fSplit(sLine, 1, ":")) = "TOGGLEDIG THISNODE" Or _
+            Trim(fSplit(sLine, 1, ":")) = "SETVAL THISNODE" Or _
+            Trim(fSplit(sLine, 1, ":")) = "OFFSCAN THISNODE" Or _
+            Trim(fSplit(sLine, 1, ":")) = "CLOSEDIG THISNODE" Or _
+            Trim(fSplit(sLine, 1, ":")) = "OPENDIG THISNODE" Then
+                sKey = "_TagIn"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then
+                    If Not fSplit(sLine, 1, "#") = sLine Then
+                        .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, "#"))
+                    Else
+                        sLine = Trim(fSplit(sLine, 1, ":")) & " : " & Trim(fSplit(fSplit(sLine, 2, ":"), 1, "."))
+                        .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+                    End If
+                End If
+            
+            ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "OPENPIC" Then
+                sLine = fSplit(Trim(sLine), 2, " ")
+                sKey = "_OpenPic"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+            
+            ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "REPLACEPIC" Then
+                sLine = fSplit(Trim(sLine), 3, " ")
+                sKey = "_OpenPic"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+            
+            ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "RUNTASK" Then
+                sLine = WorksheetFunction.Substitute(Trim(sLine), "RUNTASK", " ")
+                sKey = "_Run"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+            
+            ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES1" Then
+                sLine = fSplit(Trim(sLine), 3, " ")
+                sKey = "_Mes1"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+            
+            ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES2" Then
+                sLine = fSplit(Trim(sLine), 3, " ")
+                sKey = "_Mes2"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+
+            ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#IN_MAX" Then
+                sLine = fSplit(fReplace(sLine, " ", ""), 2, "=")
+                sKey = "_Hi"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+
+            ElseIf Trim(fSplit(Trim(sLine), 1, "=")) = "#IN_MIN" Then
+                sLine = fSplit(fReplace(sLine, " ", ""), 2, "=")
+                sKey = "_Lo"
+                lMatchCol = searchActiveSheetHeaderCol(sKey)
+                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
+            End If
+    
+        Loop 'next line
+    Close #1
+                .Cells(ActiveCell.Row, searchActiveSheetHeaderCol("_Index")).Value = l
+End With
+
+End Sub
+
+
+'REPO SHT => ELM VER
+Function CreapteFixReportForm(inptSht As String) As IXMLDOMElement
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim sWsLink As String: sWsLink = "LinkShtClt"
+Dim lOdfH As Long: lOdfH = CLng(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM-HEIGHT", sWsLink))
+Dim lOdfW As Long: lOdfW = CLng(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM-WIDTH", sWsLink))
+Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW, inptSht)
+Dim vFilter As IXMLDOMElement
+Dim lCol As Long: lCol = 2
+Dim sKey As String
+Dim vBuffer(10) As String
+Dim lMatchCol As Long
+
+With ThisWorkbook.Sheets(inptSht)
+    .Activate
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
+
+    Do While ActiveCell.Value <> "" ' row direction
+        .Range("A1").Interior.Color = RGB(55, 155, 255)
+        Set vFilter = setBaseRect
+       
+        Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
+            Select Case .Cells(1, lCol).Value
+                Case "_Index"
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Top"
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
+                Case "Left"
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
+                Case "Width"
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
+                Case "Height"
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
+                Case "LibraryComment"
+                        Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_TagInColor"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
+                Case "_TagInVisible"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
+                Case "_TagIn"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
+                Case "_OpenPic"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Run"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Text"
+                
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = setFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    
+                Case "_Mes1"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes2"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes2"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Img"
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
+                    Call DebugOut("REM", "not yet")
+'                        Set vFilter = vdom.setAttributesEx(vFilter, "clid", "Image")
+'                        Set vFilter = addFilterText(vFilter, "FileNormal", fReplace(fReplace(FixRepoOutPath_, Dir(FixRepoOutPath_), CStr(.Cells(ActiveCell.Row, lCol).Value)), ".ODF", ".jpg"))
+                    End If
+                Case "_Hi"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
+                Case "_Lo"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
+                Case "_Del"
+                    If .Cells(ActiveCell.Row, lCol).Value = 1 Then
+                        Set vFilter = vDom.setAttributesEx(vFilter, "FillColor", "#7F7F7F")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#5A5A5A")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "BorderColor", "#5A5A5A")
+                    End If
+           End Select
+                lCol = lCol + 1
+          Loop ' field Attrs
+        vForm.appendChild vFilter
+        lCol = 1
+        ActiveCell.Offset(1, 0).Activate 'row direction
+    Loop
+    .Range("A1").Activate 'iterate end
+End With
+
+Set CreapteFixReportForm = vForm
+
+Set vDom = Nothing
+Set vDoc = Nothing
+Set vForm = Nothing
+Set vFilter = Nothing
+
+End Function
+
+'SHT => ONE FILE VER
+Sub uploadFixFilterXml(inptSht As String)
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim lOdfH As Long: lOdfH = 10000
+Dim lOdfW As Long: lOdfW = 10000
+Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
+Dim vFilter As IXMLDOMElement
+Dim lCol As Long: lCol = 2
+Dim s As String
+Dim sKey As String
+Dim lMatchCol As Long
+
+With ThisWorkbook.Sheets(inptSht)
+    .Activate
+    .Range("A1").Interior.Color = RGB(255, 155, 155)
+    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
+
+    Do While ActiveCell.Value <> "" ' row direction
+        .Range("A1").Interior.Color = RGB(55, 155, 255)
+        Set vFilter = setBaseRect
+
+        Do While .Cells(1, lCol).Value <> "" 'field Attrs <--->
+            Select Case .Cells(1, lCol).Value
+                Case "_Index"
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                        If fGetPgVal("fix_repo_isIndex") = 1 And .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Top"
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Left"
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Width"
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "Height"
+                        Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "LibraryComment"
+                        Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_TagInColor"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
+                Case "_TagInVisible"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
+                Case "_TagIn"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    Set vFilter = setFilterBorder(vFilter)
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "TagIn")
+                Case "_OpenPic"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Run"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Text"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = setFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes1"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes2"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Mes2"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                Case "_Img"
+                    If .Cells(ActiveCell.Row, lCol).Value <> "" Then
+                        Set vFilter = vDom.setAttributesEx(vFilter, "clid", "Image")
+                        Set vFilter = addFilterText(vFilter, "FileNormal", fReplace(fReplace(FixRepoOutPath_, Dir(FixRepoOutPath_), CStr(.Cells(ActiveCell.Row, lCol).Value)), ".ODF", ".jpg"))
+                    End If
+                Case "_Hi"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
+                Case "_Lo"
+                    Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+                     If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "LibraryComment", "HL")
+                Case "_Del"
+                    If .Cells(ActiveCell.Row, lCol).Value = 1 Then
+                        Set vFilter = vDom.setAttributesEx(vFilter, "FillColor", "#7F7F7F")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "TextColor", "#5A5A5A")
+                        Set vFilter = vDom.setAttributesEx(vFilter, "BorderColor", "#5A5A5A")
+                    End If
            End Select
             
                 lCol = lCol + 1
@@ -877,174 +1051,139 @@ Set vFilter = Nothing
 End Sub
 
 
-Sub downloadFixReport()  ' report to Excel Sheet
-Dim sPathIn As String: sPathIn = fGetPgVal("fix_repo_Inpath"): If sPathIn = "#N\A#" Then MsgBox "wrong path : fix_repoIn_path": Exit Sub
-Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
-Dim sLine As String
-Dim vCol As Long: vCol = 2
-Dim vRplAttr As String
-Dim s As String
-Dim sKey As String
-Dim l As Long: l = 1 'uniqueIdNum
-Dim lMatchCol As Long 'headerField
+Sub ★XmlUtil(): End Sub
 
-With ActiveSheet
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
-    .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
-    .Range("A2").Activate 'start position
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
 
-    Open sPathIn For Input As #1
-        Do Until EOF(1)
-        Line Input #1, sLine
-'If sLine = "" Then Stop
+Function getFolder(inptName As String) As IXMLDOMSelection 'as Alias
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vRslt As IXMLDOMSelection
+Set vRslt = vDom.selectNodesEX("//FORMROOT/OBJ[@clid='Folder'][@Name='" & inptName & "']")
+Set getFolder = vRslt
+Set vRslt = Nothing
+End Function
 
-        If fSplit(Trim(sLine), 1, ":") = "ﾋﾟｸﾁｬ名" Then
-                sKey = "Object": lMatchCol = base_.searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "ODF"
-                sKey = "Top": lMatchCol = base_.searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = 0
-                sKey = "Left": lMatchCol = base_.searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = 0
-                sKey = "Height": lMatchCol = base_.searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = 10000
-                sKey = "Width": lMatchCol = base_.searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = 10000
-                sKey = "_Img": lMatchCol = base_.searchActiveSheetHeaderCol(sKey): If lMatchCol <> 0 And Right(Trim(fSplit(sLine, 2, ":")), 3) = "ODF" Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, ":"))
-        End If
 
-        Select Case fSplit(sLine, 11, " ")
-            Case "前景色"
-                s = "前景色"
-            Case "見える/見えない"
-                s = "見える/見えない"
-            Case "境界色"
-                s = "境界色"
-        End Select
-
-        '改行有
-        If fSplit(sLine, 1, ":") = "ｵﾌﾞｼﾞｪｸﾄ" Then
-            .Range("A1").Interior.Color = RGB(55, 155, 255)
-            If Not WorksheetFunction.CountA(Range(Cells(ActiveCell.Row, Columns("H").Column), Cells(ActiveCell.Row, Columns.Count))) = 0 Then
-                .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol("_Index")).Value = l
-                l = l + 1
-                ActiveCell.Offset(1, 0).Activate
-            End If
-
-            vCol = 2
-            Do While .Cells(1, vCol).Value <> "" 'field Attrs <--->
-                    vRplAttr = .Cells(1, vCol).Value 'each field
-                    
-                        Select Case vRplAttr
-                            Case "Object"
-                                .Cells(ActiveCell.Row, vCol).Value = Trim(fSplit(sLine, 2, " ")) ' object name 長方形 楕円 ...
-                            Case "Left"
-                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 7, " "), ",", "")
-                            Case "Top"
-                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 8, " "), ",", "")
-                            Case "Width"
-                               .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "") - fReplace(fSplit(sLine, 7, " "), ",", "")
-                                '.Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 9, " "), ",", "")
-                            Case "Height"
-                                .Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "") - fReplace(fSplit(sLine, 8, " "), ",", "")
-                            '.Cells(ActiveCell.Row, vCol).Value = fReplace(fSplit(sLine, 10, " "), ",", "")
-                        End Select
-                vCol = vCol + 1
-            Loop ' field Attrs
-            vCol = 2
-
-        '改行無
-        ElseIf Trim(fSplit(sLine, 1, ":")) = "ﾀｸﾞ名" Then
-
-                If Not fSplit(sLine, 1, "#") = sLine Then
-                        sKey = "_TagIn"
-                        lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, lMatchCol).Value = Trim(fSplit(sLine, 2, "#"))
-                    ElseIf s = "前景色" Or s = "境界色" Then
-                        sKey = "_TagInColor"
-                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
-                        lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
-    
-                    ElseIf s = "見える/見えない" Then
-                        sKey = "_TagInVisible"
-                        sLine = fSplit(sLine, 3, ":"): sLine = fSplit(sLine, 1, "."): sLine = Trim(sLine)
-                        lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                        If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
-                    
-                    Else
-                        Stop 'new property found
-                End If
-
-            ElseIf Trim(fSplit(Trim(sLine), 1, ":")) = "ﾃｷｽﾄ" Then
-                sKey = "_Text"
-                sLine = fSplit(Trim(sLine), 2, ":")
-                lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ", ") & sLine
-    
-            ElseIf Trim(fSplit(sLine, 1, ":")) = "TOGGLEDIG THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "SETVAL THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "OFFSCAN THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "CLOSEDIG THISNODE" Or _
-                Trim(fSplit(sLine, 1, ":")) = "OPENDIG THISNODE" Then
-                    sKey = "_TagIn"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then
-                        If Not fSplit(sLine, 1, "#") = sLine Then
-                            .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = Trim(fSplit(sLine, 2, "#"))
-                        Else
-                            sLine = Trim(fSplit(sLine, 1, ":")) & " : " & Trim(fSplit(fSplit(sLine, 2, ":"), 1, "."))
-                            .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                        End If
-                    End If
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "OPENPIC" Then
-                    sLine = fSplit(Trim(sLine), 2, " ")
-                    sKey = "_OpenPic"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "REPLACEPIC" Then
-                    sLine = fSplit(Trim(sLine), 3, " ")
-                    sKey = "_OpenPic"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "RUNTASK" Then
-                    sLine = WorksheetFunction.Substitute(Trim(sLine), "RUNTASK", " ")
-                    sKey = "_Run"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES1" Then
-                    sLine = fSplit(Trim(sLine), 3, " ")
-                    sKey = "_Mes1"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-                
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#MES2" Then
-                    sLine = fSplit(Trim(sLine), 3, " ")
-                    sKey = "_Mes2"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-
-                ElseIf Trim(fSplit(Trim(sLine), 1, " ")) = "#IN_MAX" Then
-                    sLine = fSplit(fReplace(sLine, " ", ""), 2, "=")
-                    sKey = "_Hi"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-
-                ElseIf Trim(fSplit(Trim(sLine), 1, "=")) = "#IN_MIN" Then
-                    sLine = fSplit(fReplace(sLine, " ", ""), 2, "=")
-                    sKey = "_Lo"
-                    lMatchCol = base_.searchActiveSheetHeaderCol(sKey)
-                    If lMatchCol <> 0 Then .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value & IIf(.Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol(sKey)).Value = "", "", ",") & sLine
-        End If
-
-        Loop 'next line
-    Close #1
-                .Cells(ActiveCell.Row, base_.searchActiveSheetHeaderCol("_Index")).Value = l
+Function setBaseNumEll() As IXMLDOMElement
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vFilter As IXMLDOMElement
+'<OBJ clid="Ellipse" Text="1" TextFont="HGPｺﾞｼｯｸE,-8,0,400,0,0,0,0,0" RotateX="339" RotateY="100" Top="90" Left="329" Height="21" Width="21" LibraryComment="p_dbgNumber">
+With vDom
+Set vFilter = .createEllipseElm(0, 0, 0, 0)
+Set vFilter = .setAttributesEx(vFilter, "LibraryComment", "p_dbgNumEll")
+Set vFilter = .setAttributesEx(vFilter, "Text", "")
+Set vFilter = .setAttributesEx(vFilter, "Width", "20")
+Set vFilter = .setAttributesEx(vFilter, "Height", "20")
+Set vFilter = .setAttributesEx(vFilter, "TextFont", "HGPｺﾞｼｯｸE,-8,0,700,0,0,0,0,0")
+Set vFilter = .setAttributesEx(vFilter, "Customize", _
+"[Property]" & vbLf & _
+"_Index=[string]" & vbLf & _
+"_Comment1=[string]")
 End With
 
-'out fUniqueArray(oArr.toarray)
+Set setBaseNumEll = vFilter
+Set vDom = Nothing
+Set vFilter = Nothing
 
-End Sub
+End Function
 
+
+Function setBaseRect() As IXMLDOMElement
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vFilter As IXMLDOMElement
+'red filter elem
+
+With vDom
+Set vFilter = .createRedFilter(0, 0, 0, 0)
+Set vFilter = .setAttributesEx(vFilter, "LibraryComment", "p_FixFil")
+Set vFilter = .setAttributesEx(vFilter, "Customize", _
+"[Property]" & vbLf & _
+"_Index=[string]" & vbLf & _
+"_TagInColor=[string]" & vbLf & _
+"_TagInVisible=[string]" & vbLf & _
+"_TagIn=[string]" & vbLf & _
+"_OpenPic=[string]" & vbLf & _
+"_Run=[string]" & vbLf & _
+"_Text=[string]" & vbLf & _
+"_Mes1=[string]" & vbLf & _
+"_Mes2=[string]" & vbLf & _
+"_Hi=[string]" & vbLf & _
+"_Lo=[string]" & vbLf & _
+"_Comment1=[string]")
+End With
+
+Set setBaseRect = vFilter
+Set vFilter = Nothing
+Set vDom = Nothing
+
+End Function
+
+
+Function setFilterBorder(inptElm As IXMLDOMElement) As IXMLDOMElement
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
+'rem
+
+With vDom
+Set vFilter = .setAttributesEx(vFilter, "TextFont", "Meiryo UI,-16,0,700,0,0,0,0,0")
+Set vFilter = .setAttributesEx(vFilter, "TextColor", "#800000")
+Set vFilter = .setAttributesEx(vFilter, "FillColor", "#FFFFFF")
+Set vFilter = .setAttributesEx(vFilter, "Border", "True")
+Set vFilter = .setAttributesEx(vFilter, "BorderColor", "#800000")
+Set vFilter = .setAttributesEx(vFilter, "BorderWidth", "2")
+End With
+
+Set setFilterBorder = vFilter
+Set vFilter = Nothing
+Set vDom = Nothing
+
+End Function
+
+
+Function setFilterText(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
+Dim sValue As String: sValue = inptValue
+
+With vDom
+If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
+    Set vFilter = .setAttributesEx(vFilter, inptAtr, sValue)
+ElseIf sValue <> "" Then
+    Set vFilter = .setAttributesEx(vFilter, inptAtr, sValue)
+Else
+    'usual
+End If
+End With
+
+Set setFilterText = vFilter
+Set vFilter = Nothing
+Set vDom = Nothing
+
+End Function
+
+
+Function addFilterText(inptElm As IXMLDOMElement, inptAtr As String, inptValue As String) As IXMLDOMElement
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
+Dim sValue As String: sValue = inptValue
+
+With vDom
+If Not IsNull(vFilter.getAttribute(inptAtr)) And sValue <> "" Then
+    Set vFilter = .setAttributesEx(vFilter, inptAtr, .getAttributesEx(vFilter, inptAtr) & ", " & sValue)
+ElseIf sValue <> "" Then
+    Set vFilter = .setAttributesEx(vFilter, inptAtr, sValue)
+Else
+    'usual
+End If
+End With
+
+Set addFilterText = vFilter
+Set vFilter = Nothing
+Set vDom = Nothing
+
+End Function
+
+
+Sub ★WsUtil(): End Sub
 
 Sub delUnMatchRow(inptCol As Long, inptCnd As String)
 Dim sDelCol As String: sDelCol = inptCnd
@@ -1086,8 +1225,6 @@ With ActiveSheet
     End If
 End With
 
-
-
 End Sub
 
 
@@ -1117,18 +1254,29 @@ searchActiveSheetHeaderCol = CLng(sRslt)
 End Function
 
 
-Function printInfo()
-    Debug.Print "------------------------------------------------------------------"
-    Debug.Print " path in: " & InPath_
-    Debug.Print " path out: " & OutPath_
-    Debug.Print " path fixRepo: " & FixRepoPath_
-    Debug.Print "------------------------------------------------------------------"
-End Function
+Sub ★cXmlSetting(): End Sub
 
 
-Private Sub class_initialize()
-    Set base_ = New clsXapDomDoc
-    reloadPath
+Sub loadXml()
+Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
+    Call vDom.loadClientFile(InPath_)
+End Sub
+
+
+Sub reloadPath(Optional inptFixRepoInPath As String _
+                        , Optional inptFixRepoOutPath As String)
+    InPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_PATH_LOAD", "LinkShtClt")
+    OutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_PATH_SAVE", "LinkShtClt")
+    
+    'alter repopath => batch
+    FixRepoInPath_ = inptFixRepoInPath
+    FixRepoOutPath_ = inptFixRepoOutPath
+
+    Call DebugOut("XML_PROC", _
+                        "sub reloadpath " & vbNewLine & _
+                        "Inpath " & InPath_ & vbNewLine & _
+                        "Outpath " & OutPath_)
+    loadXml
 End Sub
 
 
@@ -1148,51 +1296,33 @@ End Sub
 
 '=====================================
 
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'[ CLIENT DB SETTING ]】【】【】【】【】【】【】【】【】【】【
-'PGPRM_CLT_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtClt】【B】【C】【】【】【】【】【】【
-'*】【[ KEY ]】【[ VAL ]】【】【】【】【】【】【】【】【
-'*】【//Download xml setting】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_PATH_LOAD_XML】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client.xml】【】【】【】【】【】【】【】【
-'*】【PGPRM_PATH_SAVE_XML】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client_out.xml】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_XML_LOAD_FOLDER】【_Graphic】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_XML_OUT_SHT】【CLT_XML_OUT】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_XML_SORTSHT】【1】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_EXPAND_CHILD】【0】【】【】【】【】【】【】【】【
-'*】【PGPRM_SHEET_PREF】【CLT_】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【PGPRM_EXE_CREATESHT】【CLT_p_r_Alm】【】【】【】【】【】【】【】【
-'】【】【CLT_p_r_Alm】【CLT_p_r_valve】【】【】【】【】【】【】【
-'】【】【】【CLT_p_r_pump】【】【】【】【】【】【】【
-'】【】【】【CLT_p_r_pvsv】【】【】【】【】【】【】【
-'】【】【】【CLT_p_r_Alm】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'PGPRM_ALIAS2FULLADR】【DFR3_DB_211014.xlsm】【DB_LST_ALIAS】【A】【B】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'[ PARTS DATA ]】【[ LIBRALYCLASS ]】【[ ATTRIBUTES ]】【】【】【】【】【】【】【】【
-'CLT_p_r_valve】【p_r_valve】【A:_Index】【B:Form】【C:Folder】【D:Top】【E:Left】【F:Height】【G:Width】【H:_TagIn】【%I:[FULL_ADR],[Fix],[A],[=retDFRALIAS2FULLADR(RC[-1])]
-'CLT_p_r_pump】【p_r_pump】【A:_Index】【B:Form】【C:Folder】【D:_TagIn】【%E:[FULL_ADR],[Fix],[A],[=retDFRALIAS2FULLADR(RC[-1])]】【】【】【】【
-'CLT_p_r_pvsv】【p_r_pvsv】【A:_Index】【B:Form】【C:Folder】【D:_TagInPV】【E:_TagOutPV】【F:_TagInSV】【G:_TagOutSV】【H:_Decimal】【%I:[FULL_ADR],[Fix],[A],[=fkey2val("PGPRM_ALIAS2FULLADR",RC[-5],"LinkShtClt")]
-'CLT_p_r_Alm】【p_r_Alm】【A:_Index】【B:Form】【C:Folder】【D:_TagIn】【E:_TagIn2】【F:_Text】【%G:[FULL_ADR],[Fix],[A],[=retDFRALIAS2FULLADR(RC[-3])]】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【
+'PGPRM_CLT_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtClt】【B】【C
+'*】【[ KEY ]】【[ VAL ]
+'*】【//Download xml setting
+'*】【XML_PATH_LOAD】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client.xml
+'*】【XML_PATH_SAVE】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client_out.xml
+'*
+'*】【XML_LOAD_FOLDER】【_Graphic】【?? ALTER ??
+'
+'FIXREPO_FORM-WIDTH】【2000
+'FIXREPO_FORM-HEIGHT】【2000
+'FIXREPO_PATH_OUTXML】【C:\Users\Owner\Documents\workspace\out.xml
+'FIXREPO_FORM_RESCALE】【20】【%
+'
+'*】【FIXREPO_OUT_SHT
+'*】【XML_OUT_SHT】【CLT_XML_OUT
+'*】【CLT_XML_OUT
+'
+'*】【XML_RTNSHT】【1
+'*】【XML_SORTSHT】【1
+'*
+'*】【XML_CHILDELM_EXPAND】【0
+'*】【CLT_
+'
+'CLT_EXE_CREATESHT】【CLT_p_r_Alm
+'CLT_p_r_Alm】【CLT_p_r_valve
+'CLT_p_r_pump
+'CLT_p_r_pvsv
+'CLT_p_r_Alm
+'
 
