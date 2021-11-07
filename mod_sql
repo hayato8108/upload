@@ -1,5 +1,5 @@
 Option Explicit
-'SQL 20211104
+'SQL 20211107
 
 Sub CreateDFR3DBTable()
 Dim oWb As Workbook: Set oWb = ThisWorkbook
@@ -42,10 +42,10 @@ Application.ScreenUpdating = True
 End Sub
 
 
-'BSQL_TSTOUT2_SELECT TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2],'=A1' AS FRM1,'=A2' AS FRM2
-'BSQL_TSTOUT2_FORMULACOL FRM1, FRM2
+'SQL_TSTOUT2_SELECT TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2],'=A1' AS FRM1,'=A2' AS FRM2
+'SQL_TSTOUT2_FORMULACOL FRM1, FRM2
 
-Sub BSQL_EXE_CREATESHT()
+Sub SQL_EXE_CREATESHT()
 Application.ScreenUpdating = False
 Dim sShtName As String
 Dim sShtTmpName As String
@@ -58,14 +58,15 @@ Dim l As Long
 
 Call DebugOut("REM", "full join : duplicat value")
 
-sShts = Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "PGPRM_BSQL_EXE_CREATESHT", sShtSqlLink), ",")
+sShts = Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_EXE_CREATESHT", sShtSqlLink), ",")
 
 For Each v In sShts
-If Not Left(v, 4) = "BSQL" Then Call DebugOut("ERR", "prefix missing : BSQL"): Exit Sub
-    sShtName = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
+If Not Left(v, Len("SQL")) = "SQL" Then Call DebugOut("ERR", "prefix missing : SQL"): Exit Sub
+    sShtName = fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
     sShtName = fSplitBetweenAlter(sShtName, 2, "[", "$]")
     sShtTmpName = "TMP_" & sShtName
-    sQueryFilter = fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink): If sQueryFilter = "#N/A#" Then sQueryFilter = ""
+    sQueryFilter = fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink)
+    If fKey2Val("PGPRM_SQL_QUERY_IGRNORE", v & "_FILTER", sShtSqlLink) = "//" Or sQueryFilter = "#N/A#" Then sQueryFilter = ""
 
     If sShtName = "#N/A#" Or sShtName = "" Then Call DebugOut("ERR", "sheet find error : " & v): Exit Sub
     Call SelectOrAddWs(sShtName, ThisWorkbook.Name)
@@ -75,8 +76,8 @@ If Not Left(v, 4) = "BSQL" Then Call DebugOut("ERR", "prefix missing : BSQL"): E
     'condition
     Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryFilter, RetCDirWbPath(), sShtName)
     'refresh and paste formula column
-    If Not UBound(Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")) = -1 Then
-        For Each vv In Split(fKey2Val("PGPRM_BSQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")
+    If Not UBound(Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")) = -1 Then
+        For Each vv In Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")
             l = retHeaderCol(sShtName, CStr(vv))
             If Not l = 0 Then
                 With Sheets(sShtName)
@@ -91,15 +92,15 @@ ThisWorkbook.Sheets(sShtName).Cells.Copy
 ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
 ThisWorkbook.Sheets(sShtName).Range("A1").Select
 
-If CBool(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink)) = True Then Call DeleteTableByPrefix("TMP_")
-If CBool(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_SORTSHT", sShtSqlLink)) = True Then Call SortShtByPGPRM
-If CBool(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_RTNSHT", sShtSqlLink)) = True Then ThisWorkbook.Sheets(sShtSqlLink).Activate
+If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink)) = True Then Call DeleteTableByPrefix("TMP_")
+If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_SORTSHT", sShtSqlLink)) = True Then Call SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_RTNSHT", sShtSqlLink)) = True Then ThisWorkbook.Sheets(sShtSqlLink).Activate
 Application.ScreenUpdating = True
 End Sub
 
 
 Function GetSqlQueryByLinkShtSQL(inptPrf As String)
-Dim sWbSql As String: sWbSql = ThisWorkbook.Name
+Dim sWSQL As String: sWSQL = ThisWorkbook.Name
 Dim sWsSql As String: sWsSql = "LinkShtSQL"
 Dim lEnd As Long
 Dim vData As Variant
@@ -118,86 +119,85 @@ Dim sSqlJoinQuery As String: sSqlJoinQuery = ""
 Dim bCloseUnion As Boolean
 Dim bCloseJoin As Boolean
 
-ReDim v(CLng(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_JOINTMAX", sWsSql)))
-ReDim vJoin(CLng(fKey2Val("PGPRM_BSQL_QUERY_ROOT", "BSQL_PGPRM_JOINTMAX", sWsSql)))
+ReDim v(CLng(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_JOINTMAX", sWsSql)))
+ReDim vJoin(CLng(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_JOINTMAX", sWsSql)))
 
-sQuerySelect = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
-sQueryFrom = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
-sQueryCondition = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Or fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_CONDITION", sWsSql) = "//" Then sQueryCondition = ""
-sQueryJoin = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
-sQueryFree = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
+sQuerySelect = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
+sQueryFrom = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
+sQueryCondition = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Or fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_CONDITION", sWsSql) = "//" Then sQueryCondition = ""
+'sQueryJoin = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
+'sQueryFree = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
 
-For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
-    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_INNERJOIN-" & CStr(l) & "_KEY", sWsSql)
-    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "") ' MAIN
-    v(5) = sQuerySelect
-    v(6) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_KEY", sWsSql): If v(6) = "#N/A#" Then v(6) = v(2)
-    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Then Exit For
+If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql)
+    v(1) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_INNERJOIN_FROM", sWsSql)
+    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+    If Not (v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(1) = "//") Then
         vJoin(l) = _
                         "INNER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
-                        "                ON " & v(4) & "." & v(6) & " = " & v(1) & "." & v(2) & vbLf & _
+                        "                ON " & v(2) & vbLf & _
                         ""
-Next l
+    End If
+End If
 
-For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FULLJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
-    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_FULLJOIN-" & CStr(l) & "_KEY", sWsSql)
+If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
     v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
     v(5) = sQuerySelect
-    v(6) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_FULLJOIN-" & CStr(l) & "_FROM", sWsSql)
-    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(6) = "//" Then Exit For
-        vJoin(l) = _
+    v(6) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_FULLJOIN_FROM", sWsSql)
+    If Not (v(0) = "#N/A#" Or v(0) = "" Or v(6) = "//") Then
+        vJoin(0) = _
                         "LEFT OUTER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
-                        "                ON " & v(4) & "." & v(2) & " = " & v(1) & "." & v(2) & vbLf & _
+                        "                ON " & v(2) & vbLf & _
                         " UNION ALL " & vbLf & _
                         " SELECT " & vbLf & _
-                        "        " & sQuerySelect & vbLf & _
+                        "        " & v(5) & vbLf & _
                         " FROM " & vbLf & _
-                        "        " & sQueryFrom & vbLf & _
+                        "        " & v(3) & vbLf & _
                         " RIGHT OUTER JOIN " & vbLf & _
                         "        " & v(0) & vbLf & _
-                        "                ON " & v(4) & "." & v(2) & " = " & v(1) & "." & v(2) & vbLf & _
+                        "                ON " & v(2) & vbLf & _
                         ""
-Next l
+    End If
+End If
 
-For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_LEFTJOIN-" & CStr(l) & "_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
-    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_LEFTJOIN-" & CStr(l) & "_KEY", sWsSql)
-    v(3) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_LEFTJOIN-" & CStr(l) & "_FROM", sWsSql)
-    v(4) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_KEY", sWsSql): If v(4) = "#N/A#" Then v(4) = v(2)
-    
-    If v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(3) = "//" Then Exit For
+If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+    v(2) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
+    v(3) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_LEFTJOIN_FROM", sWsSql)
+    v(4) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+    If Not (v(0) = "#N/A#" Or v(0) = "" Or v(3) = "//") Then
+
         vJoin(l) = _
                         "LEFT OUTER JOIN " & vbLf & _
                         "    " & v(0) & vbLf & _
                         "                ON " & _
-                                 fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "") & "." & v(4) & _
-                        " = " & _
-                                 v(1) & "." & v(2) & _
+                                 v(4) & _
                         ""
-Next l
+    End If
+End If
 
 'UNION ALL SELECT
 For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
-    v(1) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
-    v(2) = fKey2Val("PGPRM_BSQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
-    v(3) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
-    v(4) = fKey2Val("PGPRM_BSQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_CONDITION", sWsSql)
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(1) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
+    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
+    v(3) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(4) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_CONDITION", sWsSql)
     If v(4) = "//" Then v(2) = ""
     If v(0) = "#N/A#" Or v(0) = "" Or v(1) = "#N/A#" Or v(1) = "" Or v(3) = "//" Then Exit For
 
-        Call checkSqlHeader(CStr(v(0)), CStr(v(1)))
-        vJoin(l) = vJoin(l) & vbLf & _
-                        " UNION ALL SELECT " & vbLf & _
-                        "    " & v(0) & vbLf & _
-                        " FROM " & vbLf & _
-                        "    " & v(1) & _
-                        "    " & v(2) & _
-                        ""
+    Call checkSqlHeader(CStr(v(0)), CStr(v(1)))
+    vJoin(l) = vJoin(l) & vbLf & _
+                    " UNION ALL SELECT " & vbLf & _
+                    "    " & v(0) & vbLf & _
+                    " FROM " & vbLf & _
+                    "    " & v(1) & _
+                    "    " & v(2) & _
+                    ""
 Next l
 
 sSqlJoinQuery = Join(vJoin, " ")
@@ -208,8 +208,6 @@ sResult = _
                 " FROM " & vbLf & _
                 "        " & sQueryFrom & vbLf & _
                 "        " & sQueryCondition & vbLf & _
-                sQueryJoin & _
-                sQueryFree & _
                 sSqlJoinQuery & vbLf & _
                 ""
 
@@ -1880,395 +1878,38 @@ End Sub
 
 '=========================================================
 'COL END => H
-
 '
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'PGPRM_BSQL_EXE_ROOT】【DFR3_DB_211014 (version 1).xlsb】【LinkShtSQL】【B】【C】【】【】【】【】【】【】【】【
-'*】【[ KEY }】【[ SHEETS ]】【】【】【】【】【】【】【】【】【】【
-'*】【PGPRM_BSQL_EXE_CREATESHT】【BSQL_DO,BSQL_DIFF-ANLG-FPM】【】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRESHT-ANLG00】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRESHT-ANLG03】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRESHT-ANLG】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRESHT-DEVICE】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_DIFF-ALIAS】【Alias-DevList】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRE-CLT】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_DIFF-CLT】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRESHT-FP】【】【】【】【】【】【】【】【】【
-'】【】【BSQL_DO】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【BSQL_DIFF-ANLG-FPM】【】【】【】【】【】【】【】【】【】【
-'】【】【】【SMPL-LEFTJOIN】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_SMPL-INNERJOIN】【】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【】【】【BSQL_PRE-CLT】【】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PGPRM_JOINTMAX】【25】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PGPRM_DELETE_TEMPSHT】【1】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PGPRM_SORTSHT】【0】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PGPRM_RTNSHT】【0】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'PGPRM_BSQL_QUERY_IGRNORE】【DFR3_DB_211014 (version 1).xlsb】【LinkShtSQL】【B】【A】【】【】【】【】【】【】【】【
-'PGPRM_BSQL_QUERY_ROOT】【DFR3_DB_211014 (version 1).xlsb】【LinkShtSQL】【B】【C】【】【】【】【】【】【】【】【
-'*】【[Key]】【[Param]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【[ KEY ]】【[ SQL ]】【】【】【】【】【】【】【】【】【】【
-'>>PRESHT-BITDEV】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRESHT-DEVICE_OUTSHT】【[PRE_DEVICE$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> SAMPLE】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_SELECT】【[MAIN].[COL1] , [MAIN].[COL2] , ''】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_FROM】【[TEST_SHT$] AS [MAIN]】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_UNION-1_SELECT】【[COL1] & ' ' & [COL2] AS [COL1]  ,   'UNION1'  ,  ''】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_UNION-1_FROM】【[TEST_MAIN$] AS [UNION1]】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_UNION-2_SELECT】【[COL1] & ' ' & [COL2] AS [COL1], 'UNION2',''】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_TEST1_UNION-2_FROM】【[TEST_SUB$] AS [UNION3]】【】【】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TEST1_FREE】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TEST1_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【//】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TEST2_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TEST2_SELECT】【*】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TEST2_FROM】【[TEST_SHT$] AS [MAIN]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TEST2_FREE】【LEFT OUTER JOIN [TEST_OUTER$] AS [OUTER] ON [OUTER].[COL1] = [MAIN].[COL1]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'//SAMPLE_FULL_JOIN】【BSQL_TSTOUT1_OUTSHT】【[TSTOUT1$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT1_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT1_SELECT】【TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2]】【TST1.[COL1] AS [TST1_COL1]】【TST2.[COL1] AS [TST2_COL1]】【TST1.[COL2] AS [TST1_COL2]】【TST2.[COL2] AS [TST2_COL2]】【】【】【】【】【】【
-'】【BSQL_TSTOUT1_FROM】【[TST1$] AS TST1】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT1_FULLJOIN-1_FROM】【[TST2$] AS TST2】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT1_FULLJOIN-1_KEY】【[COL1]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'//SAMPLE 】【BSQL_TSTOUT3_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
-'//CONDITION】【BSQL_TSTOUT3_CONDITION】【WHERE [DEVICE] NOT LIKE 'X200'】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT3_SELECT】【[DEVICE],[COMMENT],'=retDev2FullAdrFormat("PLC00", left(RC1,1),RC1,6)' AS   [FUNC]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT3_FROM】【[PRE_BIT_DEV$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_TSTOUT3_FORMULACOL】【FUNC】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'//SAMPLE_LEFT_JOIN】【BSQL_SMPL-LEFTJOIN_OUTSHT】【[TEST_OUT$]】【】【】【】【】【】【】【】【】【】【
-'//】【BSQL_SMPL-LEFTJOIN_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-LEFTJOIN_SELECT】【TST1.[COL1],TST2.[COL1]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-LEFTJOIN_FROM】【[TEST_MAIN$] AS TST1】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-LEFTJOIN_LEFTJOIN-1_FROM】【[TEST_SUB$] AS TST2】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-LEFTJOIN_LEFTJOIN-1_KEY】【[COL1]】【】【】【】【】【】【】【】【】【】【
-'//】【BSQL_SMPL-LEFTJOIN_FORMULACOL】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'//SAMPLE_INNER_JOIN】【BSQL_SMPL-INNERJOIN_OUTSHT】【[TSTOUT2$]】【】【】【】【】【】【】【】【】【】【
-'//】【BSQL_SMPL-INNERJOIN_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-INNERJOIN_SELECT】【TST1.[COL1],TST2.[COL1]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-INNERJOIN_FROM】【[TEST_MAIN$] AS TST1】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-INNERJOIN_INNERJOIN-1_FROM】【[TEST_SUB$] AS TST2】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_SMPL-INNERJOIN_INNERJOIN-1_KEY】【[COL1]】【】【】【】【】【】【】【】【】【】【
-'//】【BSQL_SMPL-INNERJOIN_FORMULACOL】【FRM1,FRM2】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'//SAMPLE_INNER_JOIN】【BSQL_DO_OUTSHT】【[TST_DO$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DO_CONDITION】【WHERE [TYPE] = 'PV'】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DO_SELECT】【[TYPE]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DO_FROM】【[PRE_ANLG$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>>PRE-ANLG】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> PLC 00 TMP PRESHT】【】【】【】【$F$116:$F$128】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_OUTSHT】【[TMP_PRE_PLC_ALNG00$]】【】【$F$141:$F$153】【[NO]】【】【】【】【】【】【】【
-'//】【BSQL_PRESHT-ANLG00_FILTER】【】【】【】【 '{PLC}.{LETTER}.' & [{TYPE}_DEVICE] AS [FULL_ADR]】【】【】【】【】【】【】【
-'】【】【】【< PLC00 >】【】【 '{PLC}_ANLG' AS [SHEET]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_SELECT】【[NO], 'PLC00.R.' & [PV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PV'  AS [ALIAS], 'PV' AS [TYPE], [COMMENT] & '_PV' AS [COMMENT],[PV_MAX],[PV_MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PV】【{PLC}:PLC00;{TYPE}:PV;{MIN}:[PV_MIN];{MAX}:[PV_MAX];{LETTER}:R】【 [ALIAS_BASE]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【 [ALIAS_BASE]  & '_{TYPE}'  AS [ALIAS]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_CONDITION】【WHERE [ALIAS_BASE] IS NOT NULL】【*】【】【 '{TYPE}' AS [TYPE]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-1_SELECT】【[NO], 'PLC00.R.' & [SV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_SV'  AS [ALIAS], 'SV' AS [TYPE], [COMMENT] & '_SV' AS [COMMENT],IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX],IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【SV】【{PLC}:PLC00;{TYPE}:SV;{MIN}:IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN];{MAX}:IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX];{LETTER}:R】【 [COMMENT] & '_{TYPE}' AS [COMMENT]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-1_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【{MAX}】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-1_CONDITION】【WHERE 'PLC00.R.' & [SV_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:SV;{PLC}:PLC00;{LETTER}:R】【{MIN}】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-2_SELECT】【[NO], 'PLC00.R.' & [MV_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV'  AS [ALIAS], 'MV' AS [TYPE], [COMMENT] & '_MV' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV】【{PLC}:PLC00;{TYPE}:MV;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【[UNITS]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-2_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【[DECIMAL]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-2_CONDITION】【WHERE 'PLC00.R.' & [MV_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV;{PLC}:PLC00;{LETTER}:R】【[FP_TYPE]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-3_SELECT】【[NO], 'PLC00.R.' & [MV1_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV1'  AS [ALIAS], 'MV1' AS [TYPE], [COMMENT] & '_MV1' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV1】【{PLC}:PLC00;{TYPE}:MV1;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-3_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-3_CONDITION】【WHERE 'PLC00.R.' & [MV1_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV1;{PLC}:PLC00;{LETTER}:R】【WHERE '{PLC}.{LETTER}.' & [{TYPE}_DEVICE]  NOT LIKE  '{PLC}.{LETTER}.' AND [ALIAS_BASE] IS NOT NULL】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-4_SELECT】【[NO], 'PLC00.R.' & [MV2_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV2'  AS [ALIAS], 'MV2' AS [TYPE], [COMMENT] & '_MV2' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV2】【{PLC}:PLC00;{TYPE}:MV2;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-4_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-4_CONDITION】【WHERE 'PLC00.R.' & [MV2_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV2;{PLC}:PLC00;{LETTER}:R】【IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX]】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-5_SELECT】【[NO], 'PLC00.R.' & [MH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MH'  AS [ALIAS], 'MH' AS [TYPE], [COMMENT] & '_MH' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MH】【{PLC}:PLC00;{TYPE}:MH;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-5_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-5_CONDITION】【WHERE 'PLC00.R.' & [MH_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MH;{PLC}:PLC00;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-6_SELECT】【[NO], 'PLC00.R.' & [ML_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_ML'  AS [ALIAS], 'ML' AS [TYPE], [COMMENT] & '_ML' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【ML】【{PLC}:PLC00;{TYPE}:ML;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-6_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-6_CONDITION】【WHERE 'PLC00.R.' & [ML_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:ML;{PLC}:PLC00;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-7_SELECT】【[NO], 'PLC00.M.' & [AL_CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_CAL_M'  AS [ALIAS], 'AL_CAL_M' AS [TYPE], [COMMENT] & '_AL_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_CAL_M】【{PLC}:PLC00;{TYPE}:AL_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-7_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-7_CONDITION】【WHERE 'PLC00.M.' & [AL_CAL_M_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_CAL_M;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-8_SELECT】【[NO], 'PLC00.M.' & [AL_H_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_H'  AS [ALIAS], 'AL_H' AS [TYPE], [COMMENT] & '_AL_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_H】【{PLC}:PLC00;{TYPE}:AL_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-8_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-8_CONDITION】【WHERE 'PLC00.M.' & [AL_H_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_H;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-9_SELECT】【[NO], 'PLC00.M.' & [AL_HH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_HH'  AS [ALIAS], 'AL_HH' AS [TYPE], [COMMENT] & '_AL_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_HH】【{PLC}:PLC00;{TYPE}:AL_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-9_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-9_CONDITION】【WHERE 'PLC00.M.' & [AL_HH_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_HH;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-10_SELECT】【[NO], 'PLC00.M.' & [AL_L_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_L'  AS [ALIAS], 'AL_L' AS [TYPE], [COMMENT] & '_AL_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_L】【{PLC}:PLC00;{TYPE}:AL_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-10_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-10_CONDITION】【WHERE 'PLC00.M.' & [AL_L_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_L;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-11_SELECT】【[NO], 'PLC00.M.' & [AL_LL_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_LL'  AS [ALIAS], 'AL_LL' AS [TYPE], [COMMENT] & '_AL_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_LL】【{PLC}:PLC00;{TYPE}:AL_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 SCADA-BIT oALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-11_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-11_CONDITION】【WHERE 'PLC00.M.' & [AL_LL_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_LL;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-12_SELECT】【[NO], 'PLC00.M.' & [PLC_CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_CAL_M'  AS [ALIAS], 'PLC_CAL_M' AS [TYPE], [COMMENT] & '_PLC_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_CAL_M】【{PLC}:PLC00;{TYPE}:PLC_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-12_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-12_CONDITION】【WHERE 'PLC00.M.' & [PLC_CAL_M_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_CAL_M;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-13_SELECT】【[NO], 'PLC00.M.' & [PLC_H_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_H'  AS [ALIAS], 'PLC_H' AS [TYPE], [COMMENT] & '_PLC_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_H】【{PLC}:PLC00;{TYPE}:PLC_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-13_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-13_CONDITION】【WHERE 'PLC00.M.' & [PLC_H_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_H;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-14_SELECT】【[NO], 'PLC00.M.' & [PLC_HH_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_HH'  AS [ALIAS], 'PLC_HH' AS [TYPE], [COMMENT] & '_PLC_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_HH】【{PLC}:PLC00;{TYPE}:PLC_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-14_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-14_CONDITION】【WHERE 'PLC00.M.' & [PLC_HH_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_HH;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-15_SELECT】【[NO], 'PLC00.M.' & [PLC_L_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_L'  AS [ALIAS], 'PLC_L' AS [TYPE], [COMMENT] & '_PLC_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_L】【{PLC}:PLC00;{TYPE}:PLC_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-15_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-15_CONDITION】【WHERE 'PLC00.M.' & [PLC_L_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_L;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-16_SELECT】【[NO], 'PLC00.M.' & [PLC_LL_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_LL'  AS [ALIAS], 'PLC_LL' AS [TYPE], [COMMENT] & '_PLC_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_LL】【{PLC}:PLC00;{TYPE}:PLC_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【 PLC-BIT xALIAS oCOMMENT 】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-16_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-16_CONDITION】【WHERE 'PLC00.M.' & [PLC_LL_DEVICE]  NOT LIKE  'PLC00.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_LL;{PLC}:PLC00;{LETTER}:M】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-17_SELECT】【[NO], 'PLC00.R.' & [MODE_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MODE'  AS [ALIAS], 'MODE' AS [TYPE], [COMMENT] & '_A/M'  AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MODE】【{PLC}:PLC00;{TYPE}:MODE;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';[COMMENT] & '_MODE':[COMMENT] & '_A/M' ;{LETTER}:R】【 ALIAS=>MODE, COMMENT=>A/M】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-17_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-17_CONDITION】【WHERE 'PLC00.R.' & [MODE_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MODE;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-18_SELECT】【[NO], 'PLC00.R.' & [P_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_P'  AS [ALIAS], 'P' AS [TYPE], [COMMENT] & '_P' AS [COMMENT],'','','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【P】【{PLC}:PLC00;{TYPE}:P;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【DEC0】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-18_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-18_CONDITION】【WHERE 'PLC00.R.' & [P_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:P;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-19_SELECT】【[NO], 'PLC00.R.' & [I_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_I'  AS [ALIAS], 'I' AS [TYPE], [COMMENT] & '_I' AS [COMMENT],'','','','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【I】【{PLC}:PLC00;{TYPE}:I;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'1';{LETTER}:R】【 DEC1】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-19_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-19_CONDITION】【WHERE 'PLC00.R.' & [I_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:I;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-20_SELECT】【[NO], 'PLC00.R.' & [D_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_D'  AS [ALIAS], 'D' AS [TYPE], [COMMENT] & '_D' AS [COMMENT],'','','','2',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【D】【{PLC}:PLC00;{TYPE}:D;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'2';{LETTER}:R】【 DEC2】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-20_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-20_CONDITION】【WHERE 'PLC00.R.' & [D_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:D;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-21_SELECT】【[NO], 'PLC00.R.' & [CAL_M_DEVICE] AS [FULL_ADR], 'PLC00_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_CAL_M'  AS [ALIAS], 'CAL_M' AS [TYPE], [COMMENT] & '_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【CAL_M】【{PLC}:PLC00;{TYPE}:CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【BIT】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-21_FROM】【[DB_PLC00_AEC_ANALOG$]】【*】【】【*】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG00_UNION-21_CONDITION】【WHERE 'PLC00.R.' & [CAL_M_DEVICE]  NOT LIKE  'PLC00.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:CAL_M;{PLC}:PLC00;{LETTER}:R】【*】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> PLC 03 TMP PRESHT】【】【】【< PLC03 >】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_OUTSHT】【[TMP_PRE_PLC_ALNG03$]】【】【】【】【】【】【】【】【】【】【
-'//】【NOUUSE_BSQL_PRESHT-ANLG03_FILTER】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_SELECT】【[NO], 'PLC03.R.' & [PV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PV'  AS [ALIAS], 'PV' AS [TYPE], [COMMENT] & '_PV' AS [COMMENT],[PV_MAX],[PV_MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PV】【{PLC}:PLC03;{TYPE}:PV;{MIN}:[PV_MIN];{MAX}:[PV_MAX];{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_CONDITION】【WHERE [ALIAS_BASE] IS NOT NULL】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-1_SELECT】【[NO], 'PLC03.R.' & [SV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_SV'  AS [ALIAS], 'SV' AS [TYPE], [COMMENT] & '_SV' AS [COMMENT],IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX],IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN],[UNITS],[DECIMAL],[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【SV】【{PLC}:PLC03;{TYPE}:SV;{MIN}:IIF([SV_MIN] IS NOT NULL, [SV_MIN], [PV_MIN]) AS [MIN];{MAX}:IIF([SV_MAX] IS NOT NULL, [SV_MAX], [PV_MAX]) AS [MAX];{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-1_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-1_CONDITION】【WHERE 'PLC03.R.' & [SV_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:SV;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-2_SELECT】【[NO], 'PLC03.R.' & [MV_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV'  AS [ALIAS], 'MV' AS [TYPE], [COMMENT] & '_MV' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV】【{PLC}:PLC03;{TYPE}:MV;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-2_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-2_CONDITION】【WHERE 'PLC03.R.' & [MV_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-3_SELECT】【[NO], 'PLC03.R.' & [MV1_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV1'  AS [ALIAS], 'MV1' AS [TYPE], [COMMENT] & '_MV1' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV1】【{PLC}:PLC03;{TYPE}:MV1;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-3_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-3_CONDITION】【WHERE 'PLC03.R.' & [MV1_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV1;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-4_SELECT】【[NO], 'PLC03.R.' & [MV2_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MV2'  AS [ALIAS], 'MV2' AS [TYPE], [COMMENT] & '_MV2' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MV2】【{PLC}:PLC03;{TYPE}:MV2;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-4_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-4_CONDITION】【WHERE 'PLC03.R.' & [MV2_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MV2;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-5_SELECT】【[NO], 'PLC03.R.' & [MH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MH'  AS [ALIAS], 'MH' AS [TYPE], [COMMENT] & '_MH' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MH】【{PLC}:PLC03;{TYPE}:MH;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-5_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-5_CONDITION】【WHERE 'PLC03.R.' & [MH_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MH;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-6_SELECT】【[NO], 'PLC03.R.' & [ML_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_ML'  AS [ALIAS], 'ML' AS [TYPE], [COMMENT] & '_ML' AS [COMMENT],'100.0','0.0','%','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【ML】【{PLC}:PLC03;{TYPE}:ML;{MIN}:'0.0';{MAX}:'100.0';[UNITS]:'%';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-6_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-6_CONDITION】【WHERE 'PLC03.R.' & [ML_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:ML;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-7_SELECT】【[NO], 'PLC03.M.' & [AL_CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_CAL_M'  AS [ALIAS], 'AL_CAL_M' AS [TYPE], [COMMENT] & '_AL_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_CAL_M】【{PLC}:PLC03;{TYPE}:AL_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-7_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-7_CONDITION】【WHERE 'PLC03.M.' & [AL_CAL_M_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_CAL_M;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-8_SELECT】【[NO], 'PLC03.M.' & [AL_H_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_H'  AS [ALIAS], 'AL_H' AS [TYPE], [COMMENT] & '_AL_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_H】【{PLC}:PLC03;{TYPE}:AL_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-8_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-8_CONDITION】【WHERE 'PLC03.M.' & [AL_H_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_H;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-9_SELECT】【[NO], 'PLC03.M.' & [AL_HH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_HH'  AS [ALIAS], 'AL_HH' AS [TYPE], [COMMENT] & '_AL_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_HH】【{PLC}:PLC03;{TYPE}:AL_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-9_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-9_CONDITION】【WHERE 'PLC03.M.' & [AL_HH_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_HH;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-10_SELECT】【[NO], 'PLC03.M.' & [AL_L_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_L'  AS [ALIAS], 'AL_L' AS [TYPE], [COMMENT] & '_AL_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_L】【{PLC}:PLC03;{TYPE}:AL_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-10_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-10_CONDITION】【WHERE 'PLC03.M.' & [AL_L_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_L;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-11_SELECT】【[NO], 'PLC03.M.' & [AL_LL_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_AL_LL'  AS [ALIAS], 'AL_LL' AS [TYPE], [COMMENT] & '_AL_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【AL_LL】【{PLC}:PLC03;{TYPE}:AL_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-11_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-11_CONDITION】【WHERE 'PLC03.M.' & [AL_LL_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:AL_LL;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-12_SELECT】【[NO], 'PLC03.M.' & [PLC_CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_CAL_M'  AS [ALIAS], 'PLC_CAL_M' AS [TYPE], [COMMENT] & '_PLC_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_CAL_M】【{PLC}:PLC03;{TYPE}:PLC_CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-12_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-12_CONDITION】【WHERE 'PLC03.M.' & [PLC_CAL_M_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_CAL_M;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-13_SELECT】【[NO], 'PLC03.M.' & [PLC_H_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_H'  AS [ALIAS], 'PLC_H' AS [TYPE], [COMMENT] & '_PLC_H' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_H】【{PLC}:PLC03;{TYPE}:PLC_H;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-13_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-13_CONDITION】【WHERE 'PLC03.M.' & [PLC_H_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_H;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-14_SELECT】【[NO], 'PLC03.M.' & [PLC_HH_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_HH'  AS [ALIAS], 'PLC_HH' AS [TYPE], [COMMENT] & '_PLC_HH' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_HH】【{PLC}:PLC03;{TYPE}:PLC_HH;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-14_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-14_CONDITION】【WHERE 'PLC03.M.' & [PLC_HH_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_HH;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-15_SELECT】【[NO], 'PLC03.M.' & [PLC_L_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_L'  AS [ALIAS], 'PLC_L' AS [TYPE], [COMMENT] & '_PLC_L' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_L】【{PLC}:PLC03;{TYPE}:PLC_L;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-15_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-15_CONDITION】【WHERE 'PLC03.M.' & [PLC_L_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_L;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-16_SELECT】【[NO], 'PLC03.M.' & [PLC_LL_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_PLC_LL'  AS [ALIAS], 'PLC_LL' AS [TYPE], [COMMENT] & '_PLC_LL' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【PLC_LL】【{PLC}:PLC03;{TYPE}:PLC_LL;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-16_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-16_CONDITION】【WHERE 'PLC03.M.' & [PLC_LL_DEVICE]  NOT LIKE  'PLC03.M.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:PLC_LL;{PLC}:PLC03;{LETTER}:M】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-17_SELECT】【[NO], 'PLC03.R.' & [MODE_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_MODE'  AS [ALIAS], 'MODE' AS [TYPE], [COMMENT] & '_A/M'  AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【MODE】【{PLC}:PLC03;{TYPE}:MODE;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';[COMMENT] & '_MODE':[COMMENT] & '_A/M' ;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-17_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-17_CONDITION】【WHERE 'PLC03.R.' & [MODE_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:MODE;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-18_SELECT】【[NO], 'PLC03.R.' & [P_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_P'  AS [ALIAS], 'P' AS [TYPE], [COMMENT] & '_P' AS [COMMENT],'','','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【P】【{PLC}:PLC03;{TYPE}:P;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-18_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-18_CONDITION】【WHERE 'PLC03.R.' & [P_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:P;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-19_SELECT】【[NO], 'PLC03.R.' & [I_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_I'  AS [ALIAS], 'I' AS [TYPE], [COMMENT] & '_I' AS [COMMENT],'','','','1',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【I】【{PLC}:PLC03;{TYPE}:I;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'1';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-19_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-19_CONDITION】【WHERE 'PLC03.R.' & [I_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:I;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-20_SELECT】【[NO], 'PLC03.R.' & [D_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_D'  AS [ALIAS], 'D' AS [TYPE], [COMMENT] & '_D' AS [COMMENT],'','','','2',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【D】【{PLC}:PLC03;{TYPE}:D;{MIN}:'';{MAX}:'';[UNITS]:'';[DECIMAL]:'2';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-20_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-20_CONDITION】【WHERE 'PLC03.R.' & [D_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:D;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-21_SELECT】【[NO], 'PLC03.R.' & [CAL_M_DEVICE] AS [FULL_ADR], 'PLC03_ANLG' AS [SHEET], [ALIAS_BASE], [ALIAS_BASE]  & '_CAL_M'  AS [ALIAS], 'CAL_M' AS [TYPE], [COMMENT] & '_CAL_M' AS [COMMENT],'0','0','','0',[FP_TYPE],IIF([WORD_SIZE]='','',IIF([WORD_SIZE]='1W', 'BIN-16', 'BIN-32')) AS [BINALY]】【CAL_M】【{PLC}:PLC03;{TYPE}:CAL_M;{MIN}:'0';{MAX}:'0';[UNITS]:'';[DECIMAL]:'0';{LETTER}:R】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-21_FROM】【[DB_PLC03_AEC_ANALOG$]】【*】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG03_UNION-21_CONDITION】【WHERE 'PLC03.R.' & [CAL_M_DEVICE]  NOT LIKE  'PLC03.R.' AND [ALIAS_BASE] IS NOT NULL】【*】【{TYPE}:CAL_M;{PLC}:PLC03;{LETTER}:R】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> PRESHT UNION 00, 03】【】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG_OUTSHT】【[PRE_ANLG$]】【】【[NO]】【】【】【】【】【】【】【】【
-'//】【//BSQL_PRESHT-ANLG_FILTER】【】【】【[FULL_ADR]】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG_SELECT】【[NO],[FULL_ADR],[SHEET],[ALIAS_BASE],[ALIAS],[TYPE],[COMMENT],[PV_MIN],[PV_MAX],[UNITS],[DECIMAL],[FP_TYPE],[BINALY]】【】【[SHEET]】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG_FROM】【[TMP_PRE_PLC_ALNG00$]】【】【[ALIAS_BASE]】【】【】【】【】【】【】【】【
-'//】【//BSQL_PRESHT-ANLG_CONDITION】【】【】【[ALIAS]】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG_UNION-1_SELECT】【[NO],[FULL_ADR],[SHEET],[ALIAS_BASE],[ALIAS],[TYPE],[COMMENT],[PV_MIN],[PV_MAX],[UNITS],[DECIMAL],[FP_TYPE],[BINALY]】【】【[TYPE]】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-ANLG_UNION-1_FROM】【[TMP_PRE_PLC_ALNG03$]】【】【[COMMENT]】【】【】【】【】【】【】【】【
-'//】【//BSQL_PRESHT-ANLG_UNION-1_WHERE】【】【】【[PV_MIN]】【】【】【】【】【】【】【】【
-'】【】【】【】【[PV_MAX]】【】【】【】【】【】【】【】【
-'】【】【】【】【[UNITS]】【】【】【】【】【】【】【】【
-'】【】【】【】【[DECIMAL]】【】【】【】【】【】【】【】【
-'】【】【】【】【[FP_TYPE]】【】【】【】【】【】【】【】【
-'】【】【】【】【[BINALY]】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> PRESHT UNION 00, 03】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'<<PRE-ANLG】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> CLT-DIFF】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_OUTSHT】【[PRE_CLT$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_FROM】【[CLT_p_r_valve$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_UNION-1_FROM】【[CLT_p_r_pump$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_UNION-2_FROM】【[CLT_p_r_pvsv$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_UNION-3_FROM】【[CLT_p_r_pvsv$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_UNION-4_FROM】【[CLT_p_r_Alm$]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_PRE-CLT_UNION-5_FROM】【[CLT_p_r_Alm$]】【】【】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_DIFF-CLT_OUTSHT】【[DIFF_CLT-SVR$]】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_DIFF-CLT_FILTER】【WHERE [FULL_ADR] IS NOT NULL】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_DIFF-CLT_FROM】【[PRE_CLT$] AS PRE】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_DIFF-CLT_FULLJOIN-1_FROM】【[DB_LST_SERVER_CSV$] AS SVR】【】【】【】【】【】【】【】【】【】【
-'*】【BSQL_DIFF-CLT_FULLJOIN-1_KEY】【[FULL_ADR]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'<< CLT-DIFF】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> DIFF ALIAS】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_OUTSHT】【[DIFF_ALIAS$]】【】【】【】【】【】【】【】【】【】【
-'"】【BSQL_DIFF-ALIAS_FILTER】【WHERE [DEV#FULL_ADR] IS NOT NULL OR [ALS#FULL_ADR] IS NOT NULL
-'ORDER BY [ALS#FULL_ADR]  ASC】【】【】【】【】【】【】【】【】【】【"
-'】【BSQL_DIFF-ALIAS_SELECT】【DEV.[FULL_ADR],ALS.[FULL_ADR],DEV.[COMMENT]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_FROM】【[PRE_DEVICE$] AS DEV】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_FULLJOIN-1_FROM】【[DB_LST_ALIAS$] AS ALS】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_FULLJOIN-1_KEY】【[FULL_ADR]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'<< DIFF ALIAS】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> PRE-FP】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_OUTSHT】【[PRE_FP$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_FILTER】【WHERE [FP_TYPE] IS NOT NULL 】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI $]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_FROM】【[DB_FP_AI $]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-1_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_AL4$]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-1_FROM】【[DB_FP_AI_AL4$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-1_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-2_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_Q$]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-2_FROM】【[DB_FP_AI_Q$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-2_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-3_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_SV $]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-3_FROM】【[DB_FP_AI_SV $]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-3_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-4_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_SV2$]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-4_FROM】【[DB_FP_AI_SV2$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-4_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-5_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_AI_SV3$]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-5_FROM】【[DB_FP_AI_SV3$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-5_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-6_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_PID$]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-6_FROM】【[DB_FP_PID$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-6_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-7_SELECT】【[FP_TYPE],[ALIAS_BASE],[COMMENT1],[COMMENT2] AS [COMMENT],[PV_MAX],[PV_MIN],[SV_MAX],[SV_MIN],[TREND_MAX],[TREND_MIN],[UNITS],[DECIMAL],[RESET]】【[DB_FP_SUM$]】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-7_FROM】【[DB_FP_SUM$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_PRESHT-FP_UNION-7_CONDITION】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'<< PRE-FP】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'>> DIFF_FP】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-FPTMP-SVR_OUTSHT】【[TMP-ANLG-FP$]】【】【】【】【】【】【】【】【】【】【
-'"】【BSQL_DIFF-ALIAS_FILTER】【WHERE [DEV#FULL_ADR] IS NOT NULL OR [ALS#FULL_ADR] IS NOT NULL
-'ORDER BY [ALS#FULL_ADR]  ASC】【】【】【】【】【】【】【】【】【】【"
-'】【BSQL_DIFF-ALIAS_SELECT】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_FROM】【[PRE_ANLG$] AS ANLG】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_FULLJOIN-1_FROM】【[PRE_FP$] AS FP】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ALIAS_FULLJOIN-1_KEY】【[ALIAS_BASE]】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_OUTSHT】【[TSTOUT$]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_FILTER】【 WHERE  [TYPE] = 'PV'】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_SELECT】【*】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_FROM】【[PRE_ANLG$] AS ANLG】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_KEY】【[FP_TYPE] & '.' & ANLG.[ALIAS_BASE]】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_LEFTJOIN-1_FROM】【[DB_LST_FACEPLATE_MASTER$] AS FPM】【】【】【】【】【】【】【】【】【】【
-'】【BSQL_DIFF-ANLG-FPM_LEFTJOIN-1_KEY】【[STRUCT_TAG_ADR]】【】【】【】【】【】【】【】【】【】【
-'//】【BSQL_DIFF-ANLG-FPM_FORMULACOL】【FRM1,FRM2】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【】【】【】【
-
+'PGPRM_SQL_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtSQL】【B】【C】【★ BSQL => SQL
+'*】【[ KEY ]】【[ SHEETS ]】【★
+'*】【SQL_EXE_CREATESHT】【SQL_TMP-ANLG2FP】【★
+'*】【SQL_PRESHT-ANLG00】【★
+'*】【SQL_PRESHT-ANLG03】【★
+'*】【SQL_PRESHT-ANLG】【★
+'*】【SQL_PRESHT-DEVICE】【★
+'*】【SQL_DIFF-ALIAS】【Alias-DevList】【★
+'*】【SQL_PRE-CLT】【★
+'*】【SQL_DIFF-CLT】【★
+'*】【SQL_PRESHT-FP】【★
+'SQL_DO】【★
+'SQL_TMP-ANLG2FP】【SQL_TMP-ANLG2FP】【DIFF FP】【★
+'SQL_TMP-ANLG2FPM】【★
+'SQL_TMP-ANLG2TRD】【★
+'SQL_TMP-ANLG2TRDOP】【★
+'★
+'SMPL-LEFTJOIN】【★
+'*】【SQL_SMPL-INNERJOIN】【★
+'*】【★
+'*】【SQL_PRE-CLT】【★
+'*】【★
+'*】【SQL_PGPRM_JOINTMAX】【25】【★
+'*】【SQL_PGPRM_DELETE_TEMPSHT】【0】【★
+'*】【SQL_PGPRM_SORTSHT】【1】【★
+'SQL_PGPRM_RTNSHT】【1】【★
+'★
+'★
+'★
+'★
+'★
 
 
 
