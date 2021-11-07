@@ -1,6 +1,14 @@
 Option Explicit
 'common 20211104
 
+Function jt(inptRange As Range) As String
+
+jt = WorksheetFunction.TextJoin("】【", True, inptRange.Value2)
+
+End Function
+
+
+
 Sub DebugOut(inptCategory As String, inptMsg As String)
 Dim v As Variant
 Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
@@ -15,7 +23,7 @@ oArr.Add "SUB_ST"
 oArr.Add "MARK"
 oArr.Add "UTIL"
 oArr.Add "MSG" 'external workbook
-oArr.Add "REM"
+'oArr.Add "REM"
 'oArr.Add "RET_QUERY_SELECT"
 oArr.Add "SQL_ERR"
 oArr.Add "ERR"
