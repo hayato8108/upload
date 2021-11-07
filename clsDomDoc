@@ -1,4 +1,5 @@
-'211102 xapDomDoc
+Option Explicit
+'xapDomDoc 211107
 
 Private base_ As DOMDocument60
 Private Path_ As String
@@ -14,12 +15,8 @@ Function loadXml()
 End Function
 
 Function reloadPath()
-'    InPath_ = fGetPgVal("xml_in_path")
-'    OutPath_ = fGetPgVal("xml_out_path")
-    InPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_LOAD_XML", "LinkShtClt")
-    OutPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_SAVE_XML", "LinkShtClt")
-'    FixRepoInPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_LOAD_XML")
-'    FixRepoOutPath_ = fKey2Val("PGPRM_DB_CLIENT_ROOT", "PGPRM_PATH_SAVE_XML")
+    InPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_PATH_LOAD", "LinkShtClt")
+    OutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_PATH_SAVE", "LinkShtClt")
 
     Call DebugOut("XML_PROC", _
                         "sub reloadpath " & vbNewLine & _
@@ -52,7 +49,6 @@ With vDoc
     .validateonparse = False
 '   .preservewhitespace = True
     .loadXml ("<?xml version=""1.0"" encoding=""UTF-8""?><ROOT><FORMROOT clid=""Client"" Name=""Client"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T""></FORMROOT></ROOT>")
-
 End With
 
 Set createNewXapDoc = vDoc
