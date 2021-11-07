@@ -1,5 +1,5 @@
 Option Explicit
-'common 20211104
+'common 20211107
 
 Function jt(inptRange As Range) As String
 
