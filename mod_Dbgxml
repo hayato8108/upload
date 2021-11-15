@@ -1,17 +1,14 @@
-'clsXapDebug 20211107
+'clsXapDebug 20211116
 
 Private InPath_ As String
 Private OutPath_ As String
-'Private FixRepoInPath_ As String
-'Private FixRepoOutPath_ As String
-'Private IndexCnt_ As Long
 Private crrFolder_ As String
 Private crrForm_ As String
 
 
 Sub createPartsXmlShtByPGPRM()
 Application.ScreenUpdating = False
-Dim sPrfs As String: sPrfs = fKey2Val("PGPRM_CLT_EXE_ROOT", "CLT_EXE_CREATESHT", "LinkShtClt")
+Dim sPrfs As String: sPrfs = fKey2Val("CLT_EXE_ROOT", "CLT_EXE_CREATESHT", "LinkShtClt")
 Dim sPrf As String: sPrf = inptPrf
 Dim sLinkShtName As String: sLinkShtName = "LinkShtClt"
 Dim sShtName As String
@@ -44,14 +41,14 @@ For Each v In Split(sPrfs, ",")
     End With
 Next v
 
-If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_SORTSHT", sLinkShtName)) = True Then SortShtByPGPRM
-If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_RTNSHT", sLinkShtName)) = True Then ThisWorkbook.Sheets(sLinkShtName).Activate
+If CBool(fKey2Val("CLT_EXE_ROOT", "XML_SORTSHT", sLinkShtName)) = True Then SortShtByPGPRM
+If CBool(fKey2Val("CLT_EXE_ROOT", "XML_RTNSHT", sLinkShtName)) = True Then ThisWorkbook.Sheets(sLinkShtName).Activate
 Application.ScreenUpdating = True
 ThisWorkbook.Sheets("LinkShtClt").Activate
 End Sub
 
 
-Sub WsUploadNumberingXml()
+Sub WscreateIndexXml()
 Application.ScreenUpdating = False
 'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
 Dim vDom As clsXapDebug: Set vDom = New clsXapDebug
@@ -61,61 +58,13 @@ On Error Resume Next
 
 With ThisWorkbook.ActiveSheet
     .Activate
-    vDom.uploadNumberingXml (ActiveSheet.Name)
+    vDom.createIndexXml (ActiveSheet.Name)
 End With
 
 Set vDom = Nothing
 Application.ScreenUpdating = True
 End Sub
 
-
-Sub WsdownloadFolderXml()
-Application.ScreenUpdating = False
-Dim d As clsXapDebug: Set d = New clsXapDebug
-Dim f As IXMLDOMSelection
-Dim sFol As String: sFol = ""
-Dim sCid As String
-Dim l As Long
-Dim vBuffer(10) As String
-Dim sOutWsName As String
-sOutWsName = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_OUT_SHT", "LinkShtDB")
-On Error Resume Next
-
-If sOutWsName = "" Then
-   Call DebugOut("ERR", "empty XML_out_sht")
-Else
-    Call SelectOrAddWs(sOutWsName, ThisWorkbook.Name)
-    Set ws = Sheets(sOutWsName)
-End If
-    ws.Activate
-
-sFol = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_LOAD_FOLDER", "LinkShtDB")
-d.reloadPath
-Set f = d.getFolder(sFol)
-
-If f.Length = 0 Then MsgBox "Folder Load Error : " & sFol: Exit Sub
-Stop
-Call d.downloadFolderXml(f)
-
-Call DebugOut("REM", "alter fgetpgval")
-'If fGetPgVal("xml_nrw_Form") = "" And fGetPgVal("xml_nrw_LibName") = "" Then Exit Sub
-'
-'If fGetPgVal("xml_nrw_Enabled") = 1 Then
-'    If fGetPgVal("xml_nrw_Form") <> "#N/A#" And fGetPgVal("xml_nrw_Form") <> "" And d.searchActiveSheetHeaderCol("LibraryComment") <> 0 Then
-'        Call d.delUnMatchForm(d.searchActiveSheetHeaderCol("form"), fGetPgVal("xml_nrw_Form"))
-'    End If
-'    If fGetPgVal("xml_nrw_LibName") <> "#N/A#" And fGetPgVal("xml_nrw_LibName") <> "" And d.searchActiveSheetHeaderCol("form") <> 0 Then
-'
-'       Call d.delUnMatchRow(d.searchActiveSheetHeaderCol("LibraryComment"), fGetPgVal("xml_nrw_LibName"))
-'    End If
-'End If
-
-Set d = Nothing
-Set f = Nothing
-Set fr = Nothing
-
-Application.ScreenUpdating = True
-End Sub
         
 
 'Private Property Get getIndex() As String
@@ -167,8 +116,8 @@ End Sub
 
 
 Sub downloadXmlOnClearSht(inptList As IXMLDOMSelection)
-    Call SelectOrAddWs(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_OUT_SHT"), ThisWorkbook.Name)
-    With ThisWorkbook.Worksheets(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_OUT_SHT"))
+    Call SelectOrAddWs(fKey2Val("CLT_EXE_ROOT", "XML_OUT_SHT"), ThisWorkbook.Name)
+    With ThisWorkbook.Worksheets(fKey2Val("CLT_EXE_ROOT", "XML_OUT_SHT"))
         .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).Clear
         .Range(Cells(2, 1), Cells(Rows.Count, Columns.Count)).NumberFormatLocal = "@"
         .Range("A1").Interior.Color = RGB(255, 155, 155)
@@ -179,8 +128,6 @@ End Sub
 
 
 Sub downloadFolderXml(inptList As IXMLDOMSelection, Optional inptSearchKey As String = "")
-Call DebugOut("SUB_ST", "downloadxml")
-
 Dim sKey As String: sKey = inptSearchKey
 Dim vFolders As IXMLDOMNodeList: Set vFolders = inptList
 Dim vFolder As IXMLDOMElement
@@ -237,7 +184,7 @@ With ActiveSheet
                                 ActiveCell.Offset(1, 0).Activate
 
                                 If Not vObj.ChildNodes.Length = 0 And _
-                                    CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_CHILDELM_EXPAND", "LinkShtClt")) = CBool(1) Then
+                                    CBool(fKey2Val("CLT_EXE_ROOT", "XML_CHILDELM_EXPAND", "LinkShtClt")) = CBool(1) Then
                                     For Each vO In vObj.ChildNodes
                                         Call parseGroup(vO, "", .Name)
                                     Next vO
@@ -344,75 +291,73 @@ eventRegx = sRslt
 
 End Function
 
-
-Sub uploadNumberingXml(inptWs As String)
-'Function createEllipseElm(inptT As Long, inptL As Long, inptH As Long, inptW As Long) As IXMLDOMElement
-''<OBJ clid="Ellipse" RotateX="45" RotateY="45" Top="0" Left="0" Height="90" Width="90" LibraryComment="_Circle">
-Dim vDom As clsXapDomDoc: Set vDom = clsXapDomDoc
-Dim lOdfH As Long: lOdfH = 1200
-Dim lOdfW As Long: lOdfW = 1920
-Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
-Dim vFilter As IXMLDOMElement
-Dim lCol As Long: lCol = 1
-Dim s As String
-Dim sKey As String
-Dim lMatchCol As Long
-
-With ThisWorkbook.Sheets(inptWs)
-    .Range("A1").Interior.Color = RGB(255, 155, 155)
-    .Activate
-    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
-
-    Do While ActiveCell.Value <> "" ' row direction
-        .Range("A1").Interior.Color = RGB(55, 155, 255)
-        Set vFilter = setBaseNumEll
-
-        Do While .Cells(1, lCol).Value <> ""  'field Attrs <--->
-            Select Case .Cells(1, lCol).Value
-                Case "_Index"
-                        Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Top"
-                        Set vFilter = vDom.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Left"
-                        Set vFilter = vDom.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
-                Case "Height"
-                    If vDom.getAttributesEx(vFilter, "Top") = 0 Then Stop 'TMP
-                        Set vFilter = vDom.setAttributesEx(vFilter, "Top", vDom.getAttributesEx(vFilter, "Top") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
-                Case "Width"
-                        If vDom.getAttributesEx(vFilter, "Left") = 0 Then Stop 'TMP
-                        Set vFilter = vDom.setAttributesEx(vFilter, "Left", vDom.getAttributesEx(vFilter, "Left") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
-                End Select
-                lCol = lCol + 1
-
-          Loop ' field Attrs
-
-          
-        vForm.appendChild vFilter
-        lCol = 1
-
-        ActiveCell.Offset(1, 0).Activate 'row direction
-    Loop
-
-    .Range("A1").Activate 'iterate end
-End With
-
-s = "<?xml version=""1.0""?>" & _
-"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
-"<OBJ clid=""Folder"" Name=""Folder01"">" & _
-"PLACEHOLDER" & _
-"</OBJ>" & _
-"</FORMROOT></ROOT>"
-
-s = Replace(s, "PLACEHOLDER", vForm.XML)
-
-Call SaveTextWithUtf8(s, OutPath_)
-
-Set vDom = Nothing
-Set vDoc = Nothing
-Set vForm = Nothing
-Set vFilter = Nothing
-
-End Sub
+'
+'Sub createIndexXmlBYPGPRM(inptWs As String)
+'Dim vDom As clsXapDomDoc: Set vDom = clsXapDomDoc
+'Dim lOdfH As Long: lOdfH = 1200
+'Dim lOdfW As Long: lOdfW = 1920
+'Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW)
+'Dim vFilter As IXMLDOMElement
+'Dim lCol As Long: lCol = 1
+'Dim s As String
+'Dim sKey As String
+'Dim lMatchCol As Long
+'
+'With ThisWorkbook.Sheets(inptWs)
+'    .Range("A1").Interior.Color = RGB(255, 155, 155)
+'    .Activate
+'    If .Range("A2").Value = "" Then .Range("A3").Activate Else .Range("A2").Activate
+'
+'    Do While ActiveCell.Value <> "" ' row direction
+'        .Range("A1").Interior.Color = RGB(55, 155, 255)
+'        Set vFilter = setBaseNumEll
+'
+'        Do While .Cells(1, lCol).Value <> ""  'field Attrs <--->
+'            Select Case .Cells(1, lCol).Value
+'                Case "_Index"
+'                        Set vFilter = vDom.setAttributesEx(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
+'                Case "Top"
+'                        Set vFilter = vDom.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+'                Case "Left"
+'                        Set vFilter = vDom.setAttributesEx(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
+'                Case "Height"
+'                    If vDom.getAttributesEx(vFilter, "Top") = 0 Then Stop 'TMP
+'                        Set vFilter = vDom.setAttributesEx(vFilter, "Top", vDom.getAttributesEx(vFilter, "Top") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
+'                Case "Width"
+'                        If vDom.getAttributesEx(vFilter, "Left") = 0 Then Stop 'TMP
+'                        Set vFilter = vDom.setAttributesEx(vFilter, "Left", vDom.getAttributesEx(vFilter, "Left") + CStr(.Cells(ActiveCell.Row, lCol).Value) / 2)
+'                End Select
+'                lCol = lCol + 1
+'
+'          Loop ' field Attrs
+'
+'
+'        vForm.appendChild vFilter
+'        lCol = 1
+'
+'        ActiveCell.Offset(1, 0).Activate 'row direction
+'    Loop
+'
+'    .Range("A1").Activate 'iterate end
+'End With
+'
+'s = "<?xml version=""1.0""?>" & _
+'"<ROOT><FORMROOT clid=""Client"" Name=""Client"" ShowGrid=""F"" AdjustGrid=""F"" Product=""PA-Panel"" Ver=""6.0"" Rev=""12.1"" FileRev=""3"" FileSaveWithoutDefault=""T"">" & _
+'"<OBJ clid=""Folder"" Name=""Folder01"">" & _
+'"PLACEHOLDER" & _
+'"</OBJ>" & _
+'"</FORMROOT></ROOT>"
+'
+'s = Replace(s, "PLACEHOLDER", vForm.XML)
+'
+'Call SaveTextWithUtf8(s, OutPath_)
+'
+'Set vDom = Nothing
+'Set vDoc = Nothing
+'Set vForm = Nothing
+'Set vFilter = Nothing
+'
+'End Sub
 
 
 Sub ★FixReport(): End Sub
@@ -430,9 +375,9 @@ Sub ★FixReport(): End Sub
 'On Error Resume Next
 '
 'Call DebugOut("REM", "add prm to ws below")
-''fkey2val("PGPRM_CLT_EXE_ROOT","FIXREPO_OUT_SHT" ,sLinkShtName)
+''fkey2val("CLT_EXE_ROOT","FIXREPO_OUT_SHT" ,sLinkShtName)
 '
-'vBuffer(0) = fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_OUT_SHT", sLinkShtName)
+'vBuffer(0) = fKey2Val("CLT_EXE_ROOT", "FIXREPO_OUT_SHT", sLinkShtName)
 'If vBuffer(0) = "" Or vBuffer(0) = "#N/A#" Then Call DebugOut("ERR", "pgprm empty : FIXREPO_OUT_SHT"): Exit Sub
 '    Call SelectOrAddWs(vBuffer(0))
 '
@@ -449,7 +394,7 @@ Sub ★FixReport(): End Sub
 'End Sub
 
 
-Sub FIXREPO_EXE_CREATESHT()
+Sub FIXREPO_EXE_CONVERT()
 Application.ScreenUpdating = False
 Dim ws As Worksheet
 Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
@@ -475,8 +420,8 @@ End With
 If vFixRepotFiles.SelectedItems.Count = 0 Then Exit Sub
 
 For vCnt = 1 To vFixRepotFiles.SelectedItems.Count ' 1 base array
-    vBuffer(0) = vFixRepotFiles.SelectedItems(vCnt)
-    vBuffer(1) = "FRP_" & fSplit(Dir(vFixRepotFiles.SelectedItems(vCnt)), 1, ".")
+    vBuffer(0) = vFixRepotFiles.SelectedItems(vCnt) 'fixreport full path
+    vBuffer(1) = "FRP_" & fSplit(Dir(vFixRepotFiles.SelectedItems(vCnt)), 1, ".") 'sheet name
     Call SelectOrAddWs(vBuffer(1), ThisWorkbook.Name)
 
     With ThisWorkbook.Sheets(vBuffer(1))
@@ -488,61 +433,61 @@ For vCnt = 1 To vFixRepotFiles.SelectedItems.Count ' 1 base array
     End With
 Next vCnt
 
-vBuffer(2) = fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_PATH_OUTXML", sLinkShtName)
+vBuffer(2) = fKey2Val("CLT_EXE_ROOT", "FIXREPO_PATH_OUTXML", sLinkShtName)
 Call SaveTextWithUtf8(vDomDoc.XML, vBuffer(2))
 Call DebugOut("UTIL", "FIXREPO_EXE_CREATESHT :" & vBuffer(2))
 
 Set vDom = Nothing
 Set vDomDoc = Nothing
 
-If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_SORTSHT", sLinkShtName)) = True Then SortShtByPGPRM
-If CBool(fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_RTNSHT", sLinkShtName)) = True Then ThisWorkbook.Sheets(sLinkShtName).Activate
+If CBool(fKey2Val("CLT_EXE_ROOT", "XML_SORTSHT", sLinkShtName)) = True Then SortShtByPGPRM
+If CBool(fKey2Val("CLT_EXE_ROOT", "XML_RTNSHT", sLinkShtName)) = True Then ThisWorkbook.Sheets(sLinkShtName).Activate
 Application.ScreenUpdating = True
 End Sub
 
 
-
-Sub uploadFixReportB()
-Application.ScreenUpdating = False
-Application.DisplayAlerts = False
-'If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
-Dim vDom As clsXapDebug: Set vDom = New clsXapDebug
-Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
-Dim vSelectFiles As FileDialogSelectedItems
-Dim vCnt As Long
-Dim vBuffer(10) As String
-Dim wb As Workbook
-
-With vFiles
-    .Filters.Clear
-'    .Filters.Add "pictureFile", "*.*", 1
-    '.Title = "FILE SELECT"
-    .AllowMultiSelect = True
-    .InitialFileName = fGetPgVal("fix_repo_dir")
-    .Show
-End With
-
-On Error Resume Next
-If vFiles.SelectedItems.Count = 0 Then Exit Sub: Exit Sub
-Set wb = Workbooks.Add: wb.Activate
-
-For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
-    With wb.Worksheets.Add
-        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
-        vBuffer(0) = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
-        vBuffer(0) = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
-        vDom.reloadPath
-        vDom.downloadFixReport
-        .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
-        vDom.uploadFixFilterXml
-    End With
-Next vCnt
-wb.Sheets("Sheet1").Delete
-
-Set vDom = Nothing
-Application.ScreenUpdating = True
-Application.DisplayAlerts = True
-End Sub
+'
+'Sub uploadFixReportB()
+'Application.ScreenUpdating = False
+'Application.DisplayAlerts = False
+''If Not ActiveSheet.Tab.ColorIndex = -4142 Then Stop
+'Dim vDom As clsXapDebug: Set vDom = New clsXapDebug
+'Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
+'Dim vSelectFiles As FileDialogSelectedItems
+'Dim vCnt As Long
+'Dim vBuffer(10) As String
+'Dim wb As Workbook
+'
+'With vFiles
+'    .Filters.Clear
+''    .Filters.Add "pictureFile", "*.*", 1
+'    '.Title = "FILE SELECT"
+'    .AllowMultiSelect = True
+'    .InitialFileName = fGetPgVal("fix_repo_dir")
+'    .Show
+'End With
+'
+'On Error Resume Next
+'If vFiles.SelectedItems.Count = 0 Then Exit Sub: Exit Sub
+'Set wb = Workbooks.Add: wb.Activate
+'
+'For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
+'    With wb.Worksheets.Add
+'        .Range(Cells(1, 1), Cells(1, Columns("S").Column)).Value2 = Split("_Index,Object,Top,Left,Width,Height,LibraryComment,_Text,_TagIn,_TagInColor,_TagInVisible,_OpenPic,_Run,_Mes1,_Mes2,_Img,_Hi,_Lo,_Del", ",")
+'        vBuffer(0) = fSetPgVal("fix_repo_InPath", vFiles.SelectedItems(vCnt))
+'        vBuffer(0) = fSetPgVal("fix_repo_OutPath", fReplace(vFiles.SelectedItems(vCnt), ".ODR", ".xml"))
+'        vDom.reloadPath
+'        vDom.downloadFixReport
+'        .Name = fSplit(Dir(vFiles.SelectedItems(vCnt)), 1, ".")
+'        vDom.uploadFixFilterXml
+'    End With
+'Next vCnt
+'wb.Sheets("Sheet1").Delete
+'
+'Set vDom = Nothing
+'Application.ScreenUpdating = True
+'Application.DisplayAlerts = True
+'End Sub
 
 
 Sub uploadFixFormXml()
@@ -832,8 +777,8 @@ End Sub
 Function CreapteFixReportForm(inptSht As String) As IXMLDOMElement
 Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
 Dim sWsLink As String: sWsLink = "LinkShtClt"
-Dim lOdfH As Long: lOdfH = CLng(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM-HEIGHT", sWsLink))
-Dim lOdfW As Long: lOdfW = CLng(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM-WIDTH", sWsLink))
+Dim lOdfH As Long: lOdfH = CLng(fKey2Val("CLT_EXE_ROOT", "FIXREPO_FORM-HEIGHT", sWsLink))
+Dim lOdfW As Long: lOdfW = CLng(fKey2Val("CLT_EXE_ROOT", "FIXREPO_FORM-WIDTH", sWsLink))
 Dim vForm As IXMLDOMElement: Set vForm = vDom.createFormElm(lOdfH, lOdfW, inptSht)
 Dim vFilter As IXMLDOMElement
 Dim lCol As Long: lCol = 2
@@ -856,16 +801,16 @@ With ThisWorkbook.Sheets(inptSht)
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
                         If .Cells(ActiveCell.Row, lCol).Value <> "" Then Set vFilter = addFilterText(vFilter, "Text", CStr(.Cells(ActiveCell.Row, lCol).Value))
                 Case "Top"
-                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
                 Case "Left"
-                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
                 Case "Width"
-                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
                 Case "Height"
-                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("PGPRM_CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
+                        vBuffer(0) = (.Cells(ActiveCell.Row, lCol).Value / 100) * CInt(fKey2Val("CLT_EXE_ROOT", "FIXREPO_FORM_RESCALE", sWsLink))
                         Set vFilter = setFilterText(vFilter, .Cells(1, lCol).Value, CStr(vBuffer(0)))
                 Case "LibraryComment"
                         Set vFilter = addFilterText(vFilter, .Cells(1, lCol).Value, CStr(.Cells(ActiveCell.Row, lCol).Value))
@@ -1121,7 +1066,6 @@ End Function
 Function setFilterBorder(inptElm As IXMLDOMElement) As IXMLDOMElement
 Dim vDom As clsXapDomDoc: Set vDom = New clsXapDomDoc
 Dim vFilter As IXMLDOMElement: Set vFilter = inptElm
-'rem
 
 With vDom
 Set vFilter = .setAttributesEx(vFilter, "TextFont", "Meiryo UI,-16,0,700,0,0,0,0,0")
@@ -1265,8 +1209,8 @@ End Sub
 
 Sub reloadPath(Optional inptFixRepoInPath As String _
                         , Optional inptFixRepoOutPath As String)
-    InPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_PATH_LOAD", "LinkShtClt")
-    OutPath_ = fKey2Val("PGPRM_CLT_EXE_ROOT", "XML_PATH_SAVE", "LinkShtClt")
+    InPath_ = fKey2Val("CLT_EXE_ROOT", "XML_PATH_LOAD", "LinkShtClt")
+    OutPath_ = fKey2Val("CLT_EXE_ROOT", "XML_PATH_SAVE", "LinkShtClt")
     
     'alter repopath => batch
     FixRepoInPath_ = inptFixRepoInPath
@@ -1295,34 +1239,4 @@ End Sub
 
 
 '=====================================
-
-'PGPRM_CLT_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtClt】【B】【C
-'*】【[ KEY ]】【[ VAL ]
-'*】【//Download xml setting
-'*】【XML_PATH_LOAD】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client.xml
-'*】【XML_PATH_SAVE】【C:\Users\Owner\Documents\workspace\PRJ\DFR\client\client_out.xml
-'*
-'*】【XML_LOAD_FOLDER】【_Graphic】【?? ALTER ??
-'
-'FIXREPO_FORM-WIDTH】【2000
-'FIXREPO_FORM-HEIGHT】【2000
-'FIXREPO_PATH_OUTXML】【C:\Users\Owner\Documents\workspace\out.xml
-'FIXREPO_FORM_RESCALE】【20】【%
-'
-'*】【FIXREPO_OUT_SHT
-'*】【XML_OUT_SHT】【CLT_XML_OUT
-'*】【CLT_XML_OUT
-'
-'*】【XML_RTNSHT】【1
-'*】【XML_SORTSHT】【1
-'*
-'*】【XML_CHILDELM_EXPAND】【0
-'*】【CLT_
-'
-'CLT_EXE_CREATESHT】【CLT_p_r_Alm
-'CLT_p_r_Alm】【CLT_p_r_valve
-'CLT_p_r_pump
-'CLT_p_r_pvsv
-'CLT_p_r_Alm
-'
 
