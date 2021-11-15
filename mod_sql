@@ -1,45 +1,45 @@
 Option Explicit
-'SQL 20211107
-
-Sub CreateDFR3DBTable()
-Dim oWb As Workbook: Set oWb = ThisWorkbook
-Application.ScreenUpdating = False
-Call ShtHdn(True, "PRE,DIFF,DB,PRG")
-
-Debug.Print ""
-Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
-
-''Call JoinLogCsv("F1,F2,F3")
-''Call GetQueryResultsOnSht("SELECT " & sSelect & " FROM [TMP_LOG_CSV1$]" _
-                                            , thisworkbook.path & "\" & thisworkbook.Name _
-                                            , "JOIN_LOG_CSV")
-
-
-Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
-Call JointPreAnalogTable(Array("DB_PLC00_AEC_ANALOG", "DB_PLC03_AEC_ANALOG"))
-Exit Sub
-
-
-Call updatePreAnalogTable
-'Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID", "DB_FP_SUM"))
-
-Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
-Call CheckServerComment
-Call CheckAlarmMaster
-Call CheckAnalog2ServerPrm
-Call CheckAnalog2ActionPrm
-
-'CLEAR TEMP TABLE
-Call DeleteTableByPrefix("TMP")
-'Call DeleteTmpTable(ThisWorkbook.Name)
-Call SortSht("DB,PRG,PRE,DIFF")
-
-Call DebugOut("ROOT", "PROC END >>>" & Now())
-Debug.Print WorksheetFunction.Rept(vbNewLine, 2)
-
-'Call ShtHdn(False, "PRE,DB,PRG")
-Application.ScreenUpdating = True
-End Sub
+'SQL 20211116
+'
+'Sub CreateDFR3DBTable()
+'Dim oWb As Workbook: Set oWb = ThisWorkbook
+'Application.ScreenUpdating = False
+'Call ShtHdn(True, "PRE,DIFF,DB,PRG")
+'
+'Debug.Print ""
+'Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
+'
+'''Call JoinLogCsv("F1,F2,F3")
+'''Call GetQueryResultsOnSht("SELECT " & sSelect & " FROM [TMP_LOG_CSV1$]" _
+'                                            , thisworkbook.path & "\" & thisworkbook.Name _
+'                                            , "JOIN_LOG_CSV")
+'
+'
+'Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
+'Call JointPreAnalogTable(Array("DB_PLC00_AEC_ANALOG", "DB_PLC03_AEC_ANALOG"))
+'Exit Sub
+'
+'
+'Call updatePreAnalogTable
+''Call JointPreFPTable(Array("DB_FP_AI ", "DB_FP_AI_AL4", "DB_FP_AI_Q", "DB_FP_AI_SV ", "DB_FP_AI_SV2", "DB_FP_AI_SV3", "DB_FP_PID", "DB_FP_SUM"))
+'
+'Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
+'Call CheckServerComment
+'Call CheckAlarmMaster
+'Call CheckAnalog2ServerPrm
+'Call CheckAnalog2ActionPrm
+'
+''CLEAR TEMP TABLE
+'Call DeleteTableByPrefix("TMP")
+''Call DeleteTmpTable(ThisWorkbook.Name)
+'Call SortSht("DB,PRG,PRE,DIFF")
+'
+'Call DebugOut("ROOT", "PROC END >>>" & Now())
+'Debug.Print WorksheetFunction.Rept(vbNewLine, 2)
+'
+''Call ShtHdn(False, "PRE,DB,PRG")
+'Application.ScreenUpdating = True
+'End Sub
 
 
 'SQL_TSTOUT2_SELECT TST1.[COL1] AS [TST1_COL1],TST2.[COL1] AS [TST2_COL1],TST1.[COL2] AS [TST1_COL2],TST2.[COL2] AS [TST2_COL2],'=A1' AS FRM1,'=A2' AS FRM2
@@ -58,26 +58,27 @@ Dim l As Long
 
 Call DebugOut("REM", "full join : duplicat value")
 
-sShts = Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_EXE_CREATESHT", sShtSqlLink), ",")
+sShts = Split(fKey2Val("SQL_QUERY_ROOT", "SQL_EXE_CREATESHT", sShtSqlLink), ",")
 
 For Each v In sShts
 If Not Left(v, Len("SQL")) = "SQL" Then Call DebugOut("ERR", "prefix missing : SQL"): Exit Sub
-    sShtName = fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
+    sShtName = fKey2Val("SQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
     sShtName = fSplitBetweenAlter(sShtName, 2, "[", "$]")
     sShtTmpName = "TMP_" & sShtName
-    sQueryFilter = fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink)
-    If fKey2Val("PGPRM_SQL_QUERY_IGRNORE", v & "_FILTER", sShtSqlLink) = "//" Or sQueryFilter = "#N/A#" Then sQueryFilter = ""
+    sQueryFilter = fKey2Val("SQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink)
+    If fKey2Val("SQL_QUERY_IGRNORE", v & "_FILTER", sShtSqlLink) = "//" Or sQueryFilter = "#N/A#" Then sQueryFilter = ""
 
     If sShtName = "#N/A#" Or sShtName = "" Then Call DebugOut("ERR", "sheet find error : " & v): Exit Sub
-    Call SelectOrAddWs(sShtName, ThisWorkbook.Name)
-    Call SelectOrAddWs(sShtTmpName, ThisWorkbook.Name)
+    
+    Call SelectOrAddWs(sShtName, ThisWorkbook.Name, True)
+    Call RefreshFomula(ThisWorkbook.Sheets(sShtSqlLink).Cells)
     'create temp sheet
     Call GetQueryResultsOnSht(GetSqlQueryByLinkShtSQL(CStr(v)), RetCDirWbPath(), sShtTmpName)
     'condition
     Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryFilter, RetCDirWbPath(), sShtName)
     'refresh and paste formula column
-    If Not UBound(Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")) = -1 Then
-        For Each vv In Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")
+    If Not UBound(Split(fKey2Val("SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")) = -1 Then
+        For Each vv In Split(fKey2Val("SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")
             l = retHeaderCol(sShtName, CStr(vv))
             If Not l = 0 Then
                 With Sheets(sShtName)
@@ -92,9 +93,9 @@ ThisWorkbook.Sheets(sShtName).Cells.Copy
 ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
 ThisWorkbook.Sheets(sShtName).Range("A1").Select
 
-If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink)) = True Then Call DeleteTableByPrefix("TMP_")
-If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_SORTSHT", sShtSqlLink)) = True Then Call SortShtByPGPRM
-If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_RTNSHT", sShtSqlLink)) = True Then ThisWorkbook.Sheets(sShtSqlLink).Activate
+If CBool(fKey2Val("SQL_QUERY_ROOT", "SQL_DELETE_TEMPSHT", sShtSqlLink)) = True Then Call DeleteTableByPrefix("TMP_")
+If CBool(fKey2Val("SQL_QUERY_ROOT", "SQL_SORTSHT", sShtSqlLink)) = True Then Call SortShtByPGPRM
+If CBool(fKey2Val("SQL_QUERY_ROOT", "SQL_RTNSHT", sShtSqlLink)) = True Then ThisWorkbook.Sheets(sShtSqlLink).Activate
 Application.ScreenUpdating = True
 End Sub
 
@@ -119,84 +120,84 @@ Dim sSqlJoinQuery As String: sSqlJoinQuery = ""
 Dim bCloseUnion As Boolean
 Dim bCloseJoin As Boolean
 
-ReDim v(CLng(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_JOINTMAX", sWsSql)))
-ReDim vJoin(CLng(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_JOINTMAX", sWsSql)))
+ReDim v(CLng(fKey2Val("SQL_QUERY_ROOT", "SQL_JOINTMAX", sWsSql)))
+ReDim vJoin(CLng(fKey2Val("SQL_QUERY_ROOT", "SQL_JOINTMAX", sWsSql)))
 
-sQuerySelect = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
-sQueryFrom = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
-sQueryCondition = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Or fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_CONDITION", sWsSql) = "//" Then sQueryCondition = ""
-'sQueryJoin = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
-'sQueryFree = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
+sQuerySelect = fKey2Val("SQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
+sQueryFrom = fKey2Val("SQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
+sQueryCondition = fKey2Val("SQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Or fKey2Val("SQL_QUERY_IGRNORE", sPrf & "_CONDITION", sWsSql) = "//" Then sQueryCondition = ""
+'sQueryJoin = fKey2Val("SQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
+'sQueryFree = fKey2Val("SQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
 
-If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql) = "#N/A#" Then
-    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql)
-    v(1) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_INNERJOIN_FROM", sWsSql)
-    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+If Not fKey2Val("SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql)
+    v(1) = fKey2Val("SQL_QUERY_IGRNORE", sPrf & "_INNERJOIN_FROM", sWsSql)
+    v(2) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
     If Not (v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(1) = "//") Then
         vJoin(l) = _
-                        "INNER JOIN " & vbLf & _
-                        "        " & v(0) & vbLf & _
-                        "                ON " & v(2) & vbLf & _
+                        " INNER JOIN " & vbLf & _
+                        "        " & " " & v(0) & " " & vbLf & _
+                        "                ON " & " " & v(2) & " " & vbLf & _
                         ""
     End If
 End If
 
-If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql) = "#N/A#" Then
-    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
-    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+If Not fKey2Val("SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+    v(2) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
     v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
     v(5) = sQuerySelect
-    v(6) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_FULLJOIN_FROM", sWsSql)
+    v(6) = fKey2Val("SQL_QUERY_IGRNORE", sPrf & "_FULLJOIN_FROM", sWsSql)
     If Not (v(0) = "#N/A#" Or v(0) = "" Or v(6) = "//") Then
         vJoin(0) = _
-                        "LEFT OUTER JOIN " & vbLf & _
-                        "        " & v(0) & vbLf & _
-                        "                ON " & v(2) & vbLf & _
+                        " LEFT OUTER JOIN " & vbLf & _
+                        "        " & " " & v(0) & " " & vbLf & _
+                        "                ON " & " " & v(2) & " " & vbLf & _
                         " UNION ALL " & vbLf & _
                         " SELECT " & vbLf & _
-                        "        " & v(5) & vbLf & _
+                        "        " & " " & v(5) & " " & vbLf & _
                         " FROM " & vbLf & _
-                        "        " & v(3) & vbLf & _
+                        "        " & " " & v(3) & " " & vbLf & _
                         " RIGHT OUTER JOIN " & vbLf & _
-                        "        " & v(0) & vbLf & _
-                        "                ON " & v(2) & vbLf & _
+                        "        " & " " & v(0) & " " & vbLf & _
+                        "                ON " & " " & v(2) & " " & vbLf & _
                         ""
     End If
 End If
 
-If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql) = "#N/A#" Then
-    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+If Not fKey2Val("SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
     v(2) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
-    v(3) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_LEFTJOIN_FROM", sWsSql)
-    v(4) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+    v(3) = fKey2Val("SQL_QUERY_IGRNORE", sPrf & "_LEFTJOIN_FROM", sWsSql)
+    v(4) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
     If Not (v(0) = "#N/A#" Or v(0) = "" Or v(3) = "//") Then
 
         vJoin(l) = _
-                        "LEFT OUTER JOIN " & vbLf & _
-                        "    " & v(0) & vbLf & _
+                        " LEFT OUTER JOIN " & vbLf & _
+                        "    " & " " & v(0) & " " & vbLf & _
                         "                ON " & _
-                                 v(4) & _
+                                 v(4) & " " & _
                         ""
     End If
 End If
 
 'UNION ALL SELECT
 For l = 1 To UBound(vJoin)
-    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
-    v(1) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
-    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
-    v(3) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
-    v(4) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_CONDITION", sWsSql)
+    v(0) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(1) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
+    v(2) = fKey2Val("SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
+    v(3) = fKey2Val("SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(4) = fKey2Val("SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_CONDITION", sWsSql)
     If v(4) = "//" Then v(2) = ""
     If v(0) = "#N/A#" Or v(0) = "" Or v(1) = "#N/A#" Or v(1) = "" Or v(3) = "//" Then Exit For
 
     Call checkSqlHeader(CStr(v(0)), CStr(v(1)))
     vJoin(l) = vJoin(l) & vbLf & _
                     " UNION ALL SELECT " & vbLf & _
-                    "    " & v(0) & vbLf & _
+                    "    " & v(0) & " " & vbLf & _
                     " FROM " & vbLf & _
-                    "    " & v(1) & _
-                    "    " & v(2) & _
+                    "    " & " " & v(1) & " " & _
+                    "    " & v(2) & " " & _
                     ""
 Next l
 
@@ -206,8 +207,8 @@ sResult = _
                 " SELECT " & vbLf & _
                 "        " & sQuerySelect & vbLf & _
                 " FROM " & vbLf & _
-                "        " & sQueryFrom & vbLf & _
-                "        " & sQueryCondition & vbLf & _
+                "        " & sQueryFrom & " " & vbLf & _
+                "        " & sQueryCondition & " " & vbLf & _
                 sSqlJoinQuery & vbLf & _
                 ""
 
@@ -1873,43 +1874,5 @@ End Sub
 ''ORDER BY T1.CODE DESC
 '
 '
-
-
-
-'=========================================================
-'COL END => H
-'
-'PGPRM_SQL_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtSQL】【B】【C】【★ BSQL => SQL
-'*】【[ KEY ]】【[ SHEETS ]】【★
-'*】【SQL_EXE_CREATESHT】【SQL_TMP-ANLG2FP】【★
-'*】【SQL_PRESHT-ANLG00】【★
-'*】【SQL_PRESHT-ANLG03】【★
-'*】【SQL_PRESHT-ANLG】【★
-'*】【SQL_PRESHT-DEVICE】【★
-'*】【SQL_DIFF-ALIAS】【Alias-DevList】【★
-'*】【SQL_PRE-CLT】【★
-'*】【SQL_DIFF-CLT】【★
-'*】【SQL_PRESHT-FP】【★
-'SQL_DO】【★
-'SQL_TMP-ANLG2FP】【SQL_TMP-ANLG2FP】【DIFF FP】【★
-'SQL_TMP-ANLG2FPM】【★
-'SQL_TMP-ANLG2TRD】【★
-'SQL_TMP-ANLG2TRDOP】【★
-'★
-'SMPL-LEFTJOIN】【★
-'*】【SQL_SMPL-INNERJOIN】【★
-'*】【★
-'*】【SQL_PRE-CLT】【★
-'*】【★
-'*】【SQL_PGPRM_JOINTMAX】【25】【★
-'*】【SQL_PGPRM_DELETE_TEMPSHT】【0】【★
-'*】【SQL_PGPRM_SORTSHT】【1】【★
-'SQL_PGPRM_RTNSHT】【1】【★
-'★
-'★
-'★
-'★
-'★
-
 
 
