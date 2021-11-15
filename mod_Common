@@ -1,9 +1,9 @@
 Option Explicit
-'common 20211107
+'common 20211116
 
-Function jt(inptRange As Range) As String
+Function jt(inptRange As Range, Optional inptBool As Boolean = 1) As String
 
-jt = WorksheetFunction.TextJoin("】【", True, inptRange.Value2)
+jt = WorksheetFunction.TextJoin("】【", CBool(inptBool), inptRange.Value2)
 
 End Function
 
@@ -41,6 +41,12 @@ Next v
 
 End Sub
 
+Sub RefreshFomula(inptRng As Range)
+    inptRng.Replace What:="=", Replacement:="=", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+End Sub
+
 Sub createNewWindow()
      ActiveWindow.NewWindow
 End Sub
@@ -55,18 +61,7 @@ Dim sD As String: sD = ","
     Next v
 End Sub
 
-'PRJ PARAM===============================================================
-'Sub LoadKeyBind()
-'Dim r As Range
-'    Worksheets("KEY_BIND").Select
-'    For Each r In Range("A:A")
-'        If r.Value = "s" Then
-'            Call Application.OnKey(r.Offset(0, 1).Value, r.Offset(0, 2).Value)
-'        ElseIf r.Value = "d" Then
-'            Call Application.OnKey(r.Offset(0, 1).Value, "")
-'        End If
-'    Next r
-'End Sub
+
 
 'PRJ PARAM===============================================================
 Function fGetDsWb() As String
@@ -106,6 +101,7 @@ End Function
 'fGetPgVal = sResult
 '
 'End Function
+
 '
 'Function fSetPgVal(inptKey As String, inptVal As String) As Boolean
 'Dim sWbName As String:  sWbName = ThisWorkbook.Name
@@ -133,6 +129,53 @@ End Function
 '
 'End Function
 
+
+'Rem
+Sub SetValByPGPRM(inptSrcWb As String, inptSrcWs As String, inptSrcCol As String, inptPstWb As String, inptPstWs As String, inptPstCol As String)
+Dim vBuffer(10) As varint
+Dim r As Range
+vBuffer(0) = inptSrcWb
+vBuffer(1) = inptSrcWs
+vBuffer(2) = inptSrcCol
+vBuffer(3) = inptPstWb
+vBuffer(4) = inptPstWs
+vBuffer(5) = inptPstCol
+
+'Dim sWsName As String:  sWsName = inptWsName
+'Dim sKeyCol As String: sKeyCol = inptKeyCol
+'Dim sKey As String: sKey = inptKey
+'Dim sValCol As String: sValCol = inptValCol
+'Dim sVal As String: sVal = inptVal
+'Dim sMatchRow As String
+'Dim sRslt As String
+'Dim rRow As Range
+'On Error Resume Next
+
+'src book
+With Workbooks(vBuffer(0)).Worksheets(vBuffer(1))
+    For Each r In .Columns(vBuffer(2))
+        Debug.Print r.Value
+    Next r
+    
+    'rem
+    
+'
+'    Set rRow = .Columns(.Columns(vBuffer(2)).Column)
+'        If rRow Is Nothing Then fSetVal = False: Call DebugOut("ERR", "fail fSetVal"): Exit Sub
+'        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+'        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+'
+'        If sMatchRow <> "" Then
+'            .Cells(sMatchRow, .Columns(sValCol).Column).Value = inptVal
+'        Else
+'            fSetVal = False: Exit Sub
+'        End If
+'
+'    fSetVal = True
+End With
+End Sub
+
+
 Function fSetVal(inptKeyCol As String, inptKey As String, inptValCol As String, inptVal As String, inptWsName As String)
 Dim sWsName As String:  sWsName = inptWsName
 Dim sKeyCol As String: sKeyCol = inptKeyCol
@@ -145,7 +188,6 @@ Dim rRow As Range
 On Error Resume Next
 
 With ThisWorkbook.Worksheets(sWsName)
-
     Set rRow = .Columns(.Columns(sKeyCol).Column)
         If rRow Is Nothing Then fSetVal = False: Call DebugOut("ERR", "fail fSetVal"): Exit Function
         sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
@@ -159,7 +201,6 @@ With ThisWorkbook.Worksheets(sWsName)
 
     fSetVal = True
 End With
-
 End Function
 
 
@@ -615,15 +656,17 @@ Dim vResult As Variant
 Set oArr = cnvArray2ArrayList(vArr)
 oArr.Sort
 
-If (Not LBound(vArr) = 0) Then ' oArr is 0 base
+If (Not LBound(vArr) = 0) Then ' oArr -> 0 base
     lSft = 1
 End If
 
 For l = LBound(vArr) To UBound(vArr)
-    If sPrev = oArr(l - lSft) Then
-        oResult.Add oArr(l - lSft)
+    If Not oArr(l - lSft) = "" Then
+        If sPrev = oArr(l - lSft) Then
+            oResult.Add oArr(l - lSft)
+        End If
+            sPrev = oArr(l - lSft)
     End If
-        sPrev = oArr(l - lSft)
 Next l
 
 fDuplicateArray = oResult.toarray
@@ -960,6 +1003,135 @@ End Function
 
 Sub ★BKM_WSFUNC(): End Sub
 
+
+Function isInvalid(inptStr As String, Optional inptMsgOut As Boolean = True) As Boolean
+    If inptStr = "#N/A#" Then
+        If inptMsgOut = True Then Call DebugOut("ERR", "invalid parameter : #N/A#")
+        isInvalid = False
+        Exit Function
+    End If
+    
+    If inptStr = "" Then
+        If inptMsgOut = True Then Call DebugOut("ERR", "invalid parameter : BLANK")
+        isInvalid = False
+        Exit Function
+    End If
+
+    isInvalid = True
+    
+End Function
+
+Function isContainInvalid(inptArray As Variant, inptLbound As Long, inptUbound As Long, Optional inptMsgOut As Boolean = True) As Boolean
+Dim l As Long
+    
+For l = inptLbound To inptUbound
+    If inptArray(l) = "#N/A#" Then
+        If inptMsgOut = True Then Call DebugOut("ERR", "invalid parameter #N/A# : " & CStr(l) & " th")
+        isContainInvalid = False
+        Exit Function
+    End If
+    
+    If inptArray(l) = "" Then
+        If inptMsgOut = True Then Call DebugOut("ERR", "invalid parameter value : " & CStr(l) & " th")
+        isContainInvalid = False
+        Exit Function
+    End If
+Next l
+
+    isContainInvalid = True
+    
+End Function
+
+Sub CheckDuplicateByPGPRM()
+Application.ScreenUpdating = False
+Dim l(10) As Long
+Dim v As Variant
+Dim vResult As Variant
+Dim r As Range
+Dim sShtName As String: sShtName = "LinkSht"
+Dim sRpls As Variant
+Dim vBuffer(10) As String
+Dim vTmp(10) As String
+
+sRpls = Split(fKey2Val("PGPRM_WSFUNC_ROOT", "CDPL_EXE_CHECKDPL", sShtName), ",")
+If UBound(sRpls) = -1 Then Call DebugOut("ERR", "fail : get PGPRM 'CDPL_EXE_CHECKDPL' ")
+
+For Each v In sRpls
+    vBuffer(0) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_WB", sShtName)
+    vBuffer(1) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_SHT", sShtName)
+    vBuffer(2) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_RNG", sShtName)
+    If isContainInvalid(vBuffer, LBound(vBuffer), 2) = False Then Call DebugOut("ERR", "fail : get PRGPRM 'WB, SHT, INDEXCOL' "): Exit Sub
+    
+    With Workbooks(vBuffer(0)).Sheets(vBuffer(1))
+        vResult = fDuplicateArray(.Range(vBuffer(2)).Value2)
+            Debug.Print "WORKBOOK : " & vBuffer(0)
+            Debug.Print "WORKSHEET : " & vBuffer(1)
+            If Not UBound(vResult) = -1 Then
+                Debug.Print "CHECK RESULT : DUPLICATE"
+                out vResult
+            Else
+                Debug.Print "CHECK RESULT : OK "
+            End If
+    End With
+Next v
+
+Application.ScreenUpdating = True
+End Sub
+
+Sub BSetValByPGPRM()
+Application.ScreenUpdating = False
+Dim l(10) As Long
+Dim v As Variant
+Dim r As Range
+Dim sShtName As String: sShtName = "LinkSht"
+Dim sRpls As Variant
+Dim vBuffer(10) As String
+Dim vTmp(10) As String
+sRpls = Split(fKey2Val("PGPRM_WSFUNC_ROOT", "BSET_EXE_REPLACE", sShtName), ",")
+If UBound(sRpls) = -1 Then Call DebugOut("ERR", "fail : get PGPRM 'EXE_REPLACE'")
+
+For Each v In sRpls
+    vBuffer(0) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_PASTEWB", sShtName)
+    vBuffer(1) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_PASTESHT", sShtName)
+    vBuffer(2) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_PASTESHT_INDEXCOL", sShtName)
+    vBuffer(3) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_SORCEWB", sShtName)
+    vBuffer(4) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_SORCESHT", sShtName)
+    vBuffer(5) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_SORCESHT_INDEXCOL", sShtName)
+    If isContainInvalid(vBuffer, LBound(vBuffer), 5) = False Then Call DebugOut("ERR", "[fail] get PRGPRM 'WB, SHT, KEYCOL' "): Exit Sub
+
+    vTmp(0) = fKey2Val("PGPRM_WSFUNC_ROOT", "BSET_JOINTMAX", sShtName)
+    If isInvalid(vTmp(0)) = False Then Call DebugOut("ERR", "[FAIL] get PGPRM 'BSET_JOINTMAX'"): Exit Sub
+    For l(0) = 1 To vTmp(0)
+        If fKey2Val("PGPRM_WSFUNC_ROOT", v & "_VALCOL-" & l(0), sShtName) = "#N/A#" Then vTmp(0) = l(0) - 1: Exit For
+    Next l(0)
+    
+    For l(1) = 1 To vTmp(0) 'SHT-l(1)_VALCOL
+    vTmp(2) = fKey2Val("PGPRM_WSFUNC_ROOT", v & "_VALCOL-" & l(1), sShtName) 'A:B
+    vBuffer(6) = Trim(fSplit(vTmp(2), 1, ":")) 'SOURCE SHT
+    vBuffer(7) = Trim(fSplit(vTmp(2), 2, ":")) 'PASTE SHT
+    If Not isContainInvalid(vBuffer, 6, 7) = False Then
+        'PASTE SHEET
+        With Workbooks(vBuffer(0)).Sheets(vBuffer(1))
+                For Each r In .Columns(vBuffer(2)).Cells
+                    If Not r.Value = "" Then
+                                                            'srcWorkbook, srcWorksheet, searchKeyValue, srcKeycol, srcRetcol
+                        vTmp(1) = fGetCellData(vBuffer(3), vBuffer(4), r.Value, vBuffer(5), vBuffer(6))
+                        If Not vTmp(1) = "#N/A#" Then .Cells(r.Row, .Columns(vBuffer(7)).Column) = vTmp(1)
+                    End If
+                Next r
+        End With
+    Call DebugOut("UTIL", "pasted  '" & v & "_VALCOL-" & l(1) & "'")
+    Else
+        l(1) = vTmp(0)
+    End If
+    Next l(1)
+Next v
+
+Application.ScreenUpdating = True
+End Sub
+
+
+
 Sub DownloadWsListByPGPRM()
 Dim sOutShtName As String: sOutShtName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLWSLST_OUTSHT", "LinkSht")
 Dim vCnt As Long
@@ -993,10 +1165,11 @@ Sub FillFormula(inptRng As Range, inptFormula As String)
 End Sub
 
 
-Sub SelectOrAddWs(inptShtName As String, inptWb As String)
+Sub SelectOrAddWs(inptShtName As String, inptWb As String, Optional inptClear As Boolean = False)
 Dim sSht As String: sSht = inptShtName
 Dim sWb As String: sWb = inptWb
 Dim s As Worksheet
+Dim bCls As Boolean: bCls = inptClear
 
 If sSht = "" Then Call DebugOut("ERR", "sheet name is empty : SelectOrAddWs"): Exit Sub
 If Not sWb = ThisWorkbook.Name Then Call DebugOut("MSG", "External Workbook : SelectOrAddWs")
@@ -1004,7 +1177,12 @@ If Not sWb = ThisWorkbook.Name Then Call DebugOut("MSG", "External Workbook : Se
 For Each s In Workbooks(sWb).Sheets
     If s.Name = sSht Then
         Call DebugOut("UTIL", "select sheet " & sSht)
-        Workbooks(sWb).Sheets(sSht).Activate
+        With Workbooks(sWb)
+            .Sheets(sSht).Activate
+            If bCls = True Then
+                .Sheets(sSht).Cells.Clear
+            End If
+        End With
         Exit Sub
     End If
 Next s
@@ -1318,75 +1496,4 @@ End Sub
 '==============================================================
 'J
 '
-'】【】【】【】【】【】【OUT_FILE】【OUT_WS】【REN_FILE】【
-'】【】【】【】【】【】【pict1.jpg】【LinkSht】【】【
-'】【】【】【】【】【】【pict2.jpg】【LinkShtDB】【】【
-'PGPRM_WSFUNC_ROOT】【DFR3_DB_211014.xlsm】【LinkSht】【B】【C】【】【pict3.jpg】【LinkShtSQL】【】【
-'*】【[ KEY ]】【[ PRM ]】【】【】【】【】【PRE_PLC_ANLG】【】【
-'*】【】【】【】【】【】【】【DB_PLC00_AEC_M】【】【
-'*】【PGPRM_SORTSHT】【LinkSht,LinkShtDB,LinkShtSQL,LinkShtClt,DIFF,PRE,DB】【】【】【】【】【DB_PLC03_X】【】【
-'*】【】【LinkSht】【】【】【】【】【DB_PLC03_Y】【】【
-'*】【】【LinkShtDB】【】【】【】【】【DB_PLC03_M】【】【
-'*】【】【LinkShtSQL】【】【】【】【】【DB_PLC03_R】【】【
-'*】【】【LinkShtClt】【】【】【】【】【DB_PLC00_X】【】【
-'*】【】【DIFF】【】【】【】【】【DB_PLC00_Y】【】【
-'*】【】【PRE】【】【】【】【】【DB_PLC00_M】【】【
-'*】【】【DB】【】【】【】【】【DB_PLC00_R】【】【
-'*】【】【】【】【】【】【】【DB_PLC03_AEC_R】【】【
-'*】【】【】【】【】【】【】【DB_PLC03_AEC_M】【】【
-'*】【】【】【】【】【】【】【DB_PLC00_AEC_R】【】【
-'*】【PGPRM_SHTHDN_BOOL】【1】【】【】【】【】【DB_LST_TREND_PENINFO_ONEPOINT】【】【
-'*】【PGPRM_SHTHDN_SHT】【DB,PRE,DIFF】【】【】【】【】【DB_LST_TREND_PENINFO 】【】【
-'*】【】【DB】【】【】【】【】【DB_LST_SERVER_CSV】【】【
-'*】【】【PRE】【】【】【】【】【DB_LST_FIELDMASTER_TAG_SV】【】【
-'*】【】【DIFF】【】【】【】【】【DB_LST_FIELDMASTER_TAG_PV】【】【
-'*】【】【】【】【】【】【】【DB_LST_FIELDMASTER_TAG_PRT】【】【
-'*】【】【】【】【】【】【】【DB_LST_FIELDMASTER_TAG 】【】【
-'*】【】【】【】【】【】【】【DB_LST_FACEPLATE_MASTER】【】【
-'*】【】【】【】【】【】【】【DB_LST_C 】【】【
-'*】【】【】【】【】【】【】【DB_CCL03_W】【】【
-'*】【PGPRM_PCT_OUTSHT】【Sheet2】【】【】【】【】【DB_LST_ALM_MASTER】【】【
-'*】【PGPRM_PCT_PATH_DIR】【"C:\Users\Owner\Documents\workspace\tmpPict\*.*"】【】【】【】【】【DB_LST_ALIAS】【】【
-'*】【PGPRM_PCT_GRPRNG_RANGE】【B2:E20】【】【】【】【】【DB_FP_SUM】【】【
-'*】【PGPRM_PCT_SPNRNG_ROWCNT】【20】【】【】【】【】【DB_FP_PID】【】【
-'*】【】【】【】【】【】【】【DB_FP_AI_SV3】【】【
-'*】【】【】【】【】【】【】【DB_FP_AI_SV2】【】【
-'*】【】【】【】【】【】【】【DB_FP_AI_SV 】【】【
-'*】【PGPRM_DLFILELST_OUTSHT】【LinkSht】【】【】【】【】【DB_FP_AI_Q】【】【
-'】【PGPRM_DLFILELST_OUTHDR】【OUT_FILE】【】【】【】【】【DB_FP_AI_AL4】【】【
-'】【】【】【】【】【】【】【DB_FP_AI 】【】【
-'】【】【YET!!!!】【】【】【】【】【DB_CCL03_B】【】【
-'】【HEADER】【】【】【】【】【】【DB_PLC03_AEC_W】【】【
-'】【//PGPRM_UDFILENAME_WORKSHT】【Sheet3】【】【】【】【】【DB_PLC03_AEC_B】【】【
-'】【】【】【】【】【】【】【DB_PLC03_TYOUGOU_R】【】【
-'DownloadWsListByPGPRM】【】【】【】【】【】【】【DB_PLC03_HIRANO_SV_W】【】【
-'】【PGPRM_DLWSLST_OUTSHT】【LinkSht】【】【】【】【】【DB_PLC03_HIRANO_PV_W】【】【
-'】【PGPRM_DLWSLST_OUTHDR】【OUT_WS】【】【】【】【】【DB_PLC03_HIRANO_DO_B】【】【
-'】【】【】【】【】【】【】【DB_PLC03_HIRANO_ALM_W】【】【
-'】【】【】【】【】【】【】【DB_PLC03_HIRANO_DI_B】【】【
-'】【】【】【】【】【】【】【DB_PLC03_AEC_Y】【】【
-'】【】【】【】【】【】【】【DB_PLC03_AEC_X】【】【
-'】【】【】【】【】【】【】【DB_PLC00_AEC_Y】【】【
-'】【PGPRM_SETKEYBIND】【^n:createNewWindow】【[ KEY ]】【[ FUNC ]】【】【】【DB_PLC00_AEC_X】【】【
-'】【】【^n:createNewWindow】【^n】【createNewWindow】【】【】【DB_PLC03_KONDO_K2A_W】【】【
-'】【】【】【】【】【】【】【DB_PLC03_KONDO_A2K_B】【】【
-'】【】【】【】【】【】【】【DB_PLC03_KONDO_K2A_B】【】【
-'】【】【】【】【】【】【】【DB_PLC00_OP_Y】【】【
-'】【】【】【】【】【】【】【DB_PLC00_OP_X】【】【
-'】【】【】【】【】【】【】【DB_PLC00_AEC_ANALOG】【】【
-'DeleteShtByPGPRM】【】【】【】【】【】【】【DB_PLC03_AEC_ANALOG】【】【
-'】【PGPRM_DELSHT】【DB】【】【】【】【】【PRE_BITDEV】【】【
-'】【】【】【】【】【】【】【DIFF_PLC03_KONDO_K2A_B】【】【
-'】【】【】【】【】【】【】【LinkShtClt】【】【
-'】【】【】【】【】【】【】【TEST_OUTER】【】【
-'】【】【】【】【】【】【】【TEST_OUTER2】【】【
-'】【WINMERGE】【】【】【】【】【】【TEST_SUB】【】【
-'】【】【】【】【】【】【】【TEST_SHT】【】【
-'】【】【】【】【】【】【】【TEST_MAIN】【】【
-'】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【
-'】【】【】【】【】【】【】【】【】【
-
-
-
 
