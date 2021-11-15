@@ -1,5 +1,5 @@
 Option Explicit
-'DB 20211107
+'DB 20211116
 
 Dim gTmp As String
 
@@ -225,7 +225,6 @@ retDeviceLetterChar = sLetter
 End Function
 
 
-
 Function fSplitCsvPrmBin(inptStr As String) As String
 
 Dim sStr As String: sStr = inptStr
@@ -265,19 +264,13 @@ With Workbooks(inptWbName).Sheets(inptShtName)
 For Each v In vHeader
     If Left(Trim(fSplit(v, 1, ":")), 1) = "%" Then
         s = fReplace(v, fSplit(v, 1, ":") & ":", "")
-        '%A:Fix;BaseCol;PasteCol;=Formula
-        If fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") = "Fix" Then
+        '%B:[FULL_ADR],[A],[=retDev2FullAdrFormat("PLC00", left(RC1,1),RC1,6)]
             .Range(fReplace(fSplit(v, 1, ":"), "%", "") & "1").Value = fSplitBetweenWithDelimiter(s, 1, "[", "]", ",")
             Call fFixFormula(inptWbName _
                                         , inptShtName _
-                                        , fSplitBetweenWithDelimiter(s, 3, "[", "]", ",") _
+                                        , fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") _
                                         , Trim(fReplace(fSplit(v, 1, ":"), "%", "")) _
-                                        , fSplitBetweenWithDelimiter(s, 4, "[", "]", ","))
-        ElseIf fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") = "Fill" Then
-            Call DebugOut("ERR", "not yet")
-        Else
-            Call DebugOut("ERR", "fail PasteShtData")
-        End If
+                                        , fSplitBetweenWithDelimiter(s, 3, "[", "]", ","))
     Else
         If Not v = "" Then
             .Range(Trim(fSplit(v, 1, ":")) & "1").Value = _
@@ -293,20 +286,22 @@ Sub DB_EXE_CREATESHT()
 Call DebugOut("REM", "parts feature table")
 Application.ScreenUpdating = False
 
-
 Dim v As Variant
 Dim sShtName As String: sShtName = "LinkShtDB"
 Dim sShts As Variant
-sShts = Split(fKey2Val("PGPRM_DB_EXE_ROOT", "DB_EXE_CREATESHT", sShtName), ",")
+
+'Sheets (sShtName)
+sShts = Split(fKey2Val("DB_EXE_ROOT", "DB_EXE_CREATESHT", sShtName), ",")
 If UBound(sShts) = -1 Then Call DebugOut("ERR", "sht name is empty")
 gTmp = ""
+
 For Each v In sShts
     Call SelectOrAddWs(CStr(v), ThisWorkbook.Name)
     Call Excel2DbShtRefresh(ThisWorkbook.Name, CStr(v))
 Next v
 
-If CBool(fKey2Val("PGPRM_DB_EXE_ROOT", "DB_SORTSHT", sShtName)) = True Then SortShtByPGPRM
-If CBool(fKey2Val("PGPRM_DB_EXE_ROOT", "DB_DELETE_TEMPSHT", sShtName)) = True Then DeleteShtByPGPRM
+If CBool(fKey2Val("DB_EXE_ROOT", "DB_SORTSHT", sShtName)) = True Then SortShtByPGPRM
+If CBool(fKey2Val("DB_EXE_ROOT", "DB_DELETE_TEMPSHT", sShtName)) = True Then DeleteShtByPGPRM
 Workbooks(Dir(gTmp)).Close False
 ThisWorkbook.Sheets("LinkShtDB").Activate
 Application.ScreenUpdating = True
@@ -508,57 +503,6 @@ End Function
 '=========================================================
 'COL END => AZ
 '
-'PGPRM_DB_EXE_ROOT】【DFR3_DB_211014.xlsm】【LinkShtDB】【B】【C】【★ DEL PGRPRM
-'*】【[ KEY ]】【[ SHEETS ]】【★
-'*】【DB_EXE_CREATESHT】【DB_FP_AI ,DB_FP_AI_AL4,DB_FP_AI_Q,DB_FP_AI_SV ,DB_FP_AI_SV2】【★
-'*】【*】【DB_FP_AI 】【DB_FP_AI 】【★
-'*】【*】【DB_FP_AI_AL4】【DB_FP_AI_AL4】【★
-'*】【*】【DB_FP_AI_Q】【DB_FP_AI_Q】【★
-'*】【*】【DB_FP_AI_SV 】【DB_FP_AI_SV 】【★
-'*】【*】【DB_FP_AI_SV2】【DB_FP_AI_SV2】【★
-'*】【*】【DB_FP_AI_SV3】【★
-'*】【*】【DB_FP_PID】【★
-'*】【*】【DB_FP_SUM】【★
-'*】【*】【DB_LST_ALIAS】【★
-'*】【*】【DB_LST_ALM_MASTER】【★
-'*】【*】【DB_LST_C 】【★
-'*】【*】【DB_LST_FACEPLATE_MASTER】【★
-'*】【*】【DB_LST_FIELDMASTER_TAG 】【★
-'*】【*】【DB_LST_FIELDMASTER_TAG_PRT】【★
-'*】【*】【DB_LST_FIELDMASTER_TAG_PV】【★
-'*】【*】【DB_LST_FIELDMASTER_TAG_SV】【★
-'*】【*】【DB_LST_SERVER_CSV】【★
-'*】【*】【DB_LST_TREND_PENINFO 】【★
-'*】【*】【DB_LST_TREND_PENINFO_ONEPOINT】【★
-'*】【*】【DB_PLC00_AEC_ANALOG】【★
-'*】【*】【DB_PLC00_AEC_M】【★
-'*】【*】【DB_PLC00_AEC_R】【★
-'*】【*】【DB_PLC00_AEC_X】【★
-'*】【*】【DB_PLC00_AEC_Y】【★
-'*】【*】【DB_PLC00_OP_X】【★
-'*】【*】【DB_PLC00_OP_Y】【★
-'*】【*】【DB_PLC03_AEC_ANALOG】【★
-'*】【*】【DB_PLC03_AEC_B】【★
-'*】【*】【DB_PLC03_AEC_M】【★
-'*】【*】【DB_PLC03_AEC_R】【★
-'*】【*】【DB_PLC03_AEC_W】【★
-'*】【*】【DB_PLC03_AEC_X】【★
-'*】【*】【DB_PLC03_AEC_Y】【★
-'*】【*】【DB_PLC03_HIRANO_ALM_W】【★
-'*】【*】【DB_PLC03_HIRANO_DI_B】【★
-'*】【*】【DB_PLC03_HIRANO_DO_B】【★
-'*】【*】【DB_PLC03_HIRANO_PV_W】【★
-'*】【*】【DB_PLC03_HIRANO_SV_W】【★
-'*】【*】【DB_PLC03_KONDO_A2K_B】【★
-'*】【*】【DB_PLC03_KONDO_K2A_B】【★
-'*】【*】【DB_PLC03_KONDO_K2A_W】【★
-'*】【*】【DB_PLC03_TYOUGOU_R】【★
-'*】【*】【★
-'*】【*】【★
-'*】【DB_JOINTMAX】【25】【★
-'*】【DB_DELETE_TEMPSHT】【1】【★
-'*】【DB_SORTSHT】【1】【★
-'★
-'★
+
 '
 
