@@ -5,28 +5,6 @@ Sub createNewWindow()
      ActiveWindow.NewWindow
 End Sub
 
-'PRJ PARAM===============================================================
-Function fGetDsWb() As String
-    fGetDsWb = fGetPgVal("DS_WB")
-End Function
-
-Function fGetDsWbn() As String
-    fGetDsWbn = fGetPgVal("DS_WBN")
-End Function
-
-Function fGetDsWs() As String
-    fGetDsWs = fGetPgVal("DS_WS")
-End Function
-
-Function fGetDsRng() As String
-    fGetDsRng = fGetPgVal("DS_RNG")
-End Function
-
-Function fGetPlcUnitData()
-    fGetPlcUnitData = fGetPgVal("PLC_UNIT_DATA")
-End Function
-
-
 Function fSetVal(inptKeyCol As String, inptKey As String, inptValCol As String, inptVal As String, inptWsName As String)
 Dim sWsName As String:  sWsName = inptWsName
 Dim sKeyCol As String: sKeyCol = inptKeyCol
