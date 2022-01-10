@@ -1,0 +1,1040 @@
+Option Explicit
+'ユーティリティ、共通で使用
+
+Sub createNewWindow()
+     ActiveWindow.NewWindow
+End Sub
+
+'PRJ PARAM===============================================================
+Function fGetDsWb() As String
+    fGetDsWb = fGetPgVal("DS_WB")
+End Function
+
+Function fGetDsWbn() As String
+    fGetDsWbn = fGetPgVal("DS_WBN")
+End Function
+
+Function fGetDsWs() As String
+    fGetDsWs = fGetPgVal("DS_WS")
+End Function
+
+Function fGetDsRng() As String
+    fGetDsRng = fGetPgVal("DS_RNG")
+End Function
+
+Function fGetPlcUnitData()
+    fGetPlcUnitData = fGetPgVal("PLC_UNIT_DATA")
+End Function
+
+
+Function fSetVal(inptKeyCol As String, inptKey As String, inptValCol As String, inptVal As String, inptWsName As String)
+Dim sWsName As String:  sWsName = inptWsName
+Dim sKeyCol As String: sKeyCol = inptKeyCol
+Dim sKey As String: sKey = inptKey
+Dim sValCol As String: sValCol = inptValCol
+Dim sVal As String: sVal = inptVal
+Dim sMatchRow As String
+Dim sRslt As String
+Dim rRow As Range
+On Error Resume Next
+
+With ThisWorkbook.Worksheets(sWsName)
+
+    Set rRow = .Columns(.Columns(sKeyCol).Column)
+        If rRow Is Nothing Then fSetVal = False: Call DebugOut("ERR", "fail fSetVal"): Exit Function
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+        If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rRow, 0)
+
+        If sMatchRow <> "" Then
+            .Cells(sMatchRow, .Columns(sValCol).Column).Value = inptVal
+        Else
+            fSetVal = False: Exit Function
+        End If
+
+    fSetVal = True
+End With
+
+End Function
+
+
+Function fKey2Val(inptLabel As String, inptKey As String, Optional inptSht As String = "LinkSht") As String
+Dim sLabel As String: sLabel = inptLabel
+Dim sKey As String: sKey = inptKey
+Dim sData As Variant
+Dim sResult As Variant
+Dim sShtName As String: sShtName = inptSht
+Dim rRng As Range: Set rRng = ThisWorkbook.Sheets(sShtName).Rows(1)
+Dim lIndex As Long
+Dim bMatch As Boolean
+
+sData = fGetRowData(ThisWorkbook.Name, rRng.Worksheet.Name, sLabel, "A") 'single row, get link parameters
+
+If UBound(sData) = -1 Then
+    Call DebugOut("ERR", "fGetRowData fail : " & inptLabel & " " & inptKey & " " & inptSht)
+    fKey2Val = "#N/A#": Exit Function
+End If
+
+Dim sWb As String: sWb = sData(2)
+Dim sWs As String: sWs = sData(3)
+Dim sKeyCol As String: sKeyCol = Trim(sData(4))
+Dim sRtnCol As String: sRtnCol = Trim(sData(5))
+
+If sWb = "" Or sWb = "#N/A#" Then Call DebugOut("ERR", "sWb : " & sWb)
+If sWs = "" Or sWs = "#N/A#" Then Call DebugOut("ERR", "sWs : " & sWs)
+If sKeyCol = "" Or sKeyCol = "#N/A#" Then Call DebugOut("ERR", "sKeyCol : " & sKeyCol)
+If sRtnCol = "" Or sRtnCol = "#N/A#" Then Call DebugOut("ERR", "sRtnCol : " & sRtnCol)
+
+sResult = fGetCellData(sWb, sWs, sKey, sKeyCol, sRtnCol)
+fKey2Val = sResult
+
+End Function
+
+
+Function fPref2firstMatch(inptPref As String, inptKey As String, inptMatch As Boolean, Optional inptSht = "LinkSht") As String
+Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets(inptSht)
+Dim l As Long
+Dim lEnd As Long
+Dim sPrf As String: sPrf = inptPref
+Dim sKey As String: sKey = inptKey
+Dim sRslt As String: sRslt = "#N/A#"
+Dim bMatch As Boolean
+
+With ws
+lEnd = .Cells(Rows.Count, 1).End(xlUp).Row
+    For l = 1 To lEnd
+        If Not .Cells(l, 1).Value = "" Then
+                If Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then
+                        sRslt = fKey2Val(.Cells(l, 1).Value, sKey)
+                If Not sRslt = "#N/A#" Then fPref2firstMatch = sRslt: Exit Function
+            End If
+        End If
+    Next l
+End With
+
+    fPref2firstMatch = sRslt
+
+End Function
+
+
+'on Target Sheet
+Private Function fGetCellData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String, inptTargetCol As String) As String
+
+Dim sWbName As String: sWbName = inptWb
+Dim sWsName As String: sWsName = inptWs
+Dim sKeyCol As String: sKeyCol = inptKeyCol
+Dim sKey As String: sKey = inptKey
+Dim sTargetCol As String: sTargetCol = inptTargetCol
+Dim sMatchRow As String
+Dim sRslt As String
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsName)
+
+    Dim rColKey As Range
+    Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
+    If rColKey Is Nothing Then
+        Call DebugOut("ERR", "fGetCellData get worksheet range fail " & vbNewLine & _
+                                         "assume that worksheet name is collect " & vbNewLine & _
+                                        "InptKey : " & inptKey & vbNewLine & _
+                                         "WbName : " & sWbName & vbNewLine & _
+                                         "WsName : " & sWsName)
+        fGetCellData = "#N/A#": Exit Function
+    End If
+    
+    sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
+    If sMatchRow = "" Then sMatchRow = Application.WorksheetFunction.Match(CLng(sKey), rColKey, 0)
+    If sMatchRow <> "" Then
+        sRslt = .Cells(CLng(sMatchRow), sTargetCol).Value
+    Else
+        sRslt = "#N/A#"
+    End If
+End With
+
+fGetCellData = sRslt
+
+End Function
+
+'row direction serarch, on Params sheet
+Function fGetRowData(inptWb As String, inptWs As String, inptKey As String, inptKeyCol As String) As Variant
+
+Dim sWbName As String: sWbName = inptWb
+Dim sWsName As String: sWsName = inptWs
+Dim sKeyCol As String: sKeyCol = inptKeyCol
+Dim sKey As String: sKey = inptKey
+Dim sMatchRow As String
+Dim vRslt As Variant
+
+On Error Resume Next
+With Workbooks(sWbName).Worksheets(sWsName)
+
+    Dim rColKey As Range
+    Set rColKey = .Columns(.Cells.Columns(sKeyCol).Column)
+    If rColKey Is Nothing Then fGetRowData = Array()
+    sMatchRow = Application.WorksheetFunction.Match(sKey, rColKey, 0)
+    If sMatchRow <> "" Then
+            vRslt = Application.Transpose(Application.Transpose(.Rows(CLng(sMatchRow)).Value))
+        Else
+            vRslt = Array()
+    End If
+
+End With
+
+fGetRowData = vRslt
+
+End Function
+
+
+Sub out(ByVal inptArr As Variant, Optional inptLimit As Long = 30)
+    Dim v As Variant
+    Dim cnt As Long: cnt = 0
+
+If UBound(inptArr) > inptLimit Then Call DebugOut("ERR", "out limit : " & inptLimit)
+
+    If CndOrEq(Array("IMatchCollection2", "Variant()", "ArrayList", "String()"), TypeName(inptArr)) Then
+        For Each v In inptArr
+            Debug.Print CStr(v)
+            cnt = cnt + 1
+            If cnt = inptLimit Then Exit Sub
+        Next v
+    Else
+        Debug.Print inptArr
+    End If
+End Sub
+
+
+Sub outTxt(ByVal inptStr As String, ByVal inptPath As String)
+Dim fst As Object
+Dim sPath As String: sPath = inptPath
+
+Set fst = CreateObject("ADODB.Stream")
+fst.Type = 2 'Specify stream type - we want To save text/string data.
+fst.Charset = "utf-8" 'Specify charset For the source text data.
+fst.Open 'Open the stream And write binary data To the objectg
+fst.WriteText inptStr
+fst.SaveToFile inptPath, 2
+fst.Close
+
+Set fst = Nothing
+
+End Sub
+
+
+Function fSplitByDelimiter(ByVal inptStr As String, ByVal inptSplt As String, ByVal inptCol As Integer) As String
+
+fSplitByDelimiter = fSplit(inptStr, inptCol, inptSplt)
+
+End Function
+
+
+Function fSplit(ByVal inptStr As String, ByVal inptCol As Integer, Optional ByVal inptSplt As String = ",", Optional inptMatch As Boolean = False) As String
+Dim sStr As String: sStr = inptStr
+Dim lCol As Integer: lCol = inptCol
+Dim sSplt As String: sSplt = inptSplt
+Dim sRslt As String
+Dim aStr() As String
+
+aStr = Split(sStr, sSplt)
+
+If UBound(aStr) = -1 Or UBound(aStr) = 0 Or lCol = 0 Then
+    sRslt = sStr
+ElseIf lCol > UBound(aStr) + 1 Then
+    sRslt = sStr
+ElseIf lCol < 0 Then
+    sRslt = aStr(UBound(aStr) + 1 + lCol)
+Else
+    sRslt = aStr(lCol - 1)
+End If
+
+
+If inptMatch = True And sRslt = inptStr Then sRslt = ""
+
+fSplit = sRslt
+
+End Function
+
+
+Function fSplitBetweenWithDelimiter(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, inptDelimiter) As String
+Dim sStr As String: sStr = inptStr
+Dim lCol As Long: lCol = inptCol
+Dim sDLeft As String: sDLeft = inptLeft
+Dim sDMid As String: sDMid = inptRight & inptDelimiter & inptLeft
+Dim sDRight As String: sDRight = inptRight
+Dim sResult As String
+
+If lCol = 1 Then
+    sResult = fSplit(sStr, inptCol, sDMid)
+    sResult = Right(sResult, Len(sResult) - Len(sDLeft))
+ElseIf lCol = UBound(Split(sStr, sDMid)) + 1 Then
+    sResult = fSplit(sStr, inptCol, sDMid)
+    sResult = Left(sResult, Len(sResult) - Len(sDRight))
+Else
+    sResult = fSplit(sStr, inptCol, sDMid)
+End If
+
+fSplitBetweenWithDelimiter = sResult
+
+End Function
+
+
+Function fSplitBetween(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptDelimiter As String = "") As String
+Dim sStr As String: sStr = inptStr
+Dim l As Long
+Dim ll As Long
+Dim lLenL As Long: lLenL = Len(inptLeft)
+Dim lLenR As Long: lLenR = Len(inptRight)
+Dim lCnt As Long: lCnt = 0
+Dim sResult As String
+Dim lCntInner As Long: lCntInner = 0
+
+For l = 1 To Len(sStr)
+    If Mid(sStr, l, lLenL) = inptLeft Then
+        l = l + lLenL
+        lCnt = lCnt + 1
+        ll = l
+        sResult = ""
+            Do Until (Mid(sStr, ll, lLenR) = inptRight) And (lCntInner = 0)
+                sResult = sResult + Mid(sStr, ll, 1)
+                ll = ll + 1 ' add per one char
+                'check current
+                If lCntInner > 0 _
+                        And (Mid(sStr, ll - 1, lLenR) = inptRight _
+                        Or Mid(sStr, ll - 1, 1) = """" _
+                        Or Mid(sStr, ll - 1, 1) = "'") _
+                        Then
+                    lCntInner = lCntInner - 1
+                End If
+                'check next
+                If Mid(sStr, ll + 1, lLenL) = inptLeft _
+                        Or Mid(sStr, ll + 1, 1) = """" _
+                        Or Mid(sStr, ll + 1, 1) = "'" _
+                        Then
+                    lCntInner = lCntInner + 1
+                End If
+                'check error
+                If ll > Len(sStr) + lLenR Then
+                    fSplitBetween = "": Call DebugOut("ERR", "fSplitBetween : count or match was fail" & inptStr)
+                    Exit Function
+                End If
+                If ll = 100 Then fSplitBetween = "": Exit Function
+            Loop 'Do Until (Mid(sStr, ll, lLenR) = inptRight) And (lCntInner = 0)
+        l = ll
+        If lCnt = inptCol Then fSplitBetween = sResult: Exit Function
+        End If
+Next l 'l = 1 To Len(sStr)
+
+End Function
+
+
+Function fSplitBetweenAlter(ByVal inptStr As String, ByVal inptCol As Integer, ByVal inptLeft As String, ByVal inptRight As String, Optional inptMatch As Boolean = False) As String
+Dim sStr As String: sStr = inptStr
+Dim l As Long
+
+Dim sResult As String
+Dim bFlag As Boolean: bFlag = False
+
+sResult = fSplit(inptStr, inptCol, inptLeft)
+If sResult = inptStr Then bFlag = True
+
+sResult = fSplit(sResult, 1, inptRight)
+If sResult = inptStr Then bFlag = True
+
+If inptMatch = True And bFlag = True Then sResult = ""
+
+fSplitBetweenAlter = sResult
+
+End Function
+
+
+Function fLenOfSplited(inptStr As String, inptSplt As String, inptCol As Long) As String
+
+Dim sStr As String: sStr = inptStr
+Dim lCol As Long: lCol = inptCol
+Dim sSplt As String: sSplt = inptSplt
+Dim aStr() As String
+Dim sRslt As String
+
+aStr = Split(sStr, sSplt)
+
+If UBound(aStr) = 0 Or lCol = 0 Then
+    sRslt = 0
+Else
+    sRslt = Len(aStr(lCol - 1))
+End If
+
+fLenOfSplited = sRslt
+
+End Function
+
+
+Function fAddToArray(ByVal inptArray As Variant, ByVal inptItem As Variant) As Variant
+    Dim vArr As Variant: vArr = inptArray
+
+        If UBound(vArr) = -1 Then
+            vArr = Array(inptItem)
+        Else
+            ReDim Preserve vArr(UBound(vArr) + 1)
+            vArr(UBound(vArr)) = inptItem
+        End If
+
+        fAddToArray = vArr
+End Function
+
+
+Function fcnvRng2Array(inptRng As Range, Optional inptDelBlank As Boolean = True) As Variant
+
+Dim vResult As Variant
+
+vResult = Application.Transpose(Application.Transpose(inptRng)) 'same WorksheetFunction.Transpose(inptRng.Value)
+If inptDelBlank = True Then vResult = fFilterNeq(vResult, "")
+
+fcnvRng2Array = vResult
+
+End Function
+
+
+Function cnvArray2ArrayList(ByVal inptArr As Variant) As Object
+
+Dim oArr As Object: Set oArr = CreateObject("System.Collections.ArrayList")
+Dim vArr As Variant: vArr = inptArr
+Dim v As Variant
+
+For Each v In vArr
+    oArr.Add v
+Next v
+
+Set cnvArray2ArrayList = oArr
+
+End Function
+
+
+Function fDuplicateArray(ByVal inptArr As Variant) As Variant
+'out fDuplicate(range("E2:E17").Value2)
+
+Dim vArr As Variant: vArr = inptArr
+Dim oArr As Object
+Dim oResult As Object: Set oResult = CreateObject("System.Collections.ArrayList")
+
+Dim l As Long
+Dim lSft As Long: lSft = 0
+Dim sPrev As String: sPrev = ""
+Dim vResult As Variant
+
+Set oArr = cnvArray2ArrayList(vArr)
+oArr.Sort
+
+If (Not LBound(vArr) = 0) Then ' oArr is 0 base
+    lSft = 1
+End If
+
+For l = LBound(vArr) To UBound(vArr)
+    If sPrev = oArr(l - lSft) Then
+        oResult.Add oArr(l - lSft)
+    End If
+        sPrev = oArr(l - lSft)
+Next l
+
+fDuplicateArray = oResult.toarray
+
+End Function
+
+
+Function fUniqueArray(ByVal inptArr As Variant) As Variant
+'out fDuplicate(range("E2:E17").Value2)
+
+Dim vArr As Variant: vArr = inptArr
+Dim oArr As Object
+Dim oResult As Object: Set oResult = CreateObject("System.Collections.ArrayList")
+
+Dim l As Long
+Dim lSft As Long: lSft = 0
+Dim sPrev As String: sPrev = ""
+Dim vResult As Variant
+
+Set oArr = cnvArray2ArrayList(vArr)
+oArr.Sort
+
+If (Not LBound(vArr) = 0) Then ' oArr is 0 base
+    lSft = 1
+End If
+
+For l = LBound(vArr) To UBound(vArr)
+    If Not sPrev = oArr(l - lSft) Then
+        oResult.Add oArr(l - lSft)
+    End If
+        sPrev = oArr(l - lSft)
+Next l
+
+fUniqueArray = oResult.toarray
+
+End Function
+
+
+Function fDigitN(inptStr As String, inptDigit As Long) As String
+    fDigitN = Application.WorksheetFunction.Rept("0", inptDigit - Len(inptStr)) & inptStr
+End Function
+
+Function fNum2DP(ByVal inptMax As String) As String
+
+    Dim sMax As String: sMax = inptMax
+    Dim sRslt As String
+
+    If sMax = fSplitByDelimiter(sMax, ".", 2) Then
+        sRslt = 0
+    Else
+         sRslt = Len(fSplitByDelimiter(sMax, ".", 2))
+    End If
+
+    fNum2DP = sRslt
+
+End Function
+
+Function fDigit6(inptStr As String) As String
+'1 => 000006
+
+Dim sStr As String: sStr = inptStr
+
+fDigit6 = Application.WorksheetFunction.Rept("0", 6 - Len(sStr)) & sStr
+
+End Function
+
+Function fFullDP(inptNum As String, inptDec As String) As String
+'(100,2) -> 100.00
+'(3.5, 2)->3.50
+Dim sNum As String: sNum = inptNum
+Dim sDec As String: sDec = inptDec
+Dim sResult As String
+
+sResult = sNum
+If Not sNum = fSplitByDelimiter(sNum, ".", 1) Then  '(3.5, 2)->3.50
+    sResult = sNum & WorksheetFunction.Rept("0", sDec - fLenOfSplited(sNum, ".", 2))
+
+ElseIf sNum = fSplitByDelimiter(sNum, ".", 1) And sDec > 0 Then '(100,2) -> 100.00
+    sResult = sNum & "." & WorksheetFunction.Rept("0", sDec)
+
+Else
+    Stop
+End If
+
+fFullDP = sResult
+
+End Function
+
+Function fTrimDPZero(inptNum As String) As String
+Dim sNum As String: sNum = inptNum
+Dim sDec As String
+Dim sResult As String
+
+sResult = sNum
+If Not sNum = fSplitByDelimiter(sNum, ".", 1) Then
+    sDec = Replace(fSplitByDelimiter(sNum, ".", 2), "0", "")
+    'T (3.50)->3.5
+    'F (1.00)->1
+    sResult = IIf(Len(sDec) > 0, _
+        fSplitByDelimiter(sNum, ".", 1) & "." & sDec, _
+        fSplitByDelimiter(sNum, ".", 1))
+
+End If
+
+    fTrimDPZero = sResult
+
+End Function
+
+Function fLenOfDecimal(ByVal inptNum As String) As String
+'12 -> 0
+'123.456 -> 3
+
+    Dim sNum As String: sNum = inptNum
+    Dim sRslt As String
+
+    If sNum = fSplitByDelimiter(sNum, ".", 2) Then
+        sRslt = 0
+    Else
+         sRslt = Len(fSplitByDelimiter(sNum, ".", 2))
+    End If
+
+    fLenOfDecimal = sRslt
+
+End Function
+
+
+Function fWidenStr(ByVal inptStr As String) As String
+    fWidenStr = Strings.StrConv(inptStr, vbWide)
+End Function
+
+
+Function fReplace(ByVal inptStr As String, ByVal inptSearch As String, ByVal inptReplace As String) As String
+    fReplace = Replace(inptStr, inptSearch, inptReplace)
+End Function
+
+Function fReplaces(ByVal inptStr As String, ByVal inptReplace As String, Optional inptDelimiter As String = ",") As String ' SRC1:RPL1, SRC2:RPL2
+Dim v As Variant
+Dim s As String: s = inptStr
+Dim sD As String: sD = inptDelimiter
+    For Each v In Split(inptReplace, sD)
+        s = Replace(s, fSplit(v, 1, ":"), fSplit(v, 2, ":"))
+    Next v
+fReplaces = s
+End Function
+
+Function fReplaceRegx(ByVal inptStr As String, ByVal inptPattern As String, ByVal inptReplace As String, Optional inptGlobal As Boolean = False) As String
+'(group) => $n~
+
+Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+    With regx
+        .Global = inptGlobal 'isMultiple
+        .MultiLine = False
+        .ignorecase = False
+        .Pattern = inptPattern
+    End With
+
+If regx.test(inptStr) Then
+    fReplaceRegx = regx.Replace(inptStr, inptReplace)
+End If
+
+End Function
+
+
+Function fRegx(ByVal inptStr As String, ByVal inptPattern As String, Optional inptGlobal As Boolean = False) As Object
+Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+Dim oMatch As Object
+
+    With regx
+        .Global = inptGlobal 'isMultiple
+        .MultiLine = False
+        .ignorecase = False
+        .Pattern = inptPattern
+    End With
+
+If regx.test(inptStr) Then
+    Set oMatch = regx.Execute(inptStr)
+End If
+
+Set fRegx = oMatch
+
+End Function
+
+Function fRegxTest(ByVal inptStr As String, ByVal inptPattern As String) As Boolean
+
+Dim regx As Object: Set regx = CreateObject("vbscript.regexp")
+Dim bResult As Boolean
+
+    With regx
+        .Global = True
+        .MultiLine = False
+        .ignorecase = False
+        .Pattern = inptPattern
+    End With
+
+If regx.test(inptStr) Then
+    bResult = True
+Else
+    bResult = False
+End If
+
+fRegxTest = bResult
+
+End Function
+
+Sub CopyWithFormat()
+    With Selection.Interior
+        .Pattern = xlSolid
+        .PatternColorIndex = xlAutomatic
+        .ThemeColor = xlThemeColorAccent2
+        .TintAndShade = 0.799981688894314
+        .PatternTintAndShade = 0
+    End With
+
+    Selection.NumberFormatLocal = "@"
+    Selection.Copy
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+
+End Sub
+
+
+Public Function fIIf(inptExp As Boolean, inptT As String, inptF As String)
+    If inptExp = True Then
+        fIIf = inptT
+    Else
+        fIIf = inptF
+    End If
+End Function
+
+
+Function Clipboard(Optional StoreText As String) As String
+'PURPOSE: Read/Write to Clipboard
+'Source: ExcelHero.com (Daniel Ferry)
+
+Dim x As Variant
+
+'Store as variant for 64-bit VBA support
+  x = StoreText
+
+'Create HTMLFile Object
+  With CreateObject("htmlfile")
+    With .parentWindow.clipboardData
+      Select Case True
+        Case Len(StoreText)
+          'Write to the clipboard
+            .setData "text", x
+        Case Else
+          'Read from the clipboard (no variable passed through)
+            Clipboard = .GetData("text")
+      End Select
+    End With
+  End With
+
+End Function
+
+
+Sub DownloadWsListByPGPRM()
+Dim sOutShtName As String: sOutShtName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLWSLST_OUTSHT", "LinkSht")
+Dim vCnt As Long
+Dim lHdr As Long: lHdr = retHeaderCol(sOutShtName, fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLWSLST_OUTHDR", "LinkSht"))
+Dim s As Worksheet
+
+If lHdr = 0 Then: Call DebugOut("ERR", "haedr missing"): Exit Sub
+Call SelectOrAddWs(sOutShtName, ThisWorkbook.Name)
+
+With ThisWorkbook.Sheets(sOutShtName)
+.Range(Cells(2, lHdr), Cells(.Rows.Count, lHdr)).Clear
+.Cells(2, lHdr).Activate
+    For Each s In ThisWorkbook.Worksheets
+        ActiveCell.Value = s.Name
+        ActiveCell.Offset(1, 0).Activate
+    Next s
+End With
+
+End Sub
+
+
+Sub FillFormula(inptRng As Range, inptFormula As String)
+    Dim rRng As Range: Set rRng = inptRng
+    With rRng
+        .NumberFormat = "General"
+        .FormulaR1C1 = inptFormula
+        .Replace What:="=", Replacement:="=", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+    End With
+End Sub
+
+
+Sub SelectOrAddWs(inptShtName As String, inptWb As String)
+Dim sSht As String: sSht = inptShtName
+Dim sWb As String: sWb = inptWb
+Dim s As Worksheet
+
+If sSht = "" Then Call DebugOut("ERR", "sheet name is empty : SelectOrAddWs"): Exit Sub
+If Not sWb = ThisWorkbook.Name Then Call DebugOut("MSG", "External Workbook : SelectOrAddWs")
+
+For Each s In Workbooks(sWb).Sheets
+    If s.Name = sSht Then
+        Call DebugOut("UTIL", "select sheet " & sSht)
+        Workbooks(sWb).Sheets(sSht).Activate
+        Exit Sub
+    End If
+Next s
+
+With Workbooks(sWb).Worksheets.Add
+    Call DebugOut("UTIL", "create new sheet " & sSht)
+    .Name = sSht
+    .Activate
+End With
+
+End Sub
+
+
+Sub SelectOrOpenWb(inptwbpath As String)
+Dim sWbPath As String: sWbPath = inptwbpath
+Dim w As Workbook
+
+For Each w In Workbooks
+    If w.Name = Dir(sWbPath) Then
+        Workbooks(Dir(sWbPath)).Activate
+        Exit Sub
+    End If
+Next w
+
+Workbooks.Open (sWbPath)
+End Sub
+
+
+Sub CloseWb(inptWb As String)
+Dim sWb As String: sWb = inptWb
+Dim w As Workbook
+For Each w In Workbooks
+    If w.Name = sWb Then
+        Workbooks(sWb).Close False
+        Exit Sub
+    End If
+Next w
+
+End Sub
+
+
+Sub DeleteTmpTable(inptWorkbook As String)
+Dim sWb As String: sWb = inptWorkbook
+Dim s As Worksheet
+
+Application.DisplayAlerts = False
+For Each s In Workbooks(sWb).Sheets
+    If UCase(Left(s.Name, 3)) = "TMP" Then
+        Call DebugOut("UTIL", "DeleteTmpTable : " & s.Name)
+        Workbooks(sWb).Sheets(s.Name).Delete
+    End If
+Next s
+Application.DisplayAlerts = True
+
+End Sub
+
+Sub DeleteShtByPGPRM()
+Application.ScreenUpdating = False
+Dim s As Worksheet
+Dim sName As String
+Dim v As Variant
+Dim sLSht As String: sLSht = "LinkSht"
+Dim vShts As Variant: vShts = Split(fKey2Val("PGPRM_WSFUNC_ROOT", _
+                                                                        "PGPRM_DELSHT", _
+                                                                        sLSht), ",")
+For Each v In vShts
+    Call DeleteTableByPrefix(CStr(v))
+Next v
+
+ThisWorkbook.Sheets(sLSht).Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub DeleteTableByPrefix(inptPrefix As String)
+Dim sWb As String: sWb = ThisWorkbook.Name
+Dim s As Worksheet
+Application.DisplayAlerts = False
+For Each s In Workbooks(sWb).Sheets
+    If UCase(Left(s.Name, Len(inptPrefix))) = UCase(inptPrefix) Then
+        Call DebugOut("UTIL", "DeleteTableByPrefix : " & s.Name)
+        Workbooks(sWb).Sheets(s.Name).Delete
+    End If
+Next s
+Application.DisplayAlerts = True
+
+End Sub
+
+
+Sub fFixFormula(inptWbName As String, inptShtName As String, inptBaseCol As String, inptPasteCol As String, inptFormula As String)
+Dim rRng As Range
+Dim lEnd As Long
+Dim lBaseCol As Long: lBaseCol = Columns(inptBaseCol).Column
+Dim lPasteCol As Long: lPasteCol = Columns(inptPasteCol).Column
+Dim lRowEnd As Long
+With Workbooks(inptWbName).Sheets(inptShtName)
+    Call DebugOut("UTIL", "fFixFormula :" & inptShtName & " " & inptFormula)
+    lRowEnd = .Cells(.Rows.Count, lBaseCol).End(xlUp).Row: If lRowEnd = 1 Then Exit Sub
+    Set rRng = .Range( _
+                          .Cells(2, lBaseCol) _
+                        , .Cells(lRowEnd, lBaseCol))
+    Call FixFormula(rRng.Offset(0, lPasteCol - lBaseCol), inptFormula)
+End With
+
+End Sub
+
+Private Sub FixFormula(inptRng As Range, inptFormula As String)
+    Call FillFormula(inptRng, inptFormula)
+    inptRng.Copy
+    inptRng.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+End Sub
+
+
+Function Range2String(inptRange As Range, inptSide As String, inptDelimiter As String)
+Dim rRng As Range: Set rRng = inptRange
+Dim sSide As String: sSide = inptSide
+Dim sDel As String: sDel = inptDelimiter
+Dim v As Variant
+Dim sResult As String
+
+For Each v In rRng
+    If Not v.Value = "" Then sResult = sResult & sSide & v.Value & sSide & sDel
+Next v
+
+If sResult = "" Then Range2String = "": Exit Function
+
+sResult = Left(sResult, Len(sResult) - 1)
+Range2String = sResult
+
+End Function
+
+
+Sub calcFormula(Optional inptWsName As String = "")
+    Dim sWs As String
+    sWs = inptWsName
+    If sWs = "" Then sWs = ActiveSheet.Name
+    Sheets(inptWsName).Cells.Replace What:="=", Replacement:="=", LookAt:=xlPart, SearchOrder _
+        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+End Sub
+
+
+Function retThisWbName() As String
+    retThisWbName = ThisWorkbook.Name
+End Function
+
+
+Private Sub fMerge()
+    With Selection
+    .Merge
+    .HorizontalAlignment = xlCenter
+    .VerticalAlignment = xlCenter
+    End With
+End Sub
+
+
+Private Sub fUMerge()
+    With Selection
+        .UnMerge
+        With .Interior
+            .Pattern = xlNone
+            .TintAndShade = 0
+            .PatternTintAndShade = 0
+        End With
+    End With
+End Sub
+
+
+Private Sub fInsertV()
+    Selection.Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
+End Sub
+
+
+Private Sub fDeleteV()
+    Selection.Delete Shift:=xlToLeft
+End Sub
+
+Private Sub fInsertH()
+    Selection.Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+End Sub
+
+
+Private Sub fDeleteH()
+    Selection.Delete Shift:=xlUp
+End Sub
+
+Private Sub fCalc()
+    ActiveSheet.Calculate
+End Sub
+
+Sub copyPasteAsVal()
+Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+'Selection.NumberFormatLocal = "@"
+End Sub
+
+
+Sub insertPict()
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+Dim vPctName As String
+Dim vPctPath As String
+Dim vPathPict As String
+Dim vCnt As Long
+Dim sGrpRngName As String: sGrpRngName = "PCT_GRP"
+Dim sGrpRngRange As String: sGrpRngRange = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_GRPRNG_RANGE", "LinkSht")
+Dim lGrpSpnRangeCnt As Long: lGrpSpnRangeCnt = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_SPNRNG_ROWCNT", "LinkSht")
+Dim oWs As Worksheet: Set oWs = ThisWorkbook.Sheets(fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_OUTSHT", "LinkSht"))
+Dim oShape As Shape
+Dim vPictFiles As FileDialog: Set vPictFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectedPict As FileDialogSelectedItems
+
+With vPictFiles
+    .Filters.Clear
+    .Filters.Add "pictureFile", "*.*", 1
+    .Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_PCT_PATH_DIR", "LinkSht")
+    .Show
+End With
+
+On Error Resume Next
+
+Call SelectOrAddWs(oWs.Name, ThisWorkbook.Name)
+If Not vPictFiles.SelectedItems.Count = 1 Then
+    'Call clearShps
+End If
+
+For vCnt = 1 To vPictFiles.SelectedItems.Count ' 1 base array
+    With oWs
+         .Range(sGrpRngRange).Merge
+         .Names.Add Name:=sGrpRngName, RefersTo:=.Range(sGrpRngRange)
+         .Shapes.AddPicture(Filename:=vPictFiles.SelectedItems(vCnt), linktofile:=False, savewithdocument:=msoCTrue, Top:=100, Left:=100, Width:=-1, Height:=-1).Select
+        Set oShape = Selection.ShapeRange.Item(1)
+        oShape.LockAspectRatio = msoTrue
+        oShape.Top = CDbl(.Range(sGrpRngName).Top) + (vCnt - 1) * CDbl(.Range(sGrpRngName).Top + .Range(sGrpRngName).Height + .Rows(1).Height * lGrpSpnRangeCnt)
+        oShape.Left = CDbl(.Range(sGrpRngName).Left) 'always fix
+        oShape.Width = .Range(sGrpRngName).Width
+       If oShape.Height > .Range(sGrpRngName).Height Then
+            oShape.Height = .Range(sGrpRngName).Height
+       End If
+     End With
+Next vCnt
+
+Application.ScreenUpdating = True
+Application.DisplayAlerts = True
+
+End Sub
+
+
+Function retHeaderCol(inptSht As String, inptKey As String) As Long
+Dim sWbName As String:  sWbName = ThisWorkbook.Name
+Dim sWsName As String:  sWsName = inptSht
+Dim sKey As String: sKey = Trim(inptKey)
+Dim sMatchRow As String
+Dim sRslt As String
+On Error Resume Next
+
+With Workbooks(sWbName).Worksheets(sWsName)
+    Dim rRow As Range
+    Set rRow = .Rows(1)
+    If rRow Is Nothing Then Stop ' "Book or Sheet name is wrong"
+        sMatchRow = Application.WorksheetFunction.Match(sKey, rRow, 0)
+        If sMatchRow <> "" Then
+                sRslt = sMatchRow
+            Else
+                sRslt = 0
+        End If
+End With
+
+retHeaderCol = CLng(sRslt)
+
+End Function
+
+
+Sub DownloadFileListByPGPRM()
+Dim sOutShtName As String: sOutShtName = fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLFILELST_OUTSHT", "LinkSht")
+Dim vFiles As FileDialog: Set vFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelectFiles As FileDialogSelectedItems
+Dim vCnt As Long
+Dim lHdr As Long: lHdr = retHeaderCol(sOutShtName, fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_DLFILELST_OUTHDR", "LinkSht"))
+If lHdr = 0 Then: Call DebugOut("ERR", "haedr missing"): Exit Sub
+
+With vFiles
+    .Filters.Clear
+'    .Filters.Add "pictureFile", "*.*", 1
+    .Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    '.InitialFileName = path
+    .Show
+End With
+
+On Error Resume Next
+
+With ThisWorkbook.Sheets(sOutShtName)
+    Call SelectOrAddWs(.Name, ThisWorkbook.Name)
+    .Range(Cells(2, lHdr), Cells(.Rows.Count, lHdr)).Clear
+    .Cells(2, lHdr).Activate
+    For vCnt = 1 To vFiles.SelectedItems.Count ' 1 base array
+        ActiveCell.Value = Dir(vFiles.SelectedItems(vCnt))
+        ActiveCell.Offset(1, 0).Activate
+    Next vCnt
+'    .Columns.AutoFit
+End With
+
+End Sub
+
