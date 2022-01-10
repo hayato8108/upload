@@ -1,0 +1,546 @@
+Option Explicit
+'スプレッドシートよりパラメータ（SQLテーブルシート、抽出列、オプション）を取得し、クエリを作成する。
+
+Sub CreateDFR3DBTable()
+Dim oWb As Workbook: Set oWb = ThisWorkbook
+Application.ScreenUpdating = False
+Call ShtHdn(True, "PRE,DIFF,DB,PRG")
+
+Debug.Print ""
+Call DebugOut("ROOT", "CREATE DB START >>>" & Now())
+
+Call DebugOut("ROOT", "CREATE PRE TABLE START >>>" & Now())
+Call JointPreAnalogTable(Array("DB_PLC00_AEC_ANALOG", "DB_PLC03_AEC_ANALOG"))
+Exit Sub
+
+Call updatePreAnalogTable
+Call DebugOut("ROOT", "TABLE CHECK START >>>" & Now())
+Call CheckServerComment
+Call CheckAlarmMaster
+Call CheckAnalog2ServerPrm
+Call CheckAnalog2ActionPrm
+
+'CLEAR TEMP TABLE
+Call DeleteTableByPrefix("TMP")
+'Call DeleteTmpTable(ThisWorkbook.Name)
+Call SortSht("DB,PRG,PRE,DIFF")
+
+Call DebugOut("ROOT", "PROC END >>>" & Now())
+Debug.Print WorksheetFunction.Rept(vbNewLine, 2)
+
+'Call ShtHdn(False, "PRE,DB,PRG")
+Application.ScreenUpdating = True
+End Sub
+
+Sub SQL_EXE_CREATESHT()
+Application.ScreenUpdating = False
+Dim sShtName As String
+Dim sShtTmpName As String
+Dim sShtSqlLink As String: sShtSqlLink = "LinkShtSQL"
+Dim v As Variant
+Dim vv As Variant
+Dim sShts As Variant
+Dim sQueryFilter As String
+Dim l As Long
+
+Call DebugOut("REM", "full join : duplicat value")
+
+sShts = Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_EXE_CREATESHT", sShtSqlLink), ",")
+
+For Each v In sShts
+If Not Left(v, Len("SQL")) = "SQL" Then Call DebugOut("ERR", "prefix missing : SQL"): Exit Sub
+    sShtName = fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_OUTSHT", sShtSqlLink)
+    sShtName = fSplitBetweenAlter(sShtName, 2, "[", "$]")
+    sShtTmpName = "TMP_" & sShtName
+    sQueryFilter = fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FILTER", sShtSqlLink)
+    If fKey2Val("PGPRM_SQL_QUERY_IGRNORE", v & "_FILTER", sShtSqlLink) = "//" Or sQueryFilter = "#N/A#" Then sQueryFilter = ""
+
+    If sShtName = "#N/A#" Or sShtName = "" Then Call DebugOut("ERR", "sheet find error : " & v): Exit Sub
+    Call SelectOrAddWs(sShtName, ThisWorkbook.Name)
+    Call SelectOrAddWs(sShtTmpName, ThisWorkbook.Name)
+    'create temp sheet
+    Call GetQueryResultsOnSht(GetSqlQueryByLinkShtSQL(CStr(v)), RetCDirWbPath(), sShtTmpName)
+    'condition
+    Call GetQueryResultsOnSht(RetQuerySelectFrom(" * ", "[" & sShtTmpName & "$]") & " " & sQueryFilter, RetCDirWbPath(), sShtName)
+    'refresh and paste formula column
+    If Not UBound(Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")) = -1 Then
+        For Each vv In Split(fKey2Val("PGPRM_SQL_QUERY_ROOT", v & "_FORMULACOL", sShtSqlLink), ",")
+            l = retHeaderCol(sShtName, CStr(vv))
+            If Not l = 0 Then
+                With Sheets(sShtName)
+                     Call FillFormula(.Range(.Cells(2, l), .Cells(.Cells(Rows.Count, l).End(xlUp).Row, l)), .Cells(2, l).Value)
+                End With
+            End If
+        Next vv
+    End If
+Next v
+
+ThisWorkbook.Sheets(sShtName).Cells.Copy
+ThisWorkbook.Sheets(sShtName).Cells.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks:=False, Transpose:=False
+ThisWorkbook.Sheets(sShtName).Range("A1").Select
+
+If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_DELETE_TEMPSHT", sShtSqlLink)) = True Then Call DeleteTableByPrefix("TMP_")
+If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_SORTSHT", sShtSqlLink)) = True Then Call SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_RTNSHT", sShtSqlLink)) = True Then ThisWorkbook.Sheets(sShtSqlLink).Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+Function GetSqlQueryByLinkShtSQL(inptPrf As String)
+Dim sWSQL As String: sWSQL = ThisWorkbook.Name
+Dim sWsSql As String: sWsSql = "LinkShtSQL"
+Dim lEnd As Long
+Dim vData As Variant
+Dim sPrf As String: sPrf = inptPrf
+Dim l As Long
+Dim v As Variant
+Dim vJoin As Variant
+Dim sResult As String
+Dim sQuerySelect As String: sQuerySelect = ""
+Dim sQueryFrom As String: sQueryFrom = ""
+Dim sQueryCondition As String: sQueryCondition = ""
+Dim sQueryUnion As String: sQueryUnion = ""
+Dim sQueryJoin As String: sQueryJoin = ""
+Dim sQueryFree As String: sQueryFree = ""
+Dim sSqlJoinQuery As String: sSqlJoinQuery = ""
+Dim bCloseUnion As Boolean
+Dim bCloseJoin As Boolean
+
+ReDim v(CLng(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_JOINTMAX", sWsSql)))
+ReDim vJoin(CLng(fKey2Val("PGPRM_SQL_QUERY_ROOT", "SQL_PGPRM_JOINTMAX", sWsSql)))
+
+sQuerySelect = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_SELECT", sWsSql)
+sQueryFrom = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FROM", sWsSql)
+sQueryCondition = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_CONDITION", sWsSql): If sQueryCondition = "#N/A#" Or fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_CONDITION", sWsSql) = "//" Then sQueryCondition = ""
+'sQueryJoin = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOIN_OUTER", sWsSql): If sQueryJoin = "#N/A#" Then sQueryJoin = ""
+'sQueryFree = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FREE", sWsSql): If sQueryFree = "#N/A#" Then sQueryFree = ""
+
+If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_INNERJOIN_FROM", sWsSql)
+    v(1) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_INNERJOIN_FROM", sWsSql)
+    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+    If Not (v(0) = "#N/A#" Or v(0) = "" Or v(2) = "#N/A#" Or v(2) = "" Or v(1) = "//") Then
+        vJoin(l) = _
+                        "INNER JOIN " & vbLf & _
+                        "        " & v(0) & vbLf & _
+                        "                ON " & v(2) & vbLf & _
+                        ""
+    End If
+End If
+
+If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_FULLJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+    v(3) = sQueryFrom: v(4) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
+    v(5) = sQuerySelect
+    v(6) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_FULLJOIN_FROM", sWsSql)
+    If Not (v(0) = "#N/A#" Or v(0) = "" Or v(6) = "//") Then
+        vJoin(0) = _
+                        "LEFT OUTER JOIN " & vbLf & _
+                        "        " & v(0) & vbLf & _
+                        "                ON " & v(2) & vbLf & _
+                        " UNION ALL " & vbLf & _
+                        " SELECT " & vbLf & _
+                        "        " & v(5) & vbLf & _
+                        " FROM " & vbLf & _
+                        "        " & v(3) & vbLf & _
+                        " RIGHT OUTER JOIN " & vbLf & _
+                        "        " & v(0) & vbLf & _
+                        "                ON " & v(2) & vbLf & _
+                        ""
+    End If
+End If
+
+If Not fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql) = "#N/A#" Then
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_LEFTJOIN_FROM", sWsSql): v(1) = fReplace(fSplit(v(0), 2, " AS "), " ", "")
+    v(2) = fReplace(fSplit(sQueryFrom, 2, " AS "), " ", "")
+    v(3) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_LEFTJOIN_FROM", sWsSql)
+    v(4) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_JOINKEY", sWsSql)
+    If Not (v(0) = "#N/A#" Or v(0) = "" Or v(3) = "//") Then
+
+        vJoin(l) = _
+                        "LEFT OUTER JOIN " & vbLf & _
+                        "    " & v(0) & vbLf & _
+                        "                ON " & _
+                                 v(4) & _
+                        ""
+    End If
+End If
+
+'UNION ALL SELECT
+For l = 1 To UBound(vJoin)
+    v(0) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(1) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_FROM", sWsSql)
+    v(2) = fKey2Val("PGPRM_SQL_QUERY_ROOT", sPrf & "_UNION-" & l & "_CONDITION", sWsSql): If v(2) = "#N/A#" Then v(2) = ""
+    v(3) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_SELECT", sWsSql)
+    v(4) = fKey2Val("PGPRM_SQL_QUERY_IGRNORE", sPrf & "_UNION-" & l & "_CONDITION", sWsSql)
+    If v(4) = "//" Then v(2) = ""
+    If v(0) = "#N/A#" Or v(0) = "" Or v(1) = "#N/A#" Or v(1) = "" Or v(3) = "//" Then Exit For
+
+    Call checkSqlHeader(CStr(v(0)), CStr(v(1)))
+    vJoin(l) = vJoin(l) & vbLf & _
+                    " UNION ALL SELECT " & vbLf & _
+                    "    " & v(0) & vbLf & _
+                    " FROM " & vbLf & _
+                    "    " & v(1) & _
+                    "    " & v(2) & _
+                    ""
+Next l
+
+sSqlJoinQuery = Join(vJoin, " ")
+
+sResult = _
+                " SELECT " & vbLf & _
+                "        " & sQuerySelect & vbLf & _
+                " FROM " & vbLf & _
+                "        " & sQueryFrom & vbLf & _
+                "        " & sQueryCondition & vbLf & _
+                sSqlJoinQuery & vbLf & _
+                ""
+
+If sQuerySelect = "" Or sQueryFrom = "" Then Call DebugOut("ERR", "error, empty select or from"): sResult = ""
+
+GetSqlQueryByLinkShtSQL = sResult
+
+End Function
+
+
+Sub CheckAnalog2ServerPrm()
+   'SERVER,ANALOG,TREND,FP
+    Dim sSqlQuery As String
+    Dim sWbPath As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    Dim sSelect As String
+    sSelect = " ANLG.[FULL_ADR]" & _
+                   ",SHEET" & _
+                   ",ALIAS" & _
+                   ",ANLG.[COMMENT] AS ANLG_COMMENT" & _
+                    ",SVR.[COMMENT] AS SVR_COMMENT" & _
+                   ",MIN" & _
+                   ",MAX" & _
+                   ",ANLG.[DECIMAL] AS ANLG_DECIMAL" & _
+                   ",SVR.[DEC1] AS SVR_DECIMAL" & _
+                   ",ANLG.[UNITS] AS ANLG_UNITS" & _
+                   ",SVR.[UNITS] AS SVR_UNITS" & _
+                   ",ANLG.[BINALY] AS ANLG_BIN" & _
+                   ",SVR.[BINALY] AS SVR_BIN" & _
+                   ",SVR.[CSV3]"
+                   
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    
+    'JOIN WITH SERVER
+    sSqlQuery = ""
+    sSqlQuery = sSqlQuery & _
+        RetQuerySelectFrom(sSelect, "[PRE_ANALOG_TABLE$] AS ANLG") & _
+        "LEFT OUTER JOIN [DB_SERVER_CSV$] AS SVR ON ANLG.[FULL_ADR] = SVR.[FULL_ADR] " & _
+    ""
+    sWsName = "DIFF_ANGL&SVR" ' ======================================
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
+End Sub
+
+
+Sub CheckAnalog2ActionPrm()
+    'SERVER,ANALOG,TREND,FP
+    Dim sSqlQuery As String
+    Dim sWbPath As String
+    Dim sWbName As String
+    Dim sWsName As String
+    Dim sWbDBPath As String
+    Dim sSelect As String
+    Dim vSelect(10) As Variant
+    'server
+    vSelect(0) = "'SERVER_CSV' AS [SHEET],SVR.[FULL_ADR] AS [FULL_ADR],SVR.[COMMENT] AS [COMMENT],SVR.[UNITS] AS [UNITS], SVR.[DECIMAL] AS [DECIMAL], SVR.[BINALY] AS BINALY  " & _
+                    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
+                    ""
+   'Fieldmaster
+    vSelect(1) = "'FIELD_MASTER' AS [SHEET],[ALIAS],[COMMENT],[DECIMAL]"
+    vSelect(2) = "'FIELD_MASTER',PRE.[ALIAS],PRE.[COMMENT],PRE.[DECIMAL]" & _
+    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    'Peninfo
+    vSelect(3) = "'PENINFO' AS [SHEET],PINFO.[ALIAS],PINFO.[COMMENT],PINFO.[UNITS],PINFO.[DECIMAL]" & _
+        ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY  ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE"
+    'Faceplate
+    vSelect(4) = "'FACEPLATE' AS [SHEET]" & _
+                        ",ANLG.[SHEET] AS [ANLG_SHEET]" & _
+                        ",ANLG.[NO]" & _
+                        ",FP.[ALIAS_BASE]" & _
+                        ",ANLG.[ALIAS_BASE] AS [ANLG_ALIAS]" & _
+                        ",FP.[COMMENT]" & _
+                        ",ANLG.[COMMENT] AS [ANLG_COMMENT]" & _
+                        ",FP.[PV_MAX] AS FP_PV_MAX" & _
+                        ",FP.[SV_MAX] AS FP_SV_MAX" & _
+                        ",FP.[TREND_MAX] AS FP_TREND_MAX" & _
+                        ",ANLG.[MAX] AS ANLG_MAX" & _
+                        ",FP.[PV_MIN] AS FP_PV_MIN" & _
+                        ",FP.[SV_MIN] AS FP_SV_MIN" & _
+                        ",FP.[TREND_MIN] AS FP_TREND_MIN" & _
+                        ",ANLG.[MIN] AS ANLG_MIN" & _
+                        ",FP.[UNITS]" & _
+                        ",ANLG.[UNITS] AS [ANALOG_UNITS]" & _
+                        ",FP.[DECIMAL]" & _
+                        ", ANLG.[DECIMAL] AS [ANALOG_DECIMAL]" & _
+                        ", FP.[FP_TYPE] AS FP_FPTYPE " & _
+                        ",ANLG.[FP_TYPE] AS ANALOG_FPTYPE" & _
+                        " WHERE ANLG.[TYPE] = 'PV'" & _
+                        ""
+                        
+    sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+
+    '(FULL_ADR) => SERVER
+    sSelect = CStr(vSelect(0))
+    sSqlQuery = sSqlQuery & _
+        RetQuerySelectFrom(sSelect, "[DB_SERVER_CSV$] AS SVR") & _
+        "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[FULL_ADR] = SVR.[FULL_ADR]" & _
+        "WHERE SVR.[UNITS] IS NOT NULL  OR SVR.[DECIMAL] IS NOT NULL " & _
+        "ORDER BY ANLG.[SHEET], [NO], SVR.[FULL_ADR] ASC " & _
+        ""
+    sWsName = "DIFF_ANGL&SERVER" ' ======================================
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
+
+    '(ALIAS) => Fieldmaster
+    sSelect = CStr(vSelect(1))
+    sSqlQuery = sSqlQuery & _
+            RetQuerySelectFrom(sSelect, "[DB_LST_FIELDMASTER_TAG_PRT$]") & _
+        "UNION ALL " & _
+            RetQuerySelectFrom(sSelect, "[DB_LST_FIELDMASTER_TAG_SV$]") & _
+        "UNION ALL " & _
+            RetQuerySelectFrom(sSelect, "[DB_LST_FIELDMASTER_TAG_PV$]") & _
+        "UNION ALL " & _
+            RetQuerySelectFrom(sSelect, "[DB_LST_FIELDMASTER_TAG $]") & _
+        ""
+    
+    sWsName = "TMP_pre_JOIN_WITH_ALIAS" ' ======================================
+     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
+
+    sSelect = CStr(vSelect(2))
+    sSqlQuery = sSqlQuery & _
+        RetQuerySelectFrom(sSelect, "[" & sWsName & "$] AS PRE") & _
+        "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS] = PRE.[ALIAS]" & _
+        "WHERE PRE.[ALIAS] IS NOT NULL " & _
+        "ORDER BY ANLG.[SHEET], [NO] ASC " & _
+        ""
+
+    sWsName = "DIFF_ANLG&FIELDMASTER" ' ======================================
+     Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
+
+    '(ALIAS) => TREND
+    sSelect = CStr(vSelect(3))
+    sSqlQuery = sSqlQuery & _
+             RetQuerySelectFrom(sSelect, "[DB_TREND_PENINFO $] AS PINFO") & _
+                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = PINFO.[ALIAS]" & _
+        ""
+        
+    sWsName = "DIFF_ANLG&PENINFO" ' ======================================
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    sSqlQuery = ""
+
+   sSelect = "'FACEPLATE' AS [SHEET],FP.[ALIAS_BASE],FP.[COMMENT],FP.[PV_MAX],FP.[PV_MIN],FP.[TREND_MAX],FP.[TREND_MIN],FP.[SV_MAX],FP.[SV_MIN],FP.[UNITS],FP.[DECIMAL], FP.[FP_TYPE] AS FP_FPTYPE " & _
+                    ",[NO],ANLG.[SHEET] AS [ANLG_SHEET],ANLG.[ALIAS_BASE] AS [ANLG_ALIAS],ANLG.[COMMENT] AS [ANLG_COMMENT],ANLG.[MAX] AS [ANALOG_MAX],ANLG.[MIN] AS [ANALOG_MIN],ANLG.[UNITS] AS [ANALOG_UNITS], ANLG.[DECIMAL] AS [ANALOG_DECIMAL], ANLG.[BINALY] AS ANALOG_BINALY ,ANLG.[FP_TYPE] AS ANALOG_FPTYPE,ANLG.[TYPE]" & _
+                    ""
+    sSqlQuery = sSqlQuery & _
+             RetQuerySelectFrom(sSelect, "[PRE_FP_TABLE$] AS FP ") & _
+                     "RIGHT OUTER JOIN [PRE_ANALOG_TABLE$] AS ANLG ON ANLG.[ALIAS_BASE] = FP.[ALIAS_BASE]" & _
+                     "WHERE ANLG.[TYPE] = 'PV' " & _
+                     ""
+
+    sWsName = "DIFF_ANLG&FACEPLATE" ' ======================================
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
+End Sub
+
+
+Sub JointPreAnalogTable(inptShts As Variant)
+Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+Dim sWsName As String
+Dim sSqlQuery As String
+Dim vWb As Variant
+Dim v As Variant
+vWb = inptShts
+
+For Each v In vWb
+    Call CreatePreAnalogTable("[" & CStr(v) & "$]", "TMP_PRE_" & CStr(v))
+Next v
+
+sSqlQuery = ""
+For Each v In vWb
+    sSqlQuery = sSqlQuery & _
+    RetQuerySelectFrom(" * ", "[" & "TMP_PRE_" & CStr(v) & "$] AS ANLG") & _
+    "UNION ALL " & _
+    ""
+Next v
+
+sSqlQuery = Left(sSqlQuery, Len(sSqlQuery) - 10)
+sWsName = "PRE_ANALOG_TABLE"
+Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
+End Sub
+
+Function RetAColValues(inptSht As String) As String
+    Call DebugOut("UTIL", "RetAColValues  " & inptSht)
+    Dim sWsName As String: sWsName = inptSht
+    Dim rRng As Range
+    
+    Set rRng = ThisWorkbook.Sheets(sWsName).Range("A1:A" & Cells(Rows.Count, 1).End(xlUp).Row)
+    RetAColValues = Range2String(rRng, "'", ",")
+End Function
+
+
+Sub test()
+Dim sSqlQuery As String
+Dim sWbPath As String
+Dim sWbName As String
+Dim sWsName As String
+Dim sWbDBPath As String
+Dim sCsvWbPath As String
+Dim sCsvWsName As String
+
+sCsvWbPath = "C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\TREND01\DB\RAW\SMR_RAW_1_20211020.csv"
+sCsvWsName = fReplace(Dir(sCsvWbPath), ".csv", "")
+'sWbDBPath = " 'C:\Users\Owner\Documents\workspace\DFR3_DB_211004.xlsm' 'Excel 12.0 Xml;HDR=YES' "
+
+'Out Setting
+sWsName = "SQL_OUT"
+sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+
+Dim sTable1 As String
+Dim sHeader1 As String
+
+sHeader1 = "[DATETIME]" & _
+                    ",[AI_Q#FQI_P302115#PV]" & _
+                    ",[AI_Q#FQI_P303175#PV]" & _
+                    ""
+Dim sStartDate As String: sStartDate = "2021/10/20 05:30:00"
+Dim sEndDate As String: sEndDate = "2021/10/20 05:40:00"
+
+sSqlQuery = _
+        RetQuerySelectFrom(sHeader1, "[" & sCsvWsName & "$]", sCsvWbPath) & _
+        "WHERE [DATETIME] BETWEEN #" & _
+        Format(sStartDate, "MM/dd/yy hh:mm:ss") & _
+        "# AND #" & _
+        Format(sEndDate, "MM/dd/yy hh:mm:ss") & "#"
+
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+    
+End Sub
+
+
+Sub fjoinTable(inptLeft As String, inptLeftSel As String, inptRight As String, inptRightSel As String, inptKey As String, Optional inptOutSht As String)
+Dim sWbName As String: sWbName = ThisWorkbook.path & "\" & ThisWorkbook.Name
+Dim sWsName As String: sWsName = inptSht
+Dim sSqlQuery As String
+Dim sLeft As String: sLeft = inptLeft
+Dim sRight As String: sRight = inptRight
+Dim vLeftSel As Variant: vLeftSel = Split(inptLeftSel, ",")
+Dim vRightSel As Variant: vRightSel = Split(inptRightSel, ",")
+Dim sLeftSel As String
+Dim sRightSel As String
+Dim v As Variant
+Dim sKey As String: sKey = inptKey
+sLeft = "[" & sLeft & "$]"
+sRight = "[" & sRight & "$]"
+sLeftSel = """"
+sRightSel = """"
+sWbName = ThisWorkbook.Name
+
+If inptOutSht = "" Then
+    sWsName = "TMP_SQL_OUT"
+Else
+    sWsName = inptOutSht
+End If
+
+For Each v In vLeftSel
+    sLeftSel = sLeftSel & "L.[" & CStr(v) & "],"
+Next v
+    sLeftSel = Left(sLeftSel, Len(sLeftSel) - 1)
+
+For Each v In vRightSel
+    sRightSel = sRightSel & "R.[" & CStr(v) & "],"
+Next v
+    sRightSel = Left(sRightSel, Len(sRightSel) - 1)
+    
+    sSqlQuery = sLeftSel & sRightSel
+    
+    sSqlQuery = _
+        RetQuerySelectFrom("""" & sSqlQuery & """", sLeft & " AS L") & _
+        "LEFT OUTER JOIN " & sRight & " AS R ON  L.[" & sKey & "] = R.[" & sKey & "]" & _
+        ""
+    Call GetQueryResultsOnSht(sSqlQuery, sWbName, sWsName)
+
+End Sub
+
+
+Sub GetQueryResultsOnSht(sSqlQuery As String, sWbName As String, sWsName As String)
+    If Dir(sWbName) = "" Then Call DebugOut("ERR", "check WorkbookName is FullPath")
+    If sWsName = "" Or sWsName = "#N/A#" Then Call DebugOut("ERR", "WsName : " & sSqlQuery): Exit Sub
+    
+    Call DebugOut("GET_QUERY", sWsName & " " & sSqlQuery)
+    Call SelectOrAddWs(sWsName, Dir(sWbName))
+    Call GetQueryResults(sSqlQuery, sWbName, sWsName)
+End Sub
+
+
+Function RetQuerySelectFrom(inptSels As String, inptSht As String, Optional inptwbpath As String = "")
+Call DebugOut("RET_QUERY_SELECT", "RetQuerySelectFrom")
+Dim sResult As String
+Dim aSels As Variant: aSels = Split(inptSels, ",")
+Dim sSht As String: sSht = inptSht
+Dim sWbDBPath As String: sWbDBPath = inptwbpath
+Dim v As Variant
+Dim vSels As String
+
+For Each v In aSels
+    vSels = vSels & v & ", "
+Next v
+
+vSels = Left(vSels, Len(vSels) - 2)
+
+sResult = _
+" SELECT " & _
+         vSels & " " & _
+" FROM " & _
+        sSht & " "
+
+If sWbDBPath <> "" Then sResult = sResult & "IN '" & sWbDBPath & "'" & " " & "'Excel 12.0 Xml;HDR=YES'"
+
+RetQuerySelectFrom = sResult
+
+End Function
+
+
+ Sub checkSqlHeader(inptSelect As String, inptSht As String)
+'select => [DEVICE],[COMMENT1] &' ' & [COMMENT2] AS [COMMENT], [CATEGORY]
+'sht => [DB_PLC00_OP_Y$]
+Dim vSelect As Variant: vSelect = Split(inptSelect, ",")
+Dim vSplited As Variant: ReDim vSplited(UBound(vSelect))
+Dim sSht As String: sSht = fSplitBetweenAlter(inptSht, 2, "[", "$]")
+Dim l As Long
+Dim ll As Long
+
+For l = 0 To UBound(vSelect)
+    vSelect(l) = fReplaces(vSelect(l), "]AS:] AS,AS[:AS [")
+    vSplited(l) = fSplit(vSelect(l), 1, " AS ")
+Next l
+
+For l = LBound(vSplited) To UBound(vSplited)
+        ll = 1
+        Do Until fSplitBetween(vSplited(l), ll, "[", "]", True) = ""
+
+'      Debug.Print fSplitBetween(vSplited(l), ll, "[", "]", True)
+'      Debug.Print retHeaderCol(sSht, fSplitBetween(vSplited(l), ll, "[", "]", True))
+            If retHeaderCol(sSht, fSplitBetween(vSplited(l), ll, "[", "]", True)) = 0 Then
+                Call DebugOut("ERR", "does not exist header in " & sSht & " : " & fSplitBetween(vSplited(l), ll, "[", "]", True))
+            End If
+        ll = ll + 1
+
+    Loop
+Next l
+
+End Sub
+
+
