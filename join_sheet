@@ -1,0 +1,492 @@
+Option Explicit
+'シート上よりパラメーター（ブック名、シート名、列範囲、ヘッダ、関数）を読み取り、複数シートの指定範囲をつなぎ合わせて、SQLで使用するテーブルにする。
+'つなぎ合わせたシートにヘッダを付与する、指定列にエクセル関数を流し込み、結果を文字列に変換しておく。
+
+Dim gTmp As String
+
+'CONVERT EXCEL 2 DB==========================================================
+
+Sub Excel2DbShtRefreshActiveSht()
+
+If Not ActiveSheet.Tab.ColorIndex = -4142 And Not ActiveSheet.Tab.ColorIndex = 49 Then Debug.Print "MSG:: Locked": Exit Sub
+Call Excel2DbShtRefresh(ThisWorkbook.Name, ActiveSheet.Name)
+
+End Sub
+
+Function RetCDirTmpWbPath(inptPath As String) As String
+Dim sPath As String: sPath = inptPath
+Dim sTmpPath As String
+    sTmpPath = fReplace(ThisWorkbook.path & "\DB_TmpFile\" & Dir(sPath), ".txt", ".csv")
+    RetCDirTmpWbPath = sTmpPath
+End Function
+
+Function RetCDirWbPath() As String
+Dim sTmpPath As String
+    sTmpPath = ThisWorkbook.path & "\" & ThisWorkbook.Name
+    RetCDirWbPath = sTmpPath
+End Function
+
+
+Sub JoinLogCsv(inptSelect As String) 'fileld1,field2 ...
+Application.DisplayAlerts = False
+Application.ScreenUpdating = False
+
+Dim oWbDst As Workbook: Set oWbDst = ThisWorkbook
+Dim sTargetPath As String
+Dim swsNameBase As String
+Dim sWsName As String
+Dim sSelect As String: sSelect = "[" & fReplace(inptSelect, ",", "],[") & "]"
+Dim vCsvFiles As FileDialog: Set vCsvFiles = Application.FileDialog(msoFileDialogFilePicker)
+Dim vSelected As FileDialogSelectedItems
+Dim lFrmRSt As Long: lFrmRSt = 1
+Dim lFrmREnd As Long
+Dim lFrmCEnd As Long
+Dim lDstRSt As Long: lDstRSt = 2
+Dim lDstREnd As Long
+Dim lCnt As Long
+
+With vCsvFiles
+    .Filters.Clear
+    .Filters.Add "csvFile", "*.csv", 1
+    '.Title = "FILE SELECT"
+    .AllowMultiSelect = True
+    .InitialFileName = "C:\Users\Owner\Documents\workspace\PRJ\DFR\server_data\log\alarmlog"
+    .Show
+End With
+
+On Error Resume Next
+     
+If vCsvFiles.SelectedItems.Count = 0 Then Exit Sub
+
+swsNameBase = "TMP_JOIN_LOG_CSV"
+sWsName = swsNameBase & "1"
+Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+'thisworkbook.Sheets(sWsName).Cells.Clear
+
+With ThisWorkbook.Sheets(sWsName)
+    For lCnt = 1 To vCsvFiles.SelectedItems.Count
+        sTargetPath = vCsvFiles.SelectedItems(lCnt)
+        Call CloseWb(Dir(sTargetPath))
+        OpenFileAsWb (sTargetPath)
+                       
+        lFrmREnd = Workbooks(Dir(sTargetPath)) _
+                            .Sheets(fReplace(Dir(sTargetPath), ".csv", "")) _
+                            .Cells(Rows.Count, 1).End(xlUp).Row
+                            
+        lFrmCEnd = Workbooks(Dir(sTargetPath)) _
+                            .Sheets(fReplace(Dir(sTargetPath), ".csv", "")) _
+                            .Cells(1, Columns.Count).End(xlToLeft).Column
+                   
+        Workbooks(Dir(sTargetPath)) _
+                            .Sheets(fReplace(Dir(sTargetPath), ".csv", "")) _
+                            .Range(Cells(lFrmRSt, 1), Cells(lFrmREnd, lFrmCEnd)).Select
+        Selection.Copy
+       
+        lDstREnd = oWbDst.Sheets(sWsName).Cells(Rows.Count, 1).End(xlUp).Row + 1
+        If lDstREnd < lDstRSt Then lDstREnd = lDstRSt
+
+        If lDstREnd + lFrmREnd > Rows.Count Then
+            sWsName = swsNameBase & CInt(fReplace(sWsName, swsNameBase, "")) + 1
+            Call SelectOrAddWs(sWsName, ThisWorkbook.Name)
+            lDstREnd = lDstRSt
+        End If
+        
+        oWbDst.Sheets(sWsName).Cells(lDstREnd, 1).PasteSpecial
+        
+        Workbooks(Dir(sTargetPath)).Close False
+    Next lCnt
+End With
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+End Sub
+
+
+Function fSplitCsvPrmDec(inptStr As String, inptRetCol As Long) As String
+Dim lCol As Long: lCol = inptRetCol
+Dim sStr As String: sStr = inptStr
+Dim sDec As String: sDec = fSplit(sStr, 2, "DEC:")
+Dim sResult As String
+
+If sDec = sStr Then
+    sResult = ""
+Else
+    Select Case lCol
+        Case 1
+            sResult = fSplit(sDec, 1, "|")
+        Case 2
+            sResult = fSplit(sDec, 2, "|")
+        Case 3
+            sResult = fSplit(fSplit(sDec, 3, "|"), 1, "+")
+        Case Else
+            Stop
+    End Select
+End If
+
+fSplitCsvPrmDec = sResult
+
+End Function
+
+
+'PLC => FULLADR
+Function retDev2FullAdrFormat(inptPlc As String, inptFolder As String, inptDevice As String, inptDigit As Long) As String
+    If inptDevice = "" Then retDev2FullAdrFormat = "": Exit Function
+    retDev2FullAdrFormat = inptPlc & "." & inptFolder & "." & RetXAPDevFormat(inptDevice, False)
+End Function
+
+
+'DFR ALIAS => FULLADR
+Function retDFRALIAS2FULLADR(inptAlias As String) As String
+'DFR Alias PGR00001_01
+'DFR Alias PGR00000
+'DFR Alias P3R00000
+
+If inptAlias = "" Then Exit Function
+Dim sPrf As String
+Dim sAdr As String: sAdr = fReplace(inptAlias, "_", ".")
+Dim sFol As String
+Dim sResult As String
+
+Select Case Left(inptAlias, 2)
+Case "PG"
+    sPrf = "PLC00"
+    sFol = retDeviceLetterChar(fReplace(inptAlias, Left(inptAlias, 2), ""))
+    sAdr = Mid(sAdr, 3, Len(sAdr))
+Case "P3"
+    sPrf = "PLC03"
+    sFol = retDeviceLetterChar(fReplace(inptAlias, Left(inptAlias, 2), ""))
+    sAdr = Mid(sAdr, 3, Len(sAdr))
+End Select
+    
+sResult = RetXAPDevFormat(sAdr, False)
+sResult = sPrf & "." & sFol & "." & sResult
+retDFRALIAS2FULLADR = sResult
+
+End Function
+
+'D0000.0 => D0000@0
+Function RetXAPDevFormat(inptDev As String, inptZero As Boolean, Optional inptDigit As Long = 5, Optional inptDelimiter As String = ".") As String
+Dim sDev As String: sDev = inptDev
+Dim sDlmt As String: sDlmt = inptDelimiter
+Dim sDevL As String
+Dim sDevR As String
+Dim bZero As Boolean: bZero = inptZero 'true => @0 false => ""
+Dim sResult As String
+Dim lDigit As Long: lDigit = inptDigit
+Dim l As Long: l = 1
+Dim sLetter As String
+
+If inptDev = "" Then Call DebugOut("UTIL", "xap format : inptDev is Empty "): Exit Function
+sLetter = retDeviceLetterChar(inptDev)
+If sLetter = "" Then Call DebugOut("ERR", "xap format fail " & inptDev): Exit Function
+
+sDevL = fSplit(sDev, 1, sDlmt)
+sDevR = fSplit(sDev, 2, sDlmt)
+
+Select Case sDevR
+    Case "A"
+        sDevR = 10
+    Case "B"
+        sDevR = 11
+    Case "C"
+        sDevR = 12
+    Case "D"
+        sDevR = 13
+    Case "E"
+        sDevR = 14
+    Case "F"
+        sDevR = 15
+    Case Else
+End Select
+
+If sDevL = sDevR Then
+    sResult = sLetter & fDigitN(Right(sDevL, Len(sDevL) - Len(sLetter)), lDigit)
+ElseIf (CInt(sDevR) = "0" And bZero = False) Then
+    'CInt(W02F1) => Type Mismatch
+    sResult = sLetter & fDigitN(Right(sDevL, Len(sDevL) - Len(sLetter)), lDigit)
+Else
+    sResult = sLetter & fDigitN(Right(sDevL, Len(sDevL) - Len(sLetter)), lDigit) & "@" & CInt(sDevR)
+End If
+
+RetXAPDevFormat = sResult
+
+End Function
+
+
+Function retDeviceLetterChar(inptDev As String)
+Dim l As Long: l = 1
+Dim sLetter As String
+Do Until IsNumeric(Mid(inptDev, l, 1)) = True
+    sLetter = sLetter & Mid(inptDev, l, 1)
+    l = l + 1
+Loop
+retDeviceLetterChar = sLetter
+End Function
+
+
+Function fSplitCsvPrmBin(inptStr As String) As String
+
+Dim sStr As String: sStr = inptStr
+Dim sResult As String
+
+If fSplit(sStr, 2, "FLT") <> sStr Then
+    sResult = "FLT"
+ElseIf fSplit(sStr, 2, "BIN") <> sStr Then
+    sResult = "BIN" & fSplitBetweenAlter(sStr, 2, "BIN", "+")
+Else
+    sResult = ""
+End If
+
+fSplitCsvPrmBin = sResult
+
+End Function
+
+
+Sub PasteShtData(inptWbName As String, inptShtName As String, inptHeader As Variant) 'A:DEVICE,C:COMMENT1,D:COMMENT2
+Dim vHeader As Variant: vHeader = inptHeader
+Dim v As Variant
+Dim s As String
+Call DebugOut("REM", "PasteShtData : %")
+With Workbooks(inptWbName).Sheets(inptShtName)
+For Each v In vHeader
+    If Left(Trim(fSplit(v, 1, ":")), 1) = "%" Then
+        s = fReplace(v, fSplit(v, 1, ":") & ":", "")
+        '%A:Fix;BaseCol;PasteCol;=Formula
+        If fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") = "Fix" Then
+            .Range(fReplace(fSplit(v, 1, ":"), "%", "") & "1").Value = fSplitBetweenWithDelimiter(s, 1, "[", "]", ",")
+            Call fFixFormula(inptWbName _
+                                        , inptShtName _
+                                        , fSplitBetweenWithDelimiter(s, 3, "[", "]", ",") _
+                                        , Trim(fReplace(fSplit(v, 1, ":"), "%", "")) _
+                                        , fSplitBetweenWithDelimiter(s, 4, "[", "]", ","))
+        ElseIf fSplitBetweenWithDelimiter(s, 2, "[", "]", ",") = "Fill" Then
+            Call DebugOut("ERR", "not yet")
+        Else
+            Call DebugOut("ERR", "fail PasteShtData")
+        End If
+    Else
+        If Not v = "" Then
+            .Range(Trim(fSplit(v, 1, ":")) & "1").Value = _
+                Trim(fSplit(v, 2, ":"))
+        End If
+    End If
+Next v
+End With
+End Sub
+
+
+Sub DB_EXE_CREATESHT()
+Call DebugOut("REM", "parts feature table")
+Application.ScreenUpdating = False
+
+
+Dim v As Variant
+Dim sShtName As String: sShtName = "LinkShtDB"
+Dim sShts As Variant
+sShts = Split(fKey2Val("PGPRM_DB_EXE_ROOT", "DB_EXE_CREATESHT", sShtName), ",")
+If UBound(sShts) = -1 Then Call DebugOut("ERR", "sht name is empty")
+gTmp = ""
+For Each v In sShts
+    Call SelectOrAddWs(CStr(v), ThisWorkbook.Name)
+    Call Excel2DbShtRefresh(ThisWorkbook.Name, CStr(v))
+Next v
+
+If CBool(fKey2Val("PGPRM_DB_EXE_ROOT", "DB_SORTSHT", sShtName)) = True Then SortShtByPGPRM
+If CBool(fKey2Val("PGPRM_DB_EXE_ROOT", "DB_DELETE_TEMPSHT", sShtName)) = True Then DeleteShtByPGPRM
+Workbooks(Dir(gTmp)).Close False
+ThisWorkbook.Sheets("LinkShtDB").Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+Function retArrayBetween(inptArray As Variant, inptSt As Long, inptEnd As Long) As Variant
+Dim vOld As Variant: vOld = inptArray
+Dim vNew As Variant: vNew = Array()
+Dim v As Variant
+Dim l As Long
+
+For l = inptSt To inptEnd
+    If Not vOld(l) = "" Then
+        ReDim Preserve vNew(l - inptSt)
+        vNew(l - inptSt) = vOld(l)
+    Else
+        retArrayBetween = vNew: Exit Function
+    End If
+Next l
+
+retArrayBetween = vNew
+
+End Function
+
+Sub Excel2DbShtRefresh(inptWb As String, inptWs As String) ' DstWb, DstWs
+Dim wbSRC As Workbook
+Dim wbDst As Workbook: Set wbDst = Workbooks(inptWb)
+Dim wsDst As Worksheet: Set wsDst = wbDst.Worksheets(inptWs)
+Dim vData As Variant
+Dim l As Long
+Dim lEnd As Long
+Dim sPrf As String: sPrf = inptWs 'DB_PLC00_M
+Dim sWbLD As String: sWbLD = ThisWorkbook.Name
+Dim sWsLD As String: sWsLD = "LinkShtDB"
+Dim sWb As String
+Dim sWs As String
+Dim sStCell As String
+Dim sEndCell As String
+Dim lEndDst As Integer
+Dim vRest As Variant
+Dim sPrvWbName As String: sPrvWbName = ""
+
+wsDst.Rows("2:" & Rows.Count).Clear
+wsDst.Rows("1:" & Rows.Count).NumberFormat = "@"
+
+With Workbooks(sWbLD).Sheets(sWsLD)
+lEnd = .Cells(.Rows.Count, 1).End(xlUp).Row
+    For l = 1 To lEnd
+        'search link key
+        If Not .Cells(l, 1).Value = "" And Left(.Cells(l, 1).Value, Len(sPrf)) = sPrf Then ' DB_XXX_XX
+            'append range
+            vData = fGetRowData(sWbLD, sWsLD, .Cells(l, 1).Value, "A")  'row => [link parameter]
+            If UBound(vData) = -1 Then Debug.Print "does not match": Exit Sub
+                sWb = CStr(vData(2))
+                sWs = CStr(vData(3))
+                sStCell = CStr(vData(4))
+                sEndCell = CStr(vData(5))
+                vRest = retArrayBetween(vData, 6, UBound(vData))
+
+                If Not gTmp = RetCDirTmpWbPath(sWb) Then
+                    Call CloseWb(Dir(gTmp))
+                    Call CloseWb(Dir(sWb))
+                    Call CloseWb(Dir(RetCDirTmpWbPath(sWb)))
+                    FileCopy sWb, RetCDirTmpWbPath(sWb)
+                    sWb = RetCDirTmpWbPath(sWb)
+                    OpenFileAsWb (sWb)
+                    gTmp = sWb
+                End If
+
+                Set wbSRC = Workbooks(Dir(sWb))
+                lEndDst = wsDst.Cells(Rows.Count, 1).End(xlUp).Row + 1
+                wbSRC.Sheets(sWs).Range(sStCell & ":" & sEndCell).Copy
+                wsDst.Activate
+                wsDst.Cells(lEndDst, 1).Select
+                wsDst.PasteSpecial
+                 If Not (UBound(vRest)) = -1 Then
+                    ThisWorkbook.Sheets(sPrf).Rows(1).Clear
+                    Call PasteShtData(ThisWorkbook.Name, _
+                                                sPrf, _
+                                                vRest)
+                End If
+                
+                wsDst.Columns.AutoFit
+                wbSRC.Sheets(sWs).Range("A1").Copy
+        End If
+    Next l
+End With
+
+'wsDst.Range("A1").Activate
+End Sub
+
+
+Sub ShtHdn(inptBool As Boolean, inptShts As String)
+Dim s As Worksheet
+Dim sName As String
+Dim v As Variant
+Dim vShts As Variant: vShts = Split(inptShts, ",")
+Dim vBool As Boolean: vBool = inptBool
+
+For Each v In vShts
+    sName = v
+    For Each s In ThisWorkbook.Worksheets
+        If Left(s.Name, Len(sName)) = sName Then s.Visible = vBool
+    Next s
+Next v
+
+End Sub
+
+
+Sub ShtHdnByPGPRM()
+Application.ScreenUpdating = False
+Dim s As Worksheet
+Dim sName As String
+Dim v As Variant
+Dim sLSht As String: sLSht = "LinkSht"
+Dim vShts As Variant: vShts = Split(fKey2Val("PGPRM_WSFUNC_ROOT", _
+                                                                        "PGPRM_SHTHDN_SHT", _
+                                                                        sLSht), ",")
+Dim vBool As Boolean: vBool = fKey2Val("PGPRM_WSFUNC_ROOT", _
+                                                                        "PGPRM_SHTHDN_BOOL", _
+                                                                        sLSht)
+For Each v In vShts
+    sName = v
+    For Each s In ThisWorkbook.Worksheets
+        If Left(s.Name, Len(sName)) = sName Then s.Visible = vBool
+    Next s
+Next v
+
+ThisWorkbook.Sheets(sLSht).Activate
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub SortSht(inptShts As String)
+Dim s As Worksheet
+Dim sName As String
+Dim v As Variant
+Dim vShts As Variant: vShts = Split(inptShts, ",")
+
+For Each v In vShts
+    sName = v
+    For Each s In ThisWorkbook.Worksheets
+        If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(1)
+    Next s
+Next v
+
+End Sub
+
+
+Sub SortShtByPGPRM()
+Dim s As Worksheet
+Dim sName As String
+Dim v As Variant
+Dim sLSht As String: sLSht = "LinkSht"
+Dim vShts As Variant: vShts = Split(fKey2Val("PGPRM_WSFUNC_ROOT", "PGPRM_SORTSHT", sLSht), ",")
+For Each v In vShts
+    sName = v
+    For Each s In ThisWorkbook.Worksheets
+        If Left(s.Name, Len(sName)) = sName Then s.Move before:=Sheets(Sheets.Count)
+    Next s
+Next v
+
+ThisWorkbook.Sheets(sLSht).Activate
+
+End Sub
+
+
+Function retDeviceLetter(inptType As String) As String
+Dim sResult As String
+
+If inptType = "AL_CAL_M" _
+    Or inptType = "AL_H" _
+    Or inptType = "AL_HH" _
+    Or inptType = "AL_L" _
+    Or inptType = "AL_LL" _
+    Or inptType = "ALCAL_M" _
+    Or inptType = "PLC_HH" _
+    Or inptType = "PLC_H" _
+    Or inptType = "PLC_L" _
+    Or inptType = "PLC_LL" _
+    Or inptType = "PLC_H" _
+    Or inptType = "PLC_CAL_M" _
+    Then
+    
+    sResult = "M"
+
+Else
+    sResult = "R"
+End If
+
+retDeviceLetter = sResult
+
+End Function
+
+
+
