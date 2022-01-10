@@ -1189,3 +1189,143 @@ Sub reloadPath(Optional inptFixRepoInPath As String _
 End Sub
 
 
+
+Sub CnvFixDB2FapCSV()
+Application.ScreenUpdating = False
+Call fOpenDB
+
+Dim l As Long
+
+Dim cSortWsName As String: cSortWsName = "Alias"
+Dim cOtptWsName As String: cOtptWsName = "Server"
+
+'Dim cWsDB As Worksheet: Set cWsDB = ThisWorkbook.Sheets("testCase")
+Dim cWsDB As Worksheet: Set cWsDB = Workbooks(fGetDsWb()).Sheets(fGetDsWs())
+
+Dim cWsSort As Worksheet
+Dim cWsOtpt As Worksheet
+
+Dim cPlcPrefix As String: cPlcPrefix = "PLC"
+
+Dim s As String
+Dim vPrv As Date
+
+'sht copy
+Dim cRowDbSt As String: cRowDbSt = "A6"
+Dim cColDbAtag As Long: cColDbAtag = Range(gcColA_TAG & "1").Column
+
+Dim cColSortAlias As Long: cColSortAlias = 1
+Dim cColSortPlc As Long: cColSortPlc = 2
+
+'convert
+Dim vPrvPlcName As String: vPrvPlcName = ""
+Dim vCrrPlcName As String: vCrrPlcName = ""
+Dim vCrrAliasName As String: vCrrAliasName = ""
+
+Dim vRowSort As Long: vRowSort = 1
+Dim vRowOtpt As Long: vRowOtpt = 1
+
+Dim vLoopRng As Range
+
+Debug.Print "Start Time: ", Format(Now, "hh:mm:ss"): vPrv = Now
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+With Application.Workbooks.Add
+    Set cWsOtpt = Workbooks(.Name).Sheets(1)
+    cWsOtpt.Name = cOtptWsName
+    Set cWsSort = Workbooks(.Name).Sheets.Add
+    cWsSort.Name = cSortWsName
+End With
+
+'copy column(A:Alias, B:PLC)
+With cWsSort
+
+For l = cWsDB.Range(CStr(cRowDbSt)).Row To cWsDB.Cells(cWsDB.Rows.Count, 2).End(xlUp).Row 'avoid End
+
+    s = cWsDB.Cells(l, cColDbAtag).Value 'Alias W0001_PV
+    If Left(fGetFixPlc(s), 3) = cPlcPrefix Then
+            .Cells(l - 1, cColSortAlias).Value = s 'l - header(1)
+            .Cells(l - 1, cColSortPlc).Value = fGetFixPlc(s) 'l - header(1) AFTER DELETE
+            .Cells(l - 1, cColSortPlc + 1).Value = GetFapPlc6notDBFol1(s) 'l - header(1)
+        
+        ElseIf fGetFixIODV(s) = "SIM" Then ' SIM => MEM
+            .Cells(l - 1, cColSortAlias).Value = s 'l - header(1)
+            .Cells(l - 1, cColSortPlc).Value = "ZMem" 'l - header(1)
+            .Cells(l - 1, cColSortPlc + 1).Value = "Mem.F01." & checkNumSt(s) 'l - header(1)
+            
+        ElseIf fGetFixType(s) = "BL" Or _
+                fGetFixType(s) = "CA" Or _
+                fGetFixType(s) = "PG" Then
+            .Cells(l - 1, cColSortAlias).Value = s 'l - header(1)
+            .Cells(l - 1, cColSortPlc).Value = "ZMem" 'l - header(1)
+            .Cells(l - 1, cColSortPlc + 1).Value = "Mem.F01." & checkNumSt(s)  'l - header(1)
+        Else
+        ' ETR validation
+        End If
+Next l
+
+'>>column(B)/PLC sort
+.Columns("A:C").Sort key1:=.Columns("B"), order1:=xlAscending
+
+Do Until .Cells(vRowSort, cColSortAlias).Value = ""
+
+        vCrrPlcName = fSplitByDelimiter(.Cells(vRowSort, cColSortPlc).Value, ":", 1) 'PLC01
+        'overWrite  eg ZMem => Mem
+        If Left(.Cells(vRowSort, cColSortPlc).Value, 1) = "Z" Then
+            vCrrPlcName = Right(vCrrPlcName, Len(vCrrPlcName) - 1)
+        End If
+          
+        vCrrAliasName = .Cells(vRowSort, cColSortAlias).Value
+        
+        'csv1
+            cWsOtpt.Cells(vRowOtpt, 1).Value = cnvPlc2Csv1(vCrrPlcName) 'PLC01=>CSV1
+
+            'overWrite UNIT => *
+            If vCrrPlcName = vPrvPlcName Then
+                    cWsOtpt.Cells(vRowOtpt, 1).Value = "*"
+            End If
+        
+            'csv2
+            cWsOtpt.Cells(vRowOtpt, 2).Value = "F01#" & cnvPlc2StEnd(vCrrPlcName)
+                        
+            'overWrite UNIT => *
+            If vCrrPlcName = vPrvPlcName Then
+                    cWsOtpt.Cells(vRowOtpt, 2).Value = "*"
+            End If
+                
+        'csv3
+        If Left(.Cells(vRowSort, cColSortPlc).Value, 3) = cPlcPrefix Then
+            cWsOtpt.Cells(vRowOtpt, 3).Value = CnvFixAlias2FapCSV3(vCrrAliasName)
+        Else ' MEM
+             cWsOtpt.Cells(vRowOtpt, 3).Value = CnvFixSIMAlias2FapCSV3(vCrrAliasName)
+        End If
+        
+        vPrvPlcName = vCrrPlcName
+        vRowOtpt = vRowOtpt + 1
+        vRowSort = vRowSort + 1
+    Loop
+End With
+
+
+With cWsSort
+    For Each vLoopRng In .Range("A:A")
+        If vLoopRng.Value <> "" Then
+            vLoopRng.Value = checkNumSt(vLoopRng.Value)
+        End If
+    Next vLoopRng
+
+    'Delete
+    .Columns("B").Delete Shift:=xlToLeft
+End With
+
+With cWsOtpt
+End With
+
+Debug.Print "finish:", Format(Now, "hh:mm:ss"), "Time:", Format(Now - vPrv, "hh:mm:ss")
+
+Call fCloseDB
+Application.ScreenUpdating = True
+End Sub
+
+
+
