@@ -1329,3 +1329,308 @@ End Sub
 
 
 
+Function CnvFixAlias2FapCSV3(inptFixAlias As String) As String
+Dim sFixAlias As String: sFixAlias = inptFixAlias
+Dim sRhs As String
+Dim sLhs As String
+
+'Rhs
+Dim sOptBin As String
+Dim sOptFil As String
+Dim sOptRng As String
+Dim sOptRmn As String
+Dim sOptCmt As String
+sOptBin = "": sOptFil = "": sOptRng = "": sOptRmn = "": sOptCmt = ""
+
+               
+               
+'LHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+ sLhs = CnvFixAlias2FapPlc6c3(sFixAlias, True) ' D000001, D000001@0 => D000001 , D000001@n
+sLhs = sLhs & "#" & sLhs
+
+
+'RHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+sOptBin = constBin(sFixAlias)
+sOptFil = constFil(sFixAlias)
+sOptRmn = ""
+sOptCmt = constCmt(sFixAlias)
+
+sRhs = sOptBin & sOptFil & sOptRmn & sOptCmt
+ 
+CnvFixAlias2FapCSV3 = sLhs & sRhs
+
+End Function
+
+Function CnvFixSIMAlias2FapCSV3(inptFixAlias) As String
+Dim sFixAlias As String: sFixAlias = inptFixAlias
+Dim sRhs As String
+Dim sLhs As String
+
+'Rhs
+Dim sOptSim As String
+Dim sOptFil As String
+Dim sOptCmt  As String
+Dim sOptRmn As String
+sOptSim = "": sOptFil = "": sOptCmt = "": sOptRmn = ""
+               
+               
+'LHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+sLhs = checkNumSt(sFixAlias)
+
+
+'RHS''''''''''''''''''''''''''''''''''''''''''''''''''''''
+sOptSim = constSim(sFixAlias)
+sOptRmn = ":N,1"
+sOptFil = constFil(sFixAlias)
+sOptCmt = constCmt(sFixAlias)
+
+sRhs = sOptSim & sOptRmn & sOptFil & sOptCmt
+ 
+CnvFixSIMAlias2FapCSV3 = sLhs & "#" & sRhs
+
+End Function
+
+
+Function constBin(ByVal inptFixAlias As String) As String
+On Error Resume Next
+Dim sC3 As String: sC3 = CnvFixAlias2FapPlc6c3(inptFixAlias, True) '  D000001, D000001@(0|n)
+Dim sRslt As String
+
+If fSplitByDelimiter(sC3, "@", 2) <> sC3 Then
+    '@
+    sRslt = ".BIT"
+
+ElseIf fGetFixIOSC(inptFixAlias) = "4BCD" Then
+    sRslt = ".BIN-16"
+
+ElseIf fGetFixIOHT(inptFixAlias) = "Float" Then
+    sRslt = ".FLT"
+
+ElseIf fGetFixIOHT(inptFixAlias) = "Long" Then
+    sRslt = ".BIN-32"
+    
+ElseIf fGetFixType(inptFixAlias) = "AI" Or fGetFixType(inptFixAlias) = "AR" Or fGetFixType(inptFixAlias) = "AO" Then
+    'AR or AI 'D000000 => => .BIN-16
+    sRslt = ".BIN-16"
+    
+Else
+    sRslt = ""
+End If
+
+constBin = sRslt
+
+End Function
+
+
+Function CnvFixAlias2FapPlc6c3(inptAlias As String, inptAt As Boolean) As String
+'PLC01:D:0001 => D000001
+'PLC01:D:0001:0 => D000001@0
+'PLC01:D:0001:1 => D000001@1
+'PLC01:D:0001 => D000001
+'PLC01:Y:A0 => Y0000A0
+
+'0:0 => stop
+
+Dim sFixPlc As String: sFixPlc = fGetFixPlc(inptAlias)
+Dim aStr() As String
+Dim bAt As Boolean: bAt = inptAt
+Dim sRslt As String
+
+aStr = Split(sFixPlc, ":")
+
+If UBound(aStr) = 3 Then ' @0 or @n
+
+    sRslt = aStr(1) & fDigit6(aStr(2)) 'D & 000000 @0
+    sRslt = sRslt & "@" & CInt(aStr(3))
+
+ElseIf UBound(aStr) <= 1 Then  ' reject sim,
+    
+    Stop
+    sRslt = sFixPlc
+
+Else ' PLC01.F01.D000001 => D000001
+    sRslt = aStr(1) & fDigit6(aStr(2))
+End If
+
+CnvFixAlias2FapPlc6c3 = sRslt
+
+End Function
+
+
+Function constFil(ByVal inptFixAlias As String) As String
+On Error Resume Next
+Dim sEhi As String
+Dim sElo As String
+Dim sResult As String
+
+sEhi = fGetFixEhi(inptFixAlias)
+sElo = fGetFixElo(inptFixAlias)
+sEhi = Replace(sEhi, ",", "")
+sElo = Replace(sElo, ",", "")
+
+If fGetFixIOSC(inptFixAlias) = "4BCD" Then
+
+    sResult = "+FIL=LIN:0|9999|" & sElo & "|" & sEhi & "|N|N|N"
+    
+ElseIf fGetFixIOHT(inptFixAlias) = "Float" Then
+
+    sResult = ""
+
+ElseIf fGetFixIOHT(inptFixAlias) = "Long" Then
+
+    sResult = ""
+    
+ElseIf sEhi = "" Then
+    
+    sResult = ""
+
+Else
+    
+    sResult = "+FIL=LIN:-32768|32767|" & sElo & "|" & sEhi & "|N|N|N"
+    
+End If
+
+constFil = sResult
+
+End Function
+
+
+Function constCmt(ByVal inptFixAlias As String) As String
+
+Dim sRslt As String: sRslt = ""
+
+If fGetFixDesc(inptFixAlias) <> "" Then sRslt = "+C=" & fGetFixDesc(inptFixAlias)
+
+constCmt = sRslt
+
+End Function
+
+
+Function constSim(ByVal inptFixAlias As String) As String
+'=> "S" "N" "B"
+
+Dim sRslt As String: sRslt = ""
+
+Select Case fGetFixType(inptFixAlias)
+    Case "AI"
+        sRslt = "N"
+    
+    Case "AO"
+        sRslt = "N"
+    
+    Case "CA"
+        sRslt = "N"
+        
+    Case "BL"
+        sRslt = "B"
+    
+    Case "DI"
+        sRslt = "B"
+    
+    Case "DO"
+        sRslt = "B"
+    
+    Case "PG"
+        sRslt = "B"
+    
+    Case Else
+        Stop
+    
+End Select
+
+
+constSim = sRslt
+
+End Function
+
+
+Function cnvPlc2Csv1(inptPlcName As String) As String 'PLC Name = > PlcProperties (CSV1)
+
+Dim lMatchCol As Long: lMatchCol = 0  ' match Col
+Dim lcrrCol As Long
+
+Dim r As Range
+
+Dim s As String
+Dim sPlcName As String: sPlcName = inptPlcName
+
+Dim sRslt As String
+
+
+With ThisWorkbook.Sheets(gcWsUnit)
+
+    'find Col
+    For Each r In .Range(.Cells(1, 1), .Cells(1, .Cells(1, Columns.Count).End(xlToLeft).Column))
+        If r.Value = sPlcName Then lMatchCol = r.Column: Exit For
+    Next r
+    
+
+If lMatchCol <> 0 Then
+        s = .Cells(1, lMatchCol).Value ' PLC01
+        'concat Properties
+           For lcrrCol = 2 To .Cells(Rows.Count, lMatchCol).End(xlUp).Row - 1
+            'concat 1~end
+            s = s & .Cells(lcrrCol, lMatchCol).Value & ","
+        Next lcrrCol
+        
+        If Not s = "Mem" Then
+            s = Left(s, Len(s) - 1)
+        End If
+        
+        sRslt = s
+Else
+    Stop 'NOT FOUND PLC UNIT NAME
+    sRslt = ""
+
+End If
+
+End With
+
+cnvPlc2Csv1 = sRslt
+
+End Function
+
+
+Function cnvPlc2StEnd(inptPlcName As String) As String 'PLC Name = > stEnd (CSV2)
+
+Dim lMatchCol As Long: lMatchCol = 0  ' match COl
+Dim lMatchRow As Long: lMatchRow = 0  ' match Row
+
+Dim lcrr As Long
+
+Dim r As Range
+
+Dim s As String
+Dim sPlcName As String: sPlcName = inptPlcName
+
+Dim sRslt As String
+
+With ThisWorkbook.Sheets(CStr(gcWsUnit))
+    
+    'find Row
+    For Each r In .Range(.Cells(1, 1), .Cells(.Cells(Rows.Count, 1).End(xlUp).Row, 1))
+        If r.Value = "StEnd" Then lMatchRow = r.Row: Exit For
+    Next r
+    
+    'find Col
+    For Each r In .Range(.Cells(1, 1), .Cells(1, .Cells(1, Columns.Count).End(xlToLeft).Column))
+        If r.Value = sPlcName Then lMatchCol = r.Column: Exit For
+    Next r
+
+If lMatchCol <> 0 And lMatchRow <> 0 Then
+    sRslt = .Cells(lMatchRow, lMatchCol).Value
+Else
+    Stop 'NOT FOUND PLC UNIT NAME
+    sRslt = ""
+
+End If
+
+End With
+
+cnvPlc2StEnd = sRslt
+
+End Function
+
+
+
+
